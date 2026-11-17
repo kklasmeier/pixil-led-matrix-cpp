@@ -1,0 +1,838 @@
+import particle
+# Boid Digits — 12-hour HH:MM flock clock
+# Boids settle onto digit glyph anchors via particle_apply_springs
+# (inactive endpoints = fixed slots). particle_flock runs only during
+# explode / regroup so the Pi 4 is not stuck in O(n^2) every frame.
+# Seconds: 12-tick crown arc above the digits (every 5s).
+# Flock color advances on each minute explode.
+
+throttle(0)
+fps(30)
+
+# 20 slots/digit — dense 5x7 strokes so settled digits don't look like dead LEDs
+v_pts_per = 20
+v_num_digits = 4
+v_num_boids = v_pts_per * v_num_digits
+v_num_total = v_num_boids * 2
+
+v_cell = 2
+v_digit_y = 24
+# Glyph cols 0..4 at spacing v_cell → span 8; gaps keep digits readable
+v_digit_span = 8
+v_digit_gap = 3
+v_colon_gap = 6
+v_ox0 = 0
+v_ox1 = 0
+v_ox2 = 0
+v_ox3 = 0
+v_colon_x = 32
+
+# Hand-placed crown ticks (even x step) — avoids trig rounding clumps on 64x64
+create_array(v_arc_x, 12, numeric)
+create_array(v_arc_y, 12, numeric)
+v_arc_x[0] = 5
+v_arc_y[0] = 12
+v_arc_x[1] = 10
+v_arc_y[1] = 9
+v_arc_x[2] = 15
+v_arc_y[2] = 7
+v_arc_x[3] = 20
+v_arc_y[3] = 5
+v_arc_x[4] = 25
+v_arc_y[4] = 4
+v_arc_x[5] = 30
+v_arc_y[5] = 3
+v_arc_x[6] = 34
+v_arc_y[6] = 3
+v_arc_x[7] = 39
+v_arc_y[7] = 4
+v_arc_x[8] = 44
+v_arc_y[8] = 5
+v_arc_x[9] = 49
+v_arc_y[9] = 7
+v_arc_x[10] = 54
+v_arc_y[10] = 9
+v_arc_x[11] = 59
+v_arc_y[11] = 12
+
+v_num_colors = 8
+create_array(v_palette, v_num_colors, string)
+v_palette[0] = "cyan"
+v_palette[1] = "magenta"
+v_palette[2] = "lime"
+v_palette[3] = "orange"
+v_palette[4] = "purple"
+v_palette[5] = "azure"
+v_palette[6] = "rose"
+v_palette[7] = "spring_green"
+v_color_idx = 0
+v_flock_color = v_palette[0]
+
+# Fixed gold crown — always distinct from the rotating flock colors
+v_arc_color = "gold"
+v_colon_color = "white"
+v_ampm_color = "gray"
+
+v_mode_settled = 0
+v_mode_scatter = 1
+v_mode_seek = 2
+v_mode = v_mode_seek
+
+# Scatter: fly around after staggered kicks; then seek to new glyphs
+v_scatter_frames = 45
+v_seek_frames = 100
+v_mode_timer = v_seek_frames
+
+v_sep_dist = 5
+v_neighbor_dist = 14
+v_max_speed = 3.6
+v_max_force = 0.45
+v_scatter_kick = 5.0
+v_scatter_max_speed = 4.5
+
+v_spring_hold = 0.55
+v_spring_seek = 0.22
+v_damp_seek = 0.92
+v_damp_hold = 0.78
+v_damp_scatter = 0.995
+v_sleep_hold = 0.08
+# Stagger between digit startles — 0–1s, heavily biased short (bird-flock feel)
+v_pause_max = 30
+v_near_check_every = 4
+
+v_prev_key = -1
+v_pending_key = -1
+v_anchors_ready = 0
+
+create_array(v_x, v_num_total, numeric)
+create_array(v_y, v_num_total, numeric)
+create_array(v_vx, v_num_total, numeric)
+create_array(v_vy, v_num_total, numeric)
+create_array(v_ax, v_num_total, numeric)
+create_array(v_ay, v_num_total, numeric)
+create_array(v_active, v_num_total, numeric)
+create_array(v_link_from, v_num_boids, numeric)
+create_array(v_link_to, v_num_boids, numeric)
+create_array(v_rest, v_num_boids, numeric)
+create_array(v_tension, v_num_boids, numeric)
+create_array(v_stiff, v_num_boids, numeric)
+create_array(v_stiff_base, v_num_boids, numeric)
+create_array(v_seek_delay, v_num_boids, numeric)
+create_array(v_spd, v_num_total, numeric)
+create_array(v_digit_delay, 4, numeric)
+create_array(v_digit_released, 4, numeric)
+
+create_array(v_glyph_dx, 11 * v_pts_per, numeric)
+create_array(v_glyph_dy, 11 * v_pts_per, numeric)
+# 5x7 font rows as bitmasks (bit4=left .. bit0=right). Index = digit*7 + row.
+create_array(v_font, 11 * 7, numeric)
+
+def gset {
+    if v_gpt < v_pts_per then
+        v_gi = v_gdigit * v_pts_per + v_gpt
+        v_glyph_dx[v_gi] = v_gdx
+        v_glyph_dy[v_gi] = v_gdy
+        v_gpt = v_gpt + 1
+    endif
+}
+
+def set_font_rows {
+    # v_gdigit + v_r0..v_r6 already set (0-31 bitmasks)
+    v_font[v_gdigit * 7 + 0] = v_r0
+    v_font[v_gdigit * 7 + 1] = v_r1
+    v_font[v_gdigit * 7 + 2] = v_r2
+    v_font[v_gdigit * 7 + 3] = v_r3
+    v_font[v_gdigit * 7 + 4] = v_r4
+    v_font[v_gdigit * 7 + 5] = v_r5
+    v_font[v_gdigit * 7 + 6] = v_r6
+}
+
+def init_font {
+    # Dense thickened strokes — extras beyond 20 are dropped; short glyphs pad by stacking
+    v_gdigit = 0
+    v_r0 = 14
+    v_r1 = 27
+    v_r2 = 17
+    v_r3 = 17
+    v_r4 = 17
+    v_r5 = 27
+    v_r6 = 14
+    call set_font_rows
+    # 0: 01110,11011,10001,10001,10001,11011,01110
+
+    v_gdigit = 1
+    v_r0 = 14
+    v_r1 = 6
+    v_r2 = 6
+    v_r3 = 6
+    v_r4 = 6
+    v_r5 = 6
+    v_r6 = 31
+    call set_font_rows
+    # 1: 01110,00110,00110,00110,00110,00110,11111  (wide stem + base)
+
+    v_gdigit = 2
+    v_r0 = 31
+    v_r1 = 1
+    v_r2 = 1
+    v_r3 = 14
+    v_r4 = 16
+    v_r5 = 16
+    v_r6 = 31
+    call set_font_rows
+    # 2: 11111,00001,00001,01110,10000,10000,11111
+
+    v_gdigit = 3
+    v_r0 = 31
+    v_r1 = 1
+    v_r2 = 1
+    v_r3 = 14
+    v_r4 = 1
+    v_r5 = 1
+    v_r6 = 31
+    call set_font_rows
+    # 3: 11111,00001,00001,01110,00001,00001,11111
+
+    v_gdigit = 4
+    v_r0 = 19
+    v_r1 = 19
+    v_r2 = 19
+    v_r3 = 31
+    v_r4 = 3
+    v_r5 = 3
+    v_r6 = 3
+    call set_font_rows
+    # 4: 10011,10011,10011,11111,00011,00011,00011
+
+    v_gdigit = 5
+    v_r0 = 31
+    v_r1 = 16
+    v_r2 = 16
+    v_r3 = 30
+    v_r4 = 1
+    v_r5 = 1
+    v_r6 = 30
+    call set_font_rows
+    # 5: 11111,10000,10000,11110,00001,00001,11110
+
+    v_gdigit = 6
+    v_r0 = 15
+    v_r1 = 24
+    v_r2 = 16
+    v_r3 = 30
+    v_r4 = 17
+    v_r5 = 25
+    v_r6 = 14
+    call set_font_rows
+    # 6: 01111,11000,10000,11110,10001,11001,01110
+
+    v_gdigit = 7
+    v_r0 = 31
+    v_r1 = 31
+    v_r2 = 3
+    v_r3 = 6
+    v_r4 = 12
+    v_r5 = 12
+    v_r6 = 12
+    call set_font_rows
+    # 7: 11111,11111,00011,00110,01100,01100,01100
+
+    v_gdigit = 8
+    v_r0 = 14
+    v_r1 = 27
+    v_r2 = 17
+    v_r3 = 14
+    v_r4 = 17
+    v_r5 = 17
+    v_r6 = 14
+    call set_font_rows
+    # 8: 01110,11011,10001,01110,10001,10001,01110  (20 lit)
+
+    v_gdigit = 9
+    v_r0 = 14
+    v_r1 = 27
+    v_r2 = 17
+    v_r3 = 15
+    v_r4 = 1
+    v_r5 = 1
+    v_r6 = 14
+    call set_font_rows
+    # 9: 01110,11011,10001,01111,00001,00001,01110
+
+    v_gdigit = 10
+    v_r0 = 0
+    v_r1 = 0
+    v_r2 = 0
+    v_r3 = 0
+    v_r4 = 0
+    v_r5 = 0
+    v_r6 = 0
+    call set_font_rows
+}
+
+def init_glyph_digit {
+    v_gpt = 0
+    if v_gdigit == 10 then
+        for v_bi in (0, v_pts_per - 1, 1)
+            v_gdx = -6
+            v_gdy = v_bi % 7
+            call gset
+        endfor v_bi
+    else
+        for v_r in (0, 6, 1)
+            v_bits = v_font[v_gdigit * 7 + v_r]
+            v_pow = 16
+            for v_c in (0, 4, 1)
+                v_bit = int(v_bits / v_pow) % 2
+                if v_bit == 1 then
+                    v_gdx = v_c
+                    v_gdy = v_r
+                    call gset
+                endif
+                v_pow = v_pow / 2
+            endfor v_c
+        endfor v_r
+    endif
+
+    # Pad short glyphs by stacking on existing stroke points (brighter, not holes)
+    v_filled = v_gpt
+    v_src = 0
+    while v_gpt < v_pts_per then
+        if v_filled <= 0 then
+            v_gdx = 2
+            v_gdy = 3
+        else
+            v_gi = v_gdigit * v_pts_per + v_src
+            v_gdx = v_glyph_dx[v_gi]
+            v_gdy = v_glyph_dy[v_gi]
+            v_src = v_src + 1
+            if v_src >= v_filled then
+                v_src = 0
+            endif
+        endif
+        call gset
+    endwhile
+}
+
+def init_glyphs {
+    call init_font
+    for v_gdigit in (0, 10, 1)
+        call init_glyph_digit
+    endfor v_gdigit
+}
+
+def init_particles {
+    for v_i in (0, v_num_boids - 1, 1)
+        v_x[v_i] = random(8, 56, 0)
+        v_y[v_i] = random(8, 40, 0)
+        v_vx[v_i] = random(-1, 1, 2)
+        v_vy[v_i] = random(-1, 1, 2)
+        v_ax[v_i] = 0
+        v_ay[v_i] = 0
+        v_active[v_i] = 1
+
+        v_ai = v_num_boids + v_i
+        v_x[v_ai] = v_x[v_i]
+        v_y[v_ai] = v_y[v_i]
+        v_vx[v_ai] = 0
+        v_vy[v_ai] = 0
+        v_ax[v_ai] = 0
+        v_ay[v_ai] = 0
+        v_active[v_ai] = 0
+
+        v_link_from[v_i] = v_i
+        v_link_to[v_i] = v_ai
+        v_rest[v_i] = 0
+    endfor v_i
+}
+
+def place_digit_anchors {
+    # Uses v_place_digit (0-9 or 10 blank), v_place_slot, v_place_ox, v_place_oy
+    for v_p in (0, v_pts_per - 1, 1)
+        v_gi = v_place_digit * v_pts_per + v_p
+        v_ai = v_num_boids + v_place_slot + v_p
+        v_x[v_ai] = v_place_ox + v_glyph_dx[v_gi] * v_cell
+        v_y[v_ai] = v_place_oy + v_glyph_dy[v_gi] * v_cell
+    endfor v_p
+}
+
+def layout_clock {
+    # Center visible glyphs: 3 for h<10 (H:MM), 4 for 10-12 (HH:MM)
+    v_h_tens = int(v_load_h / 10)
+    if v_h_tens == 0 then
+        v_total = 3 * v_digit_span + v_digit_gap + v_colon_gap
+        v_start = int((64 - v_total) / 2)
+        v_ox0 = -12
+        v_ox1 = v_start
+        v_ox2 = v_ox1 + v_digit_span + v_colon_gap
+        v_ox3 = v_ox2 + v_digit_span + v_digit_gap
+        v_colon_x = v_ox1 + v_digit_span + int(v_colon_gap / 2)
+    else
+        v_total = 4 * v_digit_span + 2 * v_digit_gap + v_colon_gap
+        v_start = int((64 - v_total) / 2)
+        v_ox0 = v_start
+        v_ox1 = v_ox0 + v_digit_span + v_digit_gap
+        v_ox2 = v_ox1 + v_digit_span + v_colon_gap
+        v_ox3 = v_ox2 + v_digit_span + v_digit_gap
+        v_colon_x = v_ox1 + v_digit_span + int(v_colon_gap / 2)
+    endif
+}
+
+def sync_leading_slot {
+    # Hide hour-tens boids when that digit isn't shown (no left-edge ghost glob)
+    v_ht = int(v_load_h / 10)
+    for v_i in (0, v_pts_per - 1, 1)
+        if v_ht == 0 then
+            v_active[v_i] = 0
+            v_x[v_i] = -20
+            v_y[v_i] = -20
+            v_vx[v_i] = 0
+            v_vy[v_i] = 0
+            v_ai = v_num_boids + v_i
+            v_x[v_ai] = -20
+            v_y[v_ai] = -20
+        else
+            v_active[v_i] = 1
+        endif
+    endfor v_i
+}
+
+def load_time_anchors {
+    # v_load_h, v_load_m already set
+    call layout_clock
+    v_h_tens = int(v_load_h / 10)
+    v_h_ones = v_load_h - v_h_tens * 10
+    v_m_tens = int(v_load_m / 10)
+    v_m_ones = v_load_m - v_m_tens * 10
+
+    if v_h_tens == 0 then
+        v_place_digit = 10
+    else
+        v_place_digit = v_h_tens
+    endif
+    v_place_slot = 0
+    v_place_ox = v_ox0
+    v_place_oy = v_digit_y
+    call place_digit_anchors
+
+    v_place_digit = v_h_ones
+    v_place_slot = v_pts_per
+    v_place_ox = v_ox1
+    v_place_oy = v_digit_y
+    call place_digit_anchors
+
+    v_place_digit = v_m_tens
+    v_place_slot = v_pts_per * 2
+    v_place_ox = v_ox2
+    v_place_oy = v_digit_y
+    call place_digit_anchors
+
+    v_place_digit = v_m_ones
+    v_place_slot = v_pts_per * 3
+    v_place_ox = v_ox3
+    v_place_oy = v_digit_y
+    call place_digit_anchors
+
+    call sync_leading_slot
+    v_anchors_ready = 1
+}
+
+def next_flock_color {
+    v_color_idx = v_color_idx + 1
+    if v_color_idx >= v_num_colors then
+        v_color_idx = 0
+    endif
+    v_flock_color = v_palette[v_color_idx]
+}
+
+def kick_scatter {
+    call next_flock_color
+    for v_i in (0, v_num_boids - 1, 1)
+        v_ang = random(0, 360, 0)
+        v_mag = random(v_scatter_kick * 0.6, v_scatter_kick, 1)
+        v_vx[v_i] = v_vx[v_i] + cos(radians(v_ang)) * v_mag
+        v_vy[v_i] = v_vy[v_i] + sin(radians(v_ang)) * v_mag
+    endfor v_i
+}
+
+def rand_pause {
+    # 0–1s, short-biased: ~70% in 0–10 frames, rest up to 30
+    if random(0, 9, 0) < 7 then
+        v_pause = random(0, 10, 0)
+    else
+        v_pause = random(8, v_pause_max, 0)
+    endif
+}
+
+def wave_all_together {
+    v_digit_delay[0] = 0
+    v_digit_delay[1] = 0
+    v_digit_delay[2] = 0
+    v_digit_delay[3] = 0
+}
+
+def wave_cascade_ltr {
+    v_t = 0
+    if v_h_tens != 0 then
+        v_digit_delay[0] = v_t
+        call rand_pause
+        v_t = v_t + v_pause
+    else
+        v_digit_delay[0] = 0
+    endif
+    v_digit_delay[1] = v_t
+    call rand_pause
+    v_t = v_t + v_pause
+    v_digit_delay[2] = v_t
+    call rand_pause
+    v_t = v_t + v_pause
+    v_digit_delay[3] = v_t
+}
+
+def wave_cascade_rtl {
+    v_t = 0
+    v_digit_delay[3] = v_t
+    call rand_pause
+    v_t = v_t + v_pause
+    v_digit_delay[2] = v_t
+    call rand_pause
+    v_t = v_t + v_pause
+    v_digit_delay[1] = v_t
+    if v_h_tens != 0 then
+        call rand_pause
+        v_t = v_t + v_pause
+        v_digit_delay[0] = v_t
+    else
+        v_digit_delay[0] = 0
+    endif
+}
+
+def wave_pairs_hours_first {
+    call rand_pause
+    if v_h_tens == 0 then
+        v_digit_delay[0] = 0
+        v_digit_delay[1] = 0
+        v_digit_delay[2] = v_pause
+        v_digit_delay[3] = v_pause
+    else
+        v_digit_delay[0] = 0
+        v_digit_delay[1] = 0
+        v_digit_delay[2] = v_pause
+        v_digit_delay[3] = v_pause
+    endif
+}
+
+def wave_pairs_mins_first {
+    call rand_pause
+    if v_h_tens == 0 then
+        v_digit_delay[2] = 0
+        v_digit_delay[3] = 0
+        v_digit_delay[0] = 0
+        v_digit_delay[1] = v_pause
+    else
+        v_digit_delay[2] = 0
+        v_digit_delay[3] = 0
+        v_digit_delay[0] = v_pause
+        v_digit_delay[1] = v_pause
+    endif
+}
+
+def wave_independent {
+    if v_h_tens != 0 then
+        call rand_pause
+        v_digit_delay[0] = v_pause
+    else
+        v_digit_delay[0] = 0
+    endif
+    call rand_pause
+    v_digit_delay[1] = v_pause
+    call rand_pause
+    v_digit_delay[2] = v_pause
+    call rand_pause
+    v_digit_delay[3] = v_pause
+}
+
+def wave_interleave {
+    call rand_pause
+    if random(0, 1, 0) == 0 then
+        v_digit_delay[0] = 0
+        v_digit_delay[2] = 0
+        v_digit_delay[1] = v_pause
+        v_digit_delay[3] = v_pause
+    else
+        v_digit_delay[1] = 0
+        v_digit_delay[3] = 0
+        v_digit_delay[0] = v_pause
+        v_digit_delay[2] = v_pause
+    endif
+    if v_h_tens == 0 then
+        v_digit_delay[0] = 0
+    endif
+}
+
+def pick_scatter_wave {
+    v_style = random(0, 9, 0)
+    if v_style == 0 then
+        call wave_all_together
+    elseif v_style <= 2 then
+        call wave_cascade_ltr
+    elseif v_style <= 4 then
+        call wave_cascade_rtl
+    elseif v_style == 5 then
+        call wave_pairs_hours_first
+    elseif v_style == 6 then
+        call wave_pairs_mins_first
+    elseif v_style == 7 then
+        call wave_independent
+    else
+        call wave_interleave
+    endif
+}
+
+def kick_digit {
+    # Hard burst so this digit's flock fills the panel
+    v_d0 = v_slot * v_pts_per
+    v_d1 = v_d0 + v_pts_per - 1
+    for v_i in (v_d0, v_d1, 1)
+        if v_active[v_i] == 1 then
+            v_ang = random(0, 360, 0)
+            v_mag = random(v_scatter_kick * 0.65, v_scatter_kick, 1)
+            v_vx[v_i] = cos(radians(v_ang)) * v_mag
+            v_vy[v_i] = sin(radians(v_ang)) * v_mag
+            v_stiff[v_i] = 0
+            v_spd[v_i] = v_scatter_max_speed
+        endif
+    endfor v_i
+    v_digit_released[v_slot] = 1
+    # Guarantee flight time after late waves fire
+    if v_mode_timer < 32 then
+        v_mode_timer = 32
+    endif
+}
+
+def start_scatter_waves {
+    # Load new targets now; boids startle in short-biased digit waves, then seek
+    call next_flock_color
+    v_pending_h = int(v_pending_key / 100)
+    v_pending_m = v_pending_key - v_pending_h * 100
+    v_load_h = v_pending_h
+    v_load_m = v_pending_m
+    call load_time_anchors
+    v_h_tens = int(v_pending_h / 10)
+    call pick_scatter_wave
+    for v_d in (0, 3, 1)
+        v_digit_released[v_d] = 0
+    endfor v_d
+    # Drop hold springs so kicked birds can fly free
+    for v_i in (0, v_num_boids - 1, 1)
+        v_stiff[v_i] = 0
+    endfor v_i
+    v_mode = v_mode_scatter
+    v_mode_timer = v_scatter_frames
+}
+
+def update_scatter_waves {
+    for v_slot in (0, 3, 1)
+        if v_digit_released[v_slot] == 0 then
+            if v_digit_delay[v_slot] > 0 then
+                v_digit_delay[v_slot] = v_digit_delay[v_slot] - 1
+                # Nervous pre-startle twitch — not frozen statues
+                v_d0 = v_slot * v_pts_per
+                v_d1 = v_d0 + v_pts_per - 1
+                for v_i in (v_d0, v_d1, 1)
+                    if v_active[v_i] == 1 then
+                        v_vx[v_i] = v_vx[v_i] + random(-1, 1, 2) * 0.15
+                        v_vy[v_i] = v_vy[v_i] + random(-1, 1, 2) * 0.15
+                    endif
+                endfor v_i
+            else
+                call kick_digit
+            endif
+        endif
+    endfor v_slot
+}
+
+def begin_seek_all {
+    for v_i in (0, v_num_boids - 1, 1)
+        if v_active[v_i] == 1 then
+            v_stiff[v_i] = random(0.14, 0.32, 2)
+            v_spd[v_i] = random(1.8, 3.4, 1)
+        endif
+    endfor v_i
+    for v_i in (v_num_boids, v_num_total - 1, 1)
+        v_spd[v_i] = 0
+    endfor v_i
+    v_mode = v_mode_seek
+    v_mode_timer = v_seek_frames
+}
+
+def zero_accel {
+    for v_i in (0, v_num_boids - 1, 1)
+        v_ax[v_i] = 0
+        v_ay[v_i] = 0
+    endfor v_i
+}
+
+def snap_boids_to_anchors {
+    for v_i in (0, v_num_boids - 1, 1)
+        if v_active[v_i] == 1 then
+            v_ai = v_num_boids + v_i
+            v_x[v_i] = v_x[v_ai]
+            v_y[v_i] = v_y[v_ai]
+            v_vx[v_i] = 0
+            v_vy[v_i] = 0
+            v_stiff[v_i] = v_spring_hold
+            v_spd[v_i] = v_max_speed
+        endif
+    endfor v_i
+}
+
+def boids_near_anchors {
+    v_near = 1
+    for v_i in (0, v_num_boids - 1, 1)
+        if v_active[v_i] == 1 then
+            v_ai = v_num_boids + v_i
+            v_dx = v_x[v_i] - v_x[v_ai]
+            v_dy = v_y[v_i] - v_y[v_ai]
+            if v_dx * v_dx + v_dy * v_dy > 2.25 then
+                v_near = 0
+            endif
+        endif
+    endfor v_i
+}
+
+def read_clock {
+    v_hour = get_datetime("h")
+    v_min = get_datetime("mi")
+    v_sec = get_datetime("s")
+    v_ampm = get_datetime("a")
+    v_sec5 = int(v_sec / 5)
+    v_time_key = v_hour * 100 + v_min
+}
+
+def draw_colon {
+    v_blink = v_sec % 2
+    if v_blink == 0 then
+        v_cint = 90
+    else
+        v_cint = 35
+    endif
+    draw_circle(v_colon_x, v_digit_y + 4, 1, v_colon_color, v_cint, true)
+    draw_circle(v_colon_x, v_digit_y + 10, 1, v_colon_color, v_cint, true)
+}
+
+def draw_sec_arc {
+    # Gold crown — lookup ticks, 12 steps / 5s
+    v_lit = v_sec5 + 1
+    for v_t in (0, 11, 1)
+        v_tx = v_arc_x[v_t]
+        v_ty = v_arc_y[v_t]
+        if v_t < v_lit then
+            plot(v_tx, v_ty, v_arc_color, 95)
+            plot(v_tx, v_ty + 1, v_arc_color, 40)
+        else
+            plot(v_tx, v_ty, v_arc_color, 20)
+        endif
+    endfor v_t
+}
+
+def draw_boids {
+    for v_i in (0, v_num_boids - 1, 1)
+        if v_active[v_i] == 1 then
+            v_dx = round(v_x[v_i])
+            v_dy = round(v_y[v_i])
+            if v_dx >= 0 and v_dx <= 63 and v_dy >= 0 and v_dy <= 63 then
+                plot(v_dx, v_dy, v_flock_color, 100)
+                if v_mode == v_mode_scatter then
+                    if v_vx[v_i] * v_vx[v_i] + v_vy[v_i] * v_vy[v_i] > 0.25 then
+                        v_hx = v_dx + round(v_vx[v_i] * 0.5)
+                        v_hy = v_dy + round(v_vy[v_i] * 0.5)
+                        if v_hx >= 0 and v_hx <= 63 and v_hy >= 0 and v_hy <= 63 then
+                            if v_hx != v_dx or v_hy != v_dy then
+                                plot(v_hx, v_hy, v_flock_color, 45)
+                            endif
+                        endif
+                    endif
+                endif
+            endif
+        endif
+    endfor v_i
+}
+
+def draw_frame {
+    begin_frame
+        draw_rectangle(0, 0, 64, 64, black, 100, true)
+        call draw_sec_arc
+        call draw_colon
+        call draw_boids
+        draw_text(52, 56, v_ampm, tiny64_font, 12, v_ampm_color, 70)
+    end_frame
+}
+
+call init_glyphs
+call init_particles
+call read_clock
+v_load_h = v_hour
+v_load_m = v_min
+v_show_h = v_hour
+v_show_m = v_min
+v_pending_h = v_hour
+v_pending_m = v_min
+call load_time_anchors
+call snap_boids_to_anchors
+v_mode = v_mode_settled
+v_prev_key = v_time_key
+v_pending_key = v_time_key
+
+while true then
+    call read_clock
+
+    if v_mode == v_mode_settled then
+        if v_time_key != v_prev_key then
+            v_pending_key = v_time_key
+            call start_scatter_waves
+        endif
+    endif
+
+    call zero_accel
+
+    if v_mode == v_mode_scatter then
+        call update_scatter_waves
+        # Wide separation so kicked flocks fill the matrix
+        call particle.flock(v_x, v_y, v_vx, v_vy, v_ax, v_ay, v_active, v_sep_dist, v_neighbor_dist, 4.5, 0, 0, v_scatter_max_speed, v_max_force, 0, 0, v_num_boids)
+        call particle.integrate(v_x, v_y, v_vx, v_vy, v_active, v_ax, v_ay, v_damp_scatter, 0, v_num_boids, "pre_move", v_scatter_max_speed, 1)
+        call particle.collide_bounds(v_x, v_y, v_vx, v_vy, v_active, 1, 62, 1, 62, 0.85, 0.5, "none", v_num_total)
+
+        v_mode_timer = v_mode_timer - 1
+        if v_mode_timer <= 0 then
+            call begin_seek_all
+        endif
+
+    elseif v_mode == v_mode_seek then
+        call particle.apply_springs(v_x, v_y, v_ax, v_ay, v_active, v_link_from, v_link_to, v_rest, v_stiff, v_tension, v_num_total, v_num_boids)
+        call particle.integrate(v_x, v_y, v_vx, v_vy, v_active, v_ax, v_ay, v_damp_seek, 0, v_num_boids, "pre_move", v_spd, 1)
+        call particle.collide_bounds(v_x, v_y, v_vx, v_vy, v_active, 1, 62, 1, 62, 0.5, 0.5, "none", v_num_total)
+
+        v_mode_timer = v_mode_timer - 1
+        if v_mode_timer % v_near_check_every == 0 then
+            call boids_near_anchors
+            if v_near == 1 or v_mode_timer <= 0 then
+                v_show_h = v_pending_h
+                v_show_m = v_pending_m
+                v_prev_key = v_pending_key
+                v_mode = v_mode_settled
+            endif
+        elseif v_mode_timer <= 0 then
+            v_show_h = v_pending_h
+            v_show_m = v_pending_m
+            v_prev_key = v_pending_key
+            v_mode = v_mode_settled
+        endif
+
+    else
+        call particle.apply_springs(v_x, v_y, v_ax, v_ay, v_active, v_link_from, v_link_to, v_rest, v_spring_hold, v_tension, v_num_total, v_num_boids)
+        call particle.integrate(v_x, v_y, v_vx, v_vy, v_active, v_ax, v_ay, v_damp_hold, v_sleep_hold, v_num_boids, "pre_move", v_max_speed, 1)
+    endif
+
+    call draw_frame
+endwhile

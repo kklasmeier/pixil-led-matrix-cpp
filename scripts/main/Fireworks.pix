@@ -1,0 +1,249 @@
+# Fireworks Display
+# Launches rockets that explode into particle effects
+
+throttle(0)
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(40)
+
+# === DISPLAY SETTINGS ===
+v_screen_width = 64
+v_screen_height = 64
+
+# === PARTICLE SETTINGS ===
+v_num_particles = random(25, 40, 0)
+v_gravity = 0.13
+v_fade_rate = random(2, 4, 1)
+v_initial_brightness = 99
+
+# === EXPLOSION SETTINGS ===
+v_min_speed = 0.5
+v_max_speed = random(1, 6, 1)
+
+# === ROCKET SETTINGS ===
+# One rocket in flight at a time; each explosion uses the full particle pool.
+# Ballistic climb: gravity slows the shell as it nears apogee, then a brief hang.
+v_launch_speed_min = 2.2
+v_launch_speed_max = 2.9
+v_rocket_gravity = 0.07
+v_hang_min = 12
+v_hang_max = 32
+v_rocket_trail_duration = 280
+# Burst linger ~50% longer (fade, trails, fall).
+v_particle_burnout = 525
+v_launch_wait_min = 25
+v_launch_wait_max = 110
+
+# Create arrays for particle management
+create_array(v_x, v_num_particles)
+create_array(v_y, v_num_particles)
+create_array(v_dx, v_num_particles)
+create_array(v_dy, v_num_particles)
+create_array(v_brightness, v_num_particles)
+
+create_array(v_red, v_num_particles)
+create_array(v_green, v_num_particles)
+create_array(v_blue, v_num_particles)
+
+v_i = 0
+while v_i < v_num_particles then
+    v_brightness[v_i] = 0
+    v_i = v_i + 1
+endwhile
+
+v_rocket_x = 0
+v_rocket_y = 64
+v_rocket_active = 0
+v_rocket_dy = 0
+v_hang_timer = 0
+v_hang_style = 0
+v_hang_flash = 0
+v_fuse_bright = 80
+v_launch_cooldown = random(v_launch_wait_min, v_launch_wait_max, 0)
+
+while true then
+
+    begin_frame(true)
+
+    # Wait a random gap after each explosion before the next launch
+    if v_rocket_active == 0 and v_launch_cooldown > 0 then
+        v_launch_cooldown = v_launch_cooldown - 1
+    endif
+
+    # Launch new rocket when idle and cooldown finished
+    if v_rocket_active == 0 and v_launch_cooldown <= 0 then
+        v_rocket_x = random(10, v_screen_width - 10, 0)
+        v_rocket_y = v_screen_height - 1
+        v_rocket_dy = -random(v_launch_speed_min, v_launch_speed_max, 1)
+        v_hang_timer = 0
+        v_rocket_active = 1
+
+        v_fw_red = random(50, 99, 0)
+        v_fw_green = random(50, 99, 0)
+        v_fw_blue = random(50, 99, 0)
+
+        v_max_speed = random(2, 4, 1)
+        v_fade_rate = random(1, 2, 1)
+        v_particle_burnout = random(375, 675, 0)
+    endif
+
+    # Rocket climb: gravity so the shell slows into apogee, then hangs before burst
+    if v_rocket_active == 1 then
+        if v_rocket_x >= 0 and v_rocket_x < v_screen_width and v_rocket_y >= 0 and v_rocket_y < v_screen_height then
+            mplot(v_rocket_x, v_rocket_y, white, 90, v_rocket_trail_duration, fade)
+        endif
+
+        v_rocket_dy = v_rocket_dy + v_rocket_gravity
+        v_rocket_y = v_rocket_y + v_rocket_dy
+
+        # Stall at the top (or clip near the ceiling); pick a fuse personality
+        if v_rocket_dy >= 0 or v_rocket_y <= 4 then
+            v_rocket_active = 2
+            v_hang_style = random(0, 4, 0)
+            v_hang_flash = random(0, 1, 0)
+            v_hang_timer = random(v_hang_min, v_hang_max, 0)
+            v_fuse_bright = 80
+            # Keep a little downward speed so the shell can sag 1–3 pixels
+            v_rocket_dy = random(0.04, 0.16, 2)
+            if v_hang_style == 1 then
+                v_rocket_dy = random(0.02, 0.06, 2)
+            endif
+            if v_hang_style == 2 then
+                v_hang_timer = random(22, 40, 0)
+                v_rocket_dy = random(0.08, 0.18, 2)
+            endif
+        endif
+    elseif v_rocket_active == 2 then
+        v_rocket_dy = v_rocket_dy + v_rocket_gravity * 0.25
+        if v_rocket_dy > 0.22 then
+            v_rocket_dy = 0.22
+        endif
+        v_rocket_y = v_rocket_y + v_rocket_dy
+
+        v_fuse_on = 1
+        v_fuse_color = "white"
+        v_fuse_trail = 90
+
+        if v_hang_style == 0 then
+            # Dim and droop — fuse cools as it hangs
+            v_fuse_bright = 25 + v_hang_timer * 2
+            if v_fuse_bright > 85 then
+                v_fuse_bright = 85
+            endif
+            v_fuse_color = "gold"
+            v_fuse_trail = 70
+        elseif v_hang_style == 1 then
+            # Hard flicker / blink-off like a sputtering fuse
+            v_fuse_bright = random(18, 99, 0)
+            v_fuse_on = random(0, 4, 0)
+            v_fuse_color = "white"
+            v_fuse_trail = 45
+        elseif v_hang_style == 2 then
+            # Almost goes out, then waits as an ember
+            v_fuse_bright = 8 + v_hang_timer
+            if v_fuse_bright > 40 then
+                v_fuse_bright = 40
+            endif
+            v_fuse_on = random(0, 3, 0)
+            v_fuse_color = "orange"
+            v_fuse_trail = 55
+        elseif v_hang_style == 3 then
+            # Pulse in a burst-ish color before it opens
+            v_fuse_bright = 30 + abs(sin(v_hang_timer * 32)) * 55
+            v_fuse_color = "red"
+            if v_fw_green > v_fw_red then
+                v_fuse_color = "gold"
+            endif
+            if v_fw_blue > v_fw_red and v_fw_blue > v_fw_green then
+                v_fuse_color = "violet"
+            endif
+            v_fuse_trail = 80
+        else
+            # Spark spit — main spark plus a falling fleck
+            v_fuse_bright = random(40, 95, 0)
+            v_fuse_color = "gold"
+            v_fuse_trail = 50
+        endif
+
+        # Last couple of frames: some shells flash white before the bang
+        if v_hang_flash == 1 and v_hang_timer <= 3 then
+            v_fuse_on = 1
+            v_fuse_bright = 99
+            v_fuse_color = "white"
+            v_fuse_trail = 120
+        endif
+
+        if v_fuse_on > 0 then
+            if v_rocket_x >= 0 and v_rocket_x < v_screen_width and v_rocket_y >= 0 and v_rocket_y < v_screen_height then
+                mplot(v_rocket_x, v_rocket_y, v_fuse_color, v_fuse_bright, v_fuse_trail, fade)
+            endif
+        endif
+
+        if v_hang_style == 4 and v_fuse_on > 0 then
+            v_spark_y = v_rocket_y + random(1, 3, 0)
+            if v_rocket_x >= 0 and v_rocket_x < v_screen_width and v_spark_y >= 0 and v_spark_y < v_screen_height then
+                mplot(v_rocket_x, v_spark_y, orange, random(20, 60, 0), 80, fade)
+            endif
+        endif
+
+        v_hang_timer = v_hang_timer - 1
+
+        if v_hang_timer <= 0 then
+            v_rocket_active = 0
+            v_launch_cooldown = random(v_launch_wait_min, v_launch_wait_max, 0)
+
+            v_i = 0
+            while v_i < v_num_particles then
+                v_x[v_i] = v_rocket_x
+                v_y[v_i] = v_rocket_y
+
+                v_angle = random(0, 360, 0)
+                v_speed = random(v_min_speed, v_max_speed, 1)
+                v_dx[v_i] = cos(v_angle) * v_speed
+                v_dy[v_i] = sin(v_angle) * v_speed
+
+                v_red[v_i] = v_fw_red
+                v_green[v_i] = v_fw_green
+                v_blue[v_i] = v_fw_blue
+
+                v_brightness[v_i] = v_initial_brightness
+                v_i = v_i + 1
+            endwhile
+        endif
+    endif
+
+    # Update and draw particles (fixed burnout per firework — not random every frame)
+    v_i = 0
+    while v_i < v_num_particles then
+        if v_brightness[v_i] > 0 then
+            v_x[v_i] = v_x[v_i] + v_dx[v_i]
+            v_y[v_i] = v_y[v_i] + v_dy[v_i]
+            v_dy[v_i] = v_dy[v_i] + v_gravity
+
+            v_brightness[v_i] = v_brightness[v_i] - v_fade_rate
+
+            if v_brightness[v_i] > 0 then
+                v_r = v_red[v_i] * v_brightness[v_i] / 99
+                v_g = v_green[v_i] * v_brightness[v_i] / 99
+                v_b = v_blue[v_i] * v_brightness[v_i] / 99
+
+                v_px = int(v_x[v_i])
+                v_py = int(v_y[v_i])
+                if v_px >= 0 and v_px < v_screen_width and v_py >= 0 and v_py < v_screen_height then
+                    if v_i % 3 == 0 then
+                        mplot(v_px, v_py, red, v_r, v_particle_burnout, fade)
+                    elseif v_i % 3 == 1 then
+                        mplot(v_px, v_py, violet, v_g, v_particle_burnout, fade)
+                    else
+                        mplot(v_px, v_py, blue, v_b, v_particle_burnout, fade)
+                    endif
+                endif
+            endif
+        endif
+        v_i = v_i + 1
+    endwhile
+
+    mflush()
+    end_frame
+
+endwhile

@@ -1,0 +1,71 @@
+# 3D Dot Matrix - Five layers, full-screen depth grid (background layers)
+# Each depth layer is a tiny one-dot tile that the engine repeats across the
+# whole panel. Parallax is just set_background_offset() once per layer per frame.
+fps(30)
+
+# Movement control
+v_angle = 0
+v_speed = 0.13     # ~same apparent speed as the original 0.2 at 20 fps
+v_move_range = 6
+
+# One-dot tiles. Dot position = 32 mod spacing, so the lattice
+# is centered on (32, 32) like the original script.
+
+# Layer 5 - Furthest (5 px spacing)
+define_sprite(dots5, 5, 5)
+    plot(2, 2, white, 10)
+endsprite
+
+# Layer 4 (7 px spacing)
+define_sprite(dots4, 7, 7)
+    plot(4, 4, white, 25)
+endsprite
+
+# Layer 3 (10 px spacing)
+define_sprite(dots3, 10, 10)
+    plot(2, 2, white, 45)
+endsprite
+
+# Layer 2 (14 px spacing)
+define_sprite(dots2, 14, 14)
+    plot(4, 4, white, 70)
+endsprite
+
+# Layer 1 - Closest (20 px spacing)
+define_sprite(dots1, 20, 20)
+    plot(12, 12, white, 90)
+endsprite
+
+# Higher layer numbers render on top, so furthest = layer 0
+set_background(dots5, 0)
+set_background(dots4, 1)
+set_background(dots3, 2)
+set_background(dots2, 3)
+set_background(dots1, 4)
+
+# Animation loop
+while 1 then
+    v_base_x = cos(v_angle) * v_move_range
+    v_base_y = sin(v_angle) * v_move_range
+
+    v_x5 = round(v_base_x * 0.1)
+    v_y5 = round(v_base_y * 0.1)
+    v_x4 = round(v_base_x * 0.25)
+    v_y4 = round(v_base_y * 0.25)
+    v_x3 = round(v_base_x * 0.45)
+    v_y3 = round(v_base_y * 0.45)
+    v_x2 = round(v_base_x * 0.7)
+    v_y2 = round(v_base_y * 0.7)
+    v_x1 = round(v_base_x)
+    v_y1 = round(v_base_y)
+
+    begin_frame(true)
+        set_background_offset(v_x5, v_y5, 0)
+        set_background_offset(v_x4, v_y4, 1)
+        set_background_offset(v_x3, v_y3, 2)
+        set_background_offset(v_x2, v_y2, 3)
+        set_background_offset(v_x1, v_y1, 4)
+    end_frame
+
+    v_angle = v_angle + v_speed
+endwhile

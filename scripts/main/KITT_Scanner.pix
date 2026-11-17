@@ -1,0 +1,437 @@
+# Larson Scanner - three moods of a red scanner light bar
+#
+# Mode 1  Front Grille : five stacked scanner rows across the full width.
+#                        One master head; outer rows lag behind the center
+#                        rows so the sweep bends into a soft chevron.
+# Mode 2  Haunt        : one thick bar with a long ember afterglow. The whole
+#                        panel breathes a faint red. Now and then the main
+#                        head dims and two ghosts walk in from opposite ends,
+#                        flare as they pass through each other, and vanish.
+# Mode 3  Watcher      : classic sweep that every few passes brakes mid-pass,
+#                        focuses on one lamp, brightens and throbs, then
+#                        decides (sometimes it turns back the way it came).
+#
+# Lamps use a two-stage decay: a quick drop, then a long dim ember tail like
+# an incandescent bulb cooling off.
+#
+# How it runs (producer / consumer)
+# - The script is the producer: it builds one frame per loop with a fixed
+#   time step (1/60 s) and hands it off. It never reads the clock or waits on
+#   the display; the consumer renders at fps(60).
+# - Frames are kept small so the consumer keeps up: everything is shapes
+#   (rectangles and ellipses), no per-pixel plotting. The red glow is a stack
+#   of nested ellipses tracing the falloff curve, about 10 shapes per head.
+
+fps(60)
+throttle(0)
+clear()
+
+# ---------------------------------------------------------------- settings
+v_mode_secs = 40          # seconds per mode before moving to the next
+v_N = 16                  # lamps per row
+v_pitch = 4               # pixels from one lamp to the next
+v_lw = 3                  # lamp width in pixels
+v_sweep_secs = 1.15       # seconds for one left-to-right pass
+v_two_pi = 6.28318530718
+v_dt = 1 / 60             # time step per frame (matches fps above)
+v_omega = pi / v_sweep_secs
+
+# ---------------------------------------------------------------- state
+create_array(v_lv, 48)    # lamp levels 0..1, row r uses [r*16 .. r*16+15]
+create_array(v_hx, 5)     # glow heads: x, y, weight
+create_array(v_hy, 5)
+create_array(v_hw, 5)
+create_array(v_lvl, 12)   # glow contour levels (intensity), dim to bright
+v_lvl[0] = 1
+v_lvl[1] = 2
+v_lvl[2] = 3
+v_lvl[3] = 4
+v_lvl[4] = 5
+v_lvl[5] = 7
+v_lvl[6] = 9
+v_lvl[7] = 12
+v_lvl[8] = 15
+v_lvl[9] = 19
+v_lvl[10] = 24
+v_lvl[11] = 30
+
+v_t = 0                   # seconds into the current mode
+v_frame = 0
+v_mode_frames = 0
+v_env = 0
+v_fast_rate = 0.84
+v_slow_rate = 0.94
+v_hspread = 0.03
+v_vspread = 0.22
+v_hscale = 20
+v_hmax = 22
+v_heads = 1
+v_house = 6
+v_hi = 6
+v_bg = 0
+v_soft = 0
+v_core_off = 1
+v_core_h = 1
+v_h = 3
+v_q1 = -9                 # ghost heads (Haunt)
+v_q2 = -9
+v_qg = 0
+
+# ---------------------------------------------------------------- helpers
+def start_mode {
+    v_t = 0
+    v_frame = 0
+    v_mode_frames = int(v_mode_secs * 60)
+    v_phi = 0
+    v_bg = 0
+    v_q1 = -9
+    v_q2 = -9
+    v_qg = 0
+    v_vspread = 0.22
+    for v_k in (0, 47, 1)
+        v_lv[v_k] = 0
+    endfor v_k
+    for v_k in (0, 4, 1)
+        v_hw[v_k] = 0
+    endfor v_k
+}
+
+# Advance one frame: fixed time step, fades at mode start and end
+def tick {
+    v_frame = v_frame + 1
+    v_t = v_frame * v_dt
+    v_env = min(v_t / 0.9, (v_mode_frames - v_frame) * v_dt / 1.5)
+    v_env = max(0, min(1, v_env))
+    # (intensity 0 inside a frame batch is drawn at 100, so housing skips it)
+    v_hi = int(v_house * v_env)
+}
+
+# Red glow around the first v_heads heads. Same falloff as
+# weight / (dx*dx*spread + dy*dy*vspread + 1): each contour of that curve is an
+# ellipse, so nested filled ellipses from dim/outer to bright/inner draw it.
+# Levels go outermost first across all heads so bright cores stay on top.
+def draw_glow {
+    for v_j in (0, 11, 1)
+        v_L = v_lvl[v_j]
+        v_I = min(v_L + v_bg, v_hmax)
+        for v_m in (0, v_heads - 1, 1)
+            v_kk = v_hw[v_m] * v_hscale / v_L - 1
+            if v_kk > 0 then
+                v_rx = round(sqrt(v_kk / v_hspread))
+                v_ry = round(sqrt(v_kk / v_vspread))
+                draw_ellipse(round(v_hx[v_m]), round(v_hy[v_m]), v_rx, v_ry, red, v_I, true)
+            endif
+        endfor v_m
+    endfor v_j
+}
+
+# Housing slot for a row at v_y (dark red lens behind the lamps)
+def draw_housing {
+    if v_hi >= 1 then
+        draw_rectangle(0, v_y, 64, v_h, maroon, v_hi, true)
+    endif
+}
+
+# Update and draw one row of lamps in a single pass:
+# two-stage decay, light the lamps under the head(s), draw lamps brighter
+# than the housing, add a hot core on the brightest.
+# v_base = first lamp index, v_y = row top, v_p / v_gain = head,
+# v_y2 >= 0 also draws the same row at v_y2 (mirrored grille rows).
+# A lamp that fades below visibility is set to 0 and skipped until a head
+# reaches it again (decay only ever dims, so it could never reappear).
+def lamp_row {
+    for v_k in (0, v_N - 1, 1)
+        v_i = v_base + v_k
+        v_l = v_lv[v_i]
+        v_c = (1 - abs(v_k - v_p)) * v_gain
+        if v_qg > 0 then
+            v_c = max(v_c, max(1 - abs(v_k - v_q1), 1 - abs(v_k - v_q2)) * v_qg)
+        endif
+        if v_l > 0 or v_c > 0 then
+            if v_l > 0.45 then
+                v_l = v_l * v_fast_rate
+            else
+                v_l = v_l * v_slow_rate
+            endif
+            v_l = max(v_l, v_c)
+            if v_l < 0.055 then
+                v_l = 0
+            endif
+            v_lv[v_i] = v_l
+            v_l = v_l * v_env
+            if v_l * 100 > v_hi + 1 then
+                v_x = v_k * v_pitch
+                v_I = int(v_l * 100)
+                if v_soft == 1 then
+                    draw_rectangle(v_x, v_y, v_lw, v_h, red, max(int(v_l * 45), v_hi + 1), true)
+                    draw_rectangle(v_x, v_y + 2, v_lw, v_h - 4, red, v_I, true)
+                else
+                    draw_rectangle(v_x, v_y, v_lw, v_h, red, v_I, true)
+                    if v_y2 >= 0 then
+                        draw_rectangle(v_x, v_y2, v_lw, v_h, red, v_I, true)
+                    endif
+                endif
+                if v_l > 0.8 then
+                    draw_rectangle(v_x + 1, v_y + v_core_off, 1, v_core_h, salmon, v_I, true)
+                    if v_y2 >= 0 then
+                        draw_rectangle(v_x + 1, v_y2 + v_core_off, 1, v_core_h, salmon, v_I, true)
+                    endif
+                endif
+            endif
+        endif
+    endfor v_k
+}
+
+# ================================================================ MODE 1
+def mode_grille {
+    call start_mode
+    v_fast_rate = 0.84
+    v_slow_rate = 0.94
+    v_hspread = 0.03
+    v_hscale = 26
+    v_hmax = 20
+    v_heads = 1
+    v_vspread = 0.1
+    v_house = 6
+    v_soft = 0
+    v_core_off = 1
+    v_core_h = 1
+    v_h = 3
+    while v_frame < v_mode_frames then
+        call tick
+        v_phi = v_phi + v_omega * v_dt
+        # center row leads, outer rows trail: a chevron that bends
+        v_pa = (v_N - 1) * (0.5 - 0.5 * cos(v_phi - 0.48))
+        v_pb = (v_N - 1) * (0.5 - 0.5 * cos(v_phi - 0.24))
+        v_pc = (v_N - 1) * (0.5 - 0.5 * cos(v_phi))
+        # one glow for the whole chevron, centered on its average position
+        v_hx[0] = (2 * v_pa + 2 * v_pb + v_pc) / 5 * v_pitch + 1
+        v_hy[0] = 32
+        v_hw[0] = v_env
+        begin_frame
+            call draw_glow
+            for v_r in (0, 4, 1)
+                v_y = 21 + v_r * 5
+                call draw_housing
+            endfor v_r
+            # rows 0/4 and 1/3 are mirror twins: update once, draw twice
+            v_base = 0
+            v_p = v_pa
+            v_gain = 0.76
+            v_y = 21
+            v_y2 = 41
+            call lamp_row
+            v_base = 16
+            v_p = v_pb
+            v_gain = 0.88
+            v_y = 26
+            v_y2 = 36
+            call lamp_row
+            v_base = 32
+            v_p = v_pc
+            v_gain = 1
+            v_y = 31
+            v_y2 = -1
+            call lamp_row
+        end_frame
+    endwhile
+}
+
+# ================================================================ MODE 2
+def mode_haunt {
+    call start_mode
+    v_fast_rate = 0.90
+    v_slow_rate = 0.978
+    v_hspread = 0.022
+    v_heads = 1
+    v_soft = 1
+    v_core_off = 4
+    v_core_h = 2
+    v_h = 10
+    v_y = 27
+    v_y2 = -1
+    v_base = 0
+    v_ghost = 0
+    v_gphase = 0
+    v_main_gain = 1
+    v_next_ghost = random(6, 10, 1)
+    while v_frame < v_mode_frames then
+        call tick
+        v_breathe = 0.5 - 0.5 * cos(v_t * v_two_pi / 5.5)
+        v_phi = v_phi + v_omega * 0.8 * v_dt
+
+        # ghosts: start one crossing at random intervals
+        v_main_target = 1
+        if v_ghost == 0 and v_t > v_next_ghost then
+            v_ghost = 1
+            v_gphase = 0
+        endif
+        if v_ghost == 1 then
+            v_gphase = v_gphase + v_dt / 3.4
+            v_main_target = 0.15
+            if v_gphase >= 1 then
+                v_ghost = 0
+                v_next_ghost = v_t + random(9, 16, 1)
+            endif
+        endif
+        v_main_gain = v_main_gain + (v_main_target - v_main_gain) * min(1, v_dt * 2.5)
+
+        v_p = (v_N - 1) * (0.5 - 0.5 * cos(v_phi))
+        v_gain = v_main_gain
+        v_hx[0] = v_p * v_pitch + 1
+        v_hy[0] = 31.5
+        v_hw[0] = v_main_gain * v_env * (0.7 + 0.5 * v_breathe)
+
+        v_qg = 0
+        v_heads = 1
+        if v_ghost == 1 then
+            v_heads = 3
+            # two ghosts walk in from opposite ends, eased, and pass through each other
+            v_e = 0.5 - 0.5 * cos(v_gphase * pi)
+            v_q1 = -2 + v_e * (v_N + 3)
+            v_q2 = (v_N - 1) - v_q1
+            v_qg = sin(v_gphase * pi) * 0.62
+            v_gap = abs(v_q1 - v_q2)
+            if v_gap < 2.5 then
+                v_qg = v_qg + (2.5 - v_gap) / 2.5 * 0.38
+            endif
+            v_hx[1] = v_q1 * v_pitch + 1
+            v_hx[2] = v_q2 * v_pitch + 1
+            v_hy[1] = 31.5
+            v_hy[2] = 31.5
+            v_hw[1] = v_qg * v_env
+            v_hw[2] = v_qg * v_env
+        endif
+
+        v_house = 5 + 9 * v_breathe
+        v_hi = int(v_house * v_env)
+        v_bg = int((1 + 4 * v_breathe) * v_env)
+        v_hscale = 18 + 10 * v_breathe
+        v_hmax = 26
+        begin_frame
+            # the whole panel breathes a faint red
+            if v_bg >= 1 then
+                draw_rectangle(0, 0, 64, 64, red, v_bg, true)
+            endif
+            call draw_glow
+            call draw_housing
+            call lamp_row
+        end_frame
+    endwhile
+}
+
+# ================================================================ MODE 3
+def mode_watcher {
+    call start_mode
+    v_fast_rate = 0.84
+    v_slow_rate = 0.94
+    v_heads = 1
+    v_soft = 0
+    v_h = 5
+    v_y = 30
+    v_y2 = -1
+    v_base = 0
+    v_house = 6
+    v_hmax = 30
+    v_state = 0
+    v_speed = 1
+    v_focus = 0
+    v_stare_t = 0
+    v_stare_len = 2.5
+    v_stop_pass = random(2, 3, 0)
+    v_stop_at = random(0.3, 0.6, 2)
+    while v_frame < v_mode_frames then
+        call tick
+        v_pass = floor(v_phi / pi)
+        v_frac = (v_phi - v_pass * pi) / pi
+
+        if v_state == 0 then
+            # scanning; arm a stop a few passes from now
+            if v_pass >= v_stop_pass and v_frac > v_stop_at and v_frac < v_stop_at + 0.1 then
+                v_state = 1
+            endif
+        elseif v_state == 1 then
+            # braking
+            v_speed = v_speed * 0.89
+            if v_speed < 0.03 then
+                v_speed = 0
+                v_state = 2
+                v_stare_t = 0
+                v_stare_len = random(1.8, 3.4, 1)
+                v_p_stop = (v_N - 1) * (0.5 - 0.5 * cos(v_phi))
+                v_p_eye = round(v_p_stop)
+            endif
+        elseif v_state == 2 then
+            # staring: focus on one lamp, brighten, throb
+            v_stare_t = v_stare_t + v_dt
+            v_focus = min(1, v_focus + v_dt * 1.8)
+            if v_stare_t > v_stare_len then
+                v_state = 3
+                # decision: sometimes it turns back the way it came
+                if random(0, 99, 0) < 45 then
+                    v_phi = v_two_pi * (floor(v_phi / v_two_pi) + 1) - v_phi
+                endif
+                v_stop_pass = floor(v_phi / pi) + random(2, 4, 0)
+                v_stop_at = random(0.25, 0.6, 2)
+            endif
+        else
+            # resuming
+            v_speed = min(1, v_speed + v_dt * 1.1)
+            v_focus = max(0, v_focus - v_dt * 2.5)
+            if v_speed >= 1 then
+                v_state = 0
+            endif
+        endif
+        if v_state == 0 then
+            v_focus = max(0, v_focus - v_dt * 2.5)
+        endif
+
+        v_phi = v_phi + v_omega * v_speed * v_dt
+        v_p = (v_N - 1) * (0.5 - 0.5 * cos(v_phi))
+        if v_state == 2 then
+            # glide onto a single lamp to lock focus
+            v_snap = min(1, v_stare_t * 4)
+            v_p = v_p_stop + (v_p_eye - v_p_stop) * v_snap
+        endif
+
+        v_throb = 0
+        if v_state == 2 then
+            v_throb = 0.5 - 0.5 * cos(v_stare_t * v_two_pi / 1.1)
+        endif
+
+        v_gain = 0.78 + 0.22 * v_focus
+        v_hx[0] = v_p * v_pitch + 1
+        v_hy[0] = 32
+        v_hw[0] = v_env * (1 + v_focus * (0.9 + 0.9 * v_throb))
+        v_hspread = 0.035 - 0.012 * v_focus
+        v_hscale = 16 + 10 * v_focus
+        v_core_h = 1
+        v_core_off = 2
+        if v_focus > 0.5 then
+            v_core_h = 3
+            v_core_off = 1
+        endif
+        begin_frame
+            call draw_glow
+            call draw_housing
+            call lamp_row
+        end_frame
+    endwhile
+}
+
+# ================================================================ SHOW
+v_mode = 2
+while true then
+    if v_mode == 1 then
+        call mode_grille
+    elseif v_mode == 2 then
+        call mode_haunt
+    else
+        call mode_watcher
+    endif
+    rest(0.7)
+    v_mode = v_mode + 1
+    if v_mode > 3 then
+        v_mode = 1
+    endif
+endwhile

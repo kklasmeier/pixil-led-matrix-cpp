@@ -1,0 +1,111 @@
+# Initialize variables
+v_running = 1
+v_center_x = 32
+v_center_y = 32
+
+# Configuration for polygon rotation probabilities (0-100%)
+v_tilt_chance = 20         # Chance for overall tilt (20%)
+v_ccw_twist_chance = 10    # Chance for counterclockwise twist (10%)
+v_cw_twist_chance = 10     # Chance for clockwise twist (10%)
+v_tilt_min = 1             # Minimum tilt angle
+v_tilt_max = 360           # Maximum tilt angle
+v_twist_amount = 1         # Degrees to twist per step (clockwise or counterclockwise)
+
+# Configuration for polygon burnout duration (0-100%)
+v_long_burnout_chance = 20 # Chance for 3000ms burnout (20%)
+v_short_burnout = 100      # Short burnout duration (ms)
+v_long_burnout = 3000      # Long burnout duration (ms)
+
+# Color array
+create_array(v_colors, 8, string)
+v_colors[0] = "red"
+v_colors[1] = "orange"
+v_colors[2] = "yellow"
+v_colors[3] = "green"
+v_colors[4] = "cyan"
+v_colors[5] = "blue"
+v_colors[6] = "purple"
+v_colors[7] = "magenta"
+
+# Procedure to draw a single ripple with random attributes
+def draw_ripple {
+    v_shape = random(0, 4, 0)         # 0: circle, 1: square, 2: triangle, 3: pentagram, 4: hexagon
+    v_speed = random(1, 3, 0)         # Step size for expansion
+    v_max_size = random(20, 35, 0)    # Maximum ripple size
+    v_color_mode = random(0, 1, 0)    # 0: solid color, 1: rainbow
+    v_base_color = random(0, 7, 0)    # Index for solid color
+    v_intensity = random(50, 100, 0)  # Random intensity (higher base for visibility)
+    v_rotation = 0                    # Default rotation
+    v_rotation_mode = 0               # 0: none, 1: tilt, 2: ccw twist, 3: cw twist
+    v_burnout = v_short_burnout       # Default burnout duration
+    
+    # Determine rotation mode for polygons (v_shape 2, 3, 4)
+    if v_shape > 1 then
+        v_rand = random(0, 99, 0)     # 0-99 for percentage checks
+        if v_rand < v_tilt_chance then
+            v_rotation_mode = 1       # 20% chance for tilt
+            v_rotation = random(v_tilt_min, v_tilt_max, 0)  # Set initial tilt
+        elseif v_rand < v_tilt_chance + v_ccw_twist_chance then
+            v_rotation_mode = 2       # 10% chance for counterclockwise twist
+        elseif v_rand < v_tilt_chance + v_ccw_twist_chance + v_cw_twist_chance then
+            v_rotation_mode = 3       # 10% chance for clockwise twist
+        endif
+        
+        # Determine burnout duration for polygons
+        v_burnout_rand = random(0, 99, 0)
+        if v_burnout_rand < v_long_burnout_chance then
+            v_burnout = v_long_burnout  # 20% chance for 3000ms
+        else
+            v_burnout = v_short_burnout # 80% chance for 100ms
+        endif
+    endif
+    
+    # Expansion loop
+    for v_size in (5, v_max_size, v_speed)
+        v_current_intensity = v_intensity - (v_size * 2)  # Fade as it expands
+        if v_current_intensity < 20 then
+            v_current_intensity = 20
+        endif
+        
+        # Rainbow mode: cycle colors; Solid mode: use base color
+        if v_color_mode == 1 then
+            v_color_idx = (v_size / 5) % 8
+        else
+            v_color_idx = v_base_color
+        endif
+        
+        # Update rotation for twisting modes
+        if v_rotation_mode == 2 then
+            v_rotation = v_rotation - v_twist_amount  # Counterclockwise twist
+        elseif v_rotation_mode == 3 then
+            v_rotation = v_rotation + v_twist_amount  # Clockwise twist
+        endif
+        
+        # Draw based on shape with variable burnout for polygons
+        if v_shape == 0 then
+            draw_circle(v_center_x, v_center_y, v_size, v_colors[v_color_idx], v_current_intensity, false, 100)
+        elseif v_shape == 1 then
+            draw_rectangle(v_center_x - v_size, v_center_y - v_size, v_size * 2, v_size * 2, v_colors[v_color_idx], v_current_intensity, false, 100)
+        elseif v_shape == 2 then
+            draw_polygon(v_center_x, v_center_y, v_size, 3, v_colors[v_color_idx], v_current_intensity, v_rotation, false, v_burnout)
+        elseif v_shape == 3 then
+            draw_polygon(v_center_x, v_center_y, v_size, 5, v_colors[v_color_idx], v_current_intensity, v_rotation, false, v_burnout)
+        else
+            draw_polygon(v_center_x, v_center_y, v_size, 6, v_colors[v_color_idx], v_current_intensity, v_rotation, false, v_burnout)
+        endif
+        
+        # Short rest for smooth ripple effect
+        rest(0.03)
+    endfor v_size
+}
+
+# Main infinite loop
+throttle(0.5)  # Faster execution for continuous ripples
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(60)
+
+while v_running == 1 then
+    call draw_ripple
+    rest(0.1)  # Brief pause between ripples
+endwhile

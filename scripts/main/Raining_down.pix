@@ -1,0 +1,92 @@
+# Raindrop simulation (top-down view with subtle tapering and logarithmic fade)
+# Drops spawn randomly, taper slightly inward, and fade with a slowing taper
+throttle(0)
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(60)
+
+# Initialize variables
+v_max_drops = 20          # Number of simultaneous raindrops
+v_drop_height = 6         # Steps for drop to "fall" (keeps natural rate)
+v_base_intensity = 100    # Starting intensity (closest to viewer)
+v_min_intensity = 0       # Target minimum intensity
+v_spawn_rate = 0.15       # Seconds between frame updates
+v_center_x = 32           # Reference x-coordinate for subtle tapering
+v_center_y = 32           # Reference y-coordinate for subtle tapering
+
+# Create arrays to track drop positions and states
+create_array(v_drop_x, v_max_drops)       # Current X coordinates
+create_array(v_drop_y, v_max_drops)       # Current Y coordinates
+create_array(v_start_x, v_max_drops)      # Starting X coordinates
+create_array(v_start_y, v_max_drops)      # Starting Y coordinates
+create_array(v_drop_z, v_max_drops)       # Current "height" of drop
+create_array(v_drop_active, v_max_drops)  # 1 = active, 0 = inactive
+
+# Initialize all drops as inactive
+for v_i in (0, v_max_drops - 1, 1)
+    v_drop_active[v_i] = 0
+endfor v_i
+
+# Main loop (runs forever)
+while true then
+    
+    # Begin frame in standard mode (false) to clear previous content
+    begin_frame(false)
+    draw_rectangle(0, 0, 64, 64, blue, 2, true)
+
+    # Attempt to spawn a new raindrop
+    v_spawned = 0
+    for v_i in (0, v_max_drops - 1, 1)
+        if v_drop_active[v_i] == 0 and v_spawned == 0 and random(0, 1, 1) > 0.7 then
+            v_start_x[v_i] = random(0, 63, 0)    # Random starting X
+            v_start_y[v_i] = random(0, 63, 0)    # Random starting Y
+            v_drop_x[v_i] = v_start_x[v_i]        # Current X starts at spawn point
+            v_drop_y[v_i] = v_start_y[v_i]        # Current Y starts at spawn point
+            v_drop_z[v_i] = v_drop_height         # Start at max height
+            v_drop_active[v_i] = 1                # Activate drop
+            v_spawned = 1                         # Mark that we spawned one
+        endif
+    endfor v_i
+    
+    # Update and draw all active drops
+    for v_i in (0, v_max_drops - 1, 1)
+        if v_drop_active[v_i] == 1 then
+            # Logarithmic fade: faster drop from 100 to 40, slower from 40 to 0
+            v_progress = (v_drop_height - v_drop_z[v_i]) / v_drop_height  # 0 to 1 as it falls
+            v_log_factor = log(v_progress + 1) / log(2)  # Normalized log (0 to 1)
+            v_intensity = v_base_intensity - (v_base_intensity - v_min_intensity) * v_log_factor
+            
+            # Ensure intensity stays within bounds (0-100)
+            if v_intensity < 0 then
+                v_intensity = 0
+            endif
+            if v_intensity > 100 then
+                v_intensity = 100
+            endif
+            
+            # Subtle tapering toward center (reduced effect)
+            v_step = v_drop_height - v_drop_z[v_i]  # Current step (0 to v_drop_height)
+            v_x_diff = (v_center_x - v_start_x[v_i]) * v_step / (v_drop_height * 3)  # Reduced taper
+            v_y_diff = (v_center_y - v_start_y[v_i]) * v_step / (v_drop_height * 3)  # Reduced taper
+            v_drop_x[v_i] = v_start_x[v_i] + v_x_diff  # Move slightly toward center X
+            v_drop_y[v_i] = v_start_y[v_i] + v_y_diff  # Move slightly toward center Y
+            
+            # Draw the drop as a single pixel without burnout
+            mplot(v_drop_x[v_i], v_drop_y[v_i], blue, v_intensity)
+            
+            # Update drop height
+            v_drop_z[v_i] = v_drop_z[v_i] - 1
+            
+            # Deactivate drop when it reaches the "ground"
+            if v_drop_z[v_i] <= 0 then
+                v_drop_active[v_i] = 0
+            endif
+        endif
+    endfor v_i
+    mflush()
+    # End frame to display all drops at once
+    end_frame
+    
+    # Control frame rate
+    #rest(v_spawn_rate)
+endwhile

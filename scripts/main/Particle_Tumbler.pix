@@ -1,0 +1,110 @@
+import particle
+# Particle Tumbler
+# A rotating drum carries loose rocks upward through wall friction. Rocks stay
+# free at all times: they roll, collide, bounce, and fall under gravity.
+
+throttle(0)
+# Rendering time is added to the matrix frame delay, so a 36 target delivers
+# roughly 30 visible frames per second on this Pi.
+fps(36)
+
+v_count = 18
+v_cx = 32
+v_cy = 32
+v_drum_radius = 29
+v_rock_radius = 1.2
+
+v_gravity = 0.065
+v_air_damping = 0.999
+v_wall_bounce = 0.58
+v_wall_grip = 0.22
+v_pair_bounce = 0.72
+v_omega = 0.052
+v_direction = 1
+v_angle = 0
+v_frame = 0
+v_reverse_timer = 0
+
+create_array(v_x, v_count, numeric)
+create_array(v_y, v_count, numeric)
+create_array(v_vx, v_count, numeric)
+create_array(v_vy, v_count, numeric)
+create_array(v_active, v_count, numeric)
+create_array(v_wall_hit, v_count, numeric)
+create_array(v_pair_hit, v_count, numeric)
+create_array(v_color, v_count, numeric)
+
+define_sprite(tumbler_shell, 64, 64)
+    draw_circle(32, 32, 30, dark_gray, 32, true)
+    draw_circle(32, 32, 29, black, 100, true)
+    draw_circle(32, 32, 30, gray, 40, false)
+    draw_circle(32, 32, 29, gray, 100, false)
+endsprite
+
+def reset_rocks {
+    # Seed rocks throughout the lower half. The collision primitive separates
+    # any unlucky overlaps during the first few frames.
+    for v_i in (0, v_count - 1, 1)
+        v_x[v_i] = random(10, 54, 1)
+        v_y[v_i] = random(31, 54, 1)
+        v_vx[v_i] = random(-0.35, 0.35, 2)
+        v_vy[v_i] = random(-0.2, 0.2, 2)
+        v_active[v_i] = 1
+        v_wall_hit[v_i] = 0
+        v_pair_hit[v_i] = 0
+        v_color[v_i] = 8 + (v_i * 13) % 88
+    endfor v_i
+}
+
+def draw_drum {
+    # One sin/cos pair supplies all four opposing studs.
+    v_mark_dx = v_drum_radius * cos(v_angle)
+    v_mark_dy = v_drum_radius * sin(v_angle)
+    draw_circle(v_cx + v_mark_dx, v_cy + v_mark_dy, 1, red, 70, true)
+    draw_circle(v_cx - v_mark_dx, v_cy - v_mark_dy, 1, red, 70, true)
+    draw_circle(v_cx - v_mark_dy, v_cy + v_mark_dx, 1, red, 70, true)
+    draw_circle(v_cx + v_mark_dy, v_cy - v_mark_dx, 1, red, 70, true)
+}
+
+def draw_rocks {
+    for v_i in (0, v_count - 1, 1)
+        mplot(v_x[v_i], v_y[v_i], v_color[v_i], 92)
+    endfor v_i
+    mflush()
+}
+
+call reset_rocks
+set_background(tumbler_shell)
+v_sync_counter = 0
+
+while 1 == 1 then
+    # All rocks remain free bodies. Gravity and collisions happen every frame.
+    call particle.integrate(v_x, v_y, v_vx, v_vy, v_active, 0, v_gravity, v_air_damping, 0, v_count, "post_move", "none", 1)
+    call particle.collide_circles(v_x, v_y, v_vx, v_vy, v_active, v_rock_radius, 1, v_pair_bounce, v_pair_hit, v_count)
+    call particle.collide_circle_bounds(v_x, v_y, v_vx, v_vy, v_active, v_cx, v_cy, v_drum_radius, v_wall_bounce, 1, v_omega * v_direction, v_wall_grip, v_wall_hit, v_count)
+
+    begin_frame
+        call draw_drum
+        call draw_rocks
+    end_frame
+
+    v_angle = v_angle + v_omega * v_direction
+    v_frame = v_frame + 1
+    v_reverse_timer = v_reverse_timer + 1
+
+    # Reverse occasionally, with enough time in each direction to carry a
+    # full load to the top and produce several natural avalanches.
+    if v_reverse_timer >= 720 then
+        v_direction = -v_direction
+        v_reverse_timer = 0
+    endif
+    if v_frame > 1000000 then
+        v_frame = 0
+    endif
+
+    v_sync_counter = v_sync_counter + 1
+    if v_sync_counter >= 3 then
+        sync_queue
+        v_sync_counter = 0
+    endif
+endwhile

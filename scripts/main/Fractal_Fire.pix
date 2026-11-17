@@ -1,0 +1,53 @@
+# Fractal fire — grid_program / NumPy path
+
+fps(60)
+
+v_width = 64
+v_height = 64
+v_max_y = 63
+v_frame = 0
+
+create_array(v_heat, v_width * v_height)
+grid_fill(v_heat, 0)
+
+grid_program fire {
+    size v_width
+    cell 1
+    fields v_heat
+    steps 1
+    boundary clamp
+
+    step v_heat {
+        v_heat_next = where(grid_y < v_max_y, max(0, below_avg(v_heat) - random_field(0, 4)), at(v_heat))
+    }
+
+    draw {
+        fire_field v_heat
+    }
+}
+
+while true then
+    for v_x in (0, v_width - 1, 1)
+        v_idx = v_max_y * v_width + v_x
+        v_heat[v_idx] = random(50, 100, 0)
+    endfor v_x
+
+    if v_frame % 10 == 0 then
+        for v_burst in (0, 5, 1)
+            v_x = random(10, v_width - 10, 0)
+            v_idx = v_max_y * v_width + v_x
+            v_heat[v_idx] = 150
+            v_heat[v_idx - 1] = 130
+            v_heat[v_idx + 1] = 130
+        endfor v_burst
+    endif
+
+    grid_reset(fire)
+
+    begin_frame
+        grid_step(fire)
+    end_frame
+
+    v_frame = v_frame + 1
+    rest(0.03)
+endwhile

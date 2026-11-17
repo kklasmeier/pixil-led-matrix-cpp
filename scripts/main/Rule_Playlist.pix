@@ -1,0 +1,339 @@
+# Rule Playlist - six 1D cellular automaton scenes, each scrolling its own direction
+#
+# Startup: every scene is computed (baked) into a scrolling tile. While that happens
+# the screen shows the automaton being "written" row by row as a fading scan line,
+# in each scene's own palette, with a progress bar along the bottom.
+# When all six are done there is a burst, then the playlist runs forever.
+#
+# Playback: each scene scrolls in from off-screen, passes across the display, and
+# scrolls completely off. As soon as the screen is empty, the next scene scrolls in.
+#
+# Scene directions: 0 = down, 1 = up, 2 = left, 3 = right
+# Each tile is 192 long along its scroll axis: 64 blank pixels + 128 rows of automaton.
+# (192 is the largest tile length that worked reliably; do not go bigger.)
+# Down/up scenes use a 64x192 tile, left/right scenes use a 192x64 tile.
+fps(30)
+
+# ---- Settings ----
+v_speed = 1           # pixels per frame (one full pass is 192 px, ~6.4 s at 1)
+v_flip = 1            # set to -1 if scrolling looks like time running backwards
+v_intensity = 90      # brightness of live cells in the tiles
+v_density = 50        # random seeds: % of cells alive
+v_rpf = 2             # rows baked per frame during startup (must divide 128: 2, 4, 8)
+
+# ---- Scene table (6 scenes) ----
+create_array(v_sc_rule, 6)
+create_array(v_sc_seed, 6)
+create_array(v_sc_dir, 6)
+create_array(v_sc_cb, 6)
+create_array(v_sc_cs, 6)
+
+# Scene 1: Rule 30, single seed, scrolls down, full rainbow
+v_sc_rule[0] = 30
+v_sc_seed[0] = 0
+v_sc_dir[0] = 0
+v_sc_cb[0] = 0
+v_sc_cs[0] = 99
+
+# Scene 2: Rule 90 (Sierpinski), single seed, scrolls up
+v_sc_rule[1] = 90
+v_sc_seed[1] = 0
+v_sc_dir[1] = 1
+v_sc_cb[1] = 40
+v_sc_cs[1] = 50
+
+# Scene 3: Rule 110, random seed, scrolls left
+v_sc_rule[2] = 110
+v_sc_seed[2] = 1
+v_sc_dir[2] = 2
+v_sc_cb[2] = 10
+v_sc_cs[2] = 60
+
+# Scene 4: Rule 54, random seed, scrolls right
+v_sc_rule[3] = 54
+v_sc_seed[3] = 1
+v_sc_dir[3] = 3
+v_sc_cb[3] = 70
+v_sc_cs[3] = 29
+
+# Scene 5: Rule 150, single seed, scrolls down
+v_sc_rule[4] = 150
+v_sc_seed[4] = 0
+v_sc_dir[4] = 0
+v_sc_cb[4] = 55
+v_sc_cs[4] = 40
+
+# Scene 6: Rule 22, random seed, scrolls up
+v_sc_rule[5] = 22
+v_sc_seed[5] = 1
+v_sc_dir[5] = 1
+v_sc_cb[5] = 85
+v_sc_cs[5] = 14
+
+# ---- Working arrays: six scenes x 128 rows x 64 cells ----
+create_array(v_bit, 8)
+create_array(v_cur, 64)
+create_array(v_nxt, 64)
+create_array(v_hist, 49152)
+
+# ---- Bake one scene (set v_k first). Shows a live preview while it computes. ----
+def bake_scene {
+    v_rule = v_sc_rule[v_k]
+    v_seedm = v_sc_seed[v_k]
+    v_bd = v_sc_dir[v_k]
+    v_cb = v_sc_cb[v_k]
+    v_cs = v_sc_cs[v_k]
+    v_base = v_k * 8192
+
+    v_horiz = 0
+    v_rev = 0
+    if v_bd >= 2 then
+        v_horiz = 1
+    endif
+    if v_bd == 0 or v_bd == 3 then
+        v_rev = 1
+    endif
+
+    # Rule table: v_bit[n] = output for neighborhood n = left*4 + center*2 + right
+    for v_bk in (0, 7, 1)
+        v_bt = floor(v_rule / pow(2, v_bk))
+        v_bit[v_bk] = v_bt - 2 * floor(v_bt / 2)
+    endfor v_bk
+
+    # Starting row
+    for v_x in (0, 63, 1)
+        v_cur[v_x] = 0
+        if v_seedm == 1 then
+            if random(0, 99, 0) < v_density then
+                v_cur[v_x] = 1
+            endif
+        endif
+    endfor v_x
+    if v_seedm == 0 then
+        v_cur[32] = 1
+    endif
+
+    for v_t in (0, 127, v_rpf)
+        begin_frame(true)
+            for v_r in (0, v_rpf - 1, 1)
+                v_tt = v_t + v_r
+
+                # Storage row: the seed is stored where it will enter the screen first
+                if v_rev == 1 then
+                    v_ri = 127 - v_tt
+                else
+                    v_ri = v_tt
+                endif
+                v_rowbase = v_base + v_ri * 64
+
+                # Preview color by age, and scan line position
+                v_pc = v_cb + floor(v_tt * v_cs / 128)
+                if v_horiz == 1 then
+                    v_hp = v_tt - 64 * floor(v_tt / 64)
+                else
+                    v_hp = v_tt - 60 * floor(v_tt / 60)
+                endif
+
+                for v_x in (0, 63, 1)
+                    v_cv = v_cur[v_x]
+                    v_hist[v_rowbase + v_x] = v_cv
+                    if v_cv == 1 then
+                        if v_horiz == 1 then
+                            plot(v_hp, v_x, v_pc, 85, 1200, fade)
+                        else
+                            plot(v_x, v_hp, v_pc, 85, 1200, fade)
+                        endif
+                    endif
+
+                    v_xl = v_x - 1
+                    if v_xl < 0 then
+                        v_xl = 63
+                    endif
+                    v_xr = v_x + 1
+                    if v_xr > 63 then
+                        v_xr = 0
+                    endif
+                    v_idx = v_cur[v_xl] * 4 + v_cv * 2 + v_cur[v_xr]
+                    v_nxt[v_x] = v_bit[v_idx]
+                endfor v_x
+
+                for v_x in (0, 63, 1)
+                    v_cur[v_x] = v_nxt[v_x]
+                endfor v_x
+            endfor v_r
+
+            # Bright head line leading the scan
+            if v_horiz == 1 then
+                draw_line(v_hp + 1, 0, v_hp + 1, 63, white, 40, 200, fade)
+            else
+                draw_line(0, v_hp + 1, 63, v_hp + 1, white, 40, 200, fade)
+            endif
+
+            # Progress bar along the bottom
+            v_done = v_k * 128 + v_t + v_rpf
+            v_fill = floor(64 * v_done / 768)
+            if v_fill > 0 then
+                draw_rectangle(0, 62, v_fill, 2, white, 70, true)
+            endif
+        end_frame
+    endfor v_t
+}
+
+clear()
+v_bake_start = get_system("runtime")
+
+# ---- Bake all six scenes, defining each tile right after its history is ready ----
+# Tile rows/cols 0-63 stay empty (the blank gap); the automaton fills 64-191.
+
+# Only plot live cells into each tile (dead stay transparent). Painting every
+# cell used to enqueue ~49k sprite_draw ops and stall the queue.
+v_k = 0
+call bake_scene
+define_sprite(wf1, 64, 192)
+    for v_sy in (64, 191, 1)
+        for v_sx in (0, 63, 1)
+            if v_hist[0 + (v_sy - 64) * 64 + v_sx] == 1 then
+                plot(v_sx, v_sy, v_sc_cb[0] + floor((v_sy - 64) * v_sc_cs[0] / 128), v_intensity)
+            endif
+        endfor v_sx
+    endfor v_sy
+endsprite
+
+v_k = 1
+call bake_scene
+define_sprite(wf2, 64, 192)
+    for v_sy in (64, 191, 1)
+        for v_sx in (0, 63, 1)
+            if v_hist[8192 + (v_sy - 64) * 64 + v_sx] == 1 then
+                plot(v_sx, v_sy, v_sc_cb[1] + floor((v_sy - 64) * v_sc_cs[1] / 128), v_intensity)
+            endif
+        endfor v_sx
+    endfor v_sy
+endsprite
+
+v_k = 2
+call bake_scene
+define_sprite(wf3, 192, 64)
+    for v_sx in (64, 191, 1)
+        for v_sy in (0, 63, 1)
+            if v_hist[16384 + (v_sx - 64) * 64 + v_sy] == 1 then
+                plot(v_sx, v_sy, v_sc_cb[2] + floor((v_sx - 64) * v_sc_cs[2] / 128), v_intensity)
+            endif
+        endfor v_sy
+    endfor v_sx
+endsprite
+
+v_k = 3
+call bake_scene
+define_sprite(wf4, 192, 64)
+    for v_sx in (64, 191, 1)
+        for v_sy in (0, 63, 1)
+            if v_hist[24576 + (v_sx - 64) * 64 + v_sy] == 1 then
+                plot(v_sx, v_sy, v_sc_cb[3] + floor((v_sx - 64) * v_sc_cs[3] / 128), v_intensity)
+            endif
+        endfor v_sy
+    endfor v_sx
+endsprite
+
+v_k = 4
+call bake_scene
+define_sprite(wf5, 64, 192)
+    for v_sy in (64, 191, 1)
+        for v_sx in (0, 63, 1)
+            if v_hist[32768 + (v_sy - 64) * 64 + v_sx] == 1 then
+                plot(v_sx, v_sy, v_sc_cb[4] + floor((v_sy - 64) * v_sc_cs[4] / 128), v_intensity)
+            endif
+        endfor v_sx
+    endfor v_sy
+endsprite
+
+v_k = 5
+call bake_scene
+define_sprite(wf6, 64, 192)
+    for v_sy in (64, 191, 1)
+        for v_sx in (0, 63, 1)
+            if v_hist[40960 + (v_sy - 64) * 64 + v_sx] == 1 then
+                plot(v_sx, v_sy, v_sc_cb[5] + floor((v_sy - 64) * v_sc_cs[5] / 128), v_intensity)
+            endif
+        endfor v_sx
+    endfor v_sy
+endsprite
+
+sync_queue
+v_bake_ms = get_system("runtime") - v_bake_start
+print(f"Bake took {v_bake_ms} ms")
+
+# ---- Finale: expanding rainbow rings, then start the playlist ----
+for v_br in (1, 46, 2)
+    begin_frame(true)
+        draw_circle(32, 32, v_br, v_br * 2, 100, false, 500, fade)
+    end_frame
+    rest(0.03)
+endfor v_br
+rest(0.5)
+clear()
+
+# ---- Playlist: scroll in, pass across, scroll out, then the next scene right away ----
+v_scene = 0
+while 1 then
+    # Put this scene's tile on the screen with the blank gap showing
+    if v_scene == 0 then
+        set_background(wf1, 0)
+    elseif v_scene == 1 then
+        set_background(wf2, 0)
+    elseif v_scene == 2 then
+        set_background(wf3, 0)
+    elseif v_scene == 3 then
+        set_background(wf4, 0)
+    elseif v_scene == 4 then
+        set_background(wf5, 0)
+    else
+        set_background(wf6, 0)
+    endif
+
+    print(f"Playing scene {v_scene}")
+
+    # Scroll vector for this scene's direction
+    v_sd = v_sc_dir[v_scene]
+    if v_sd == 0 then
+        v_dx = 0
+        v_dy = 1
+    elseif v_sd == 1 then
+        v_dx = 0
+        v_dy = -1
+    elseif v_sd == 2 then
+        v_dx = -1
+        v_dy = 0
+    else
+        v_dx = 1
+        v_dy = 0
+    endif
+    v_dx = v_dx * v_flip
+    v_dy = v_dy * v_flip
+
+    # Scroll exactly one full tile length (192 px): the scene enters, crosses, and exits
+    v_frames = ceil(192 / v_speed)
+    v_pos = 0
+    v_moved = 0
+    for v_f in (1, v_frames, 1)
+        v_pos = v_pos + v_speed
+        v_n = floor(v_pos)
+        v_pos = v_pos - v_n
+        if v_moved + v_n > 192 then
+            v_n = 192 - v_moved
+        endif
+        v_moved = v_moved + v_n
+
+        begin_frame(true)
+            if v_n > 0 then
+                nudge_background(v_dx * v_n, v_dy * v_n, 0)
+            endif
+        end_frame
+    endfor v_f
+    print(f"Scene {v_scene} finished, moved {v_moved} px")
+
+    v_scene = v_scene + 1
+    if v_scene > 5 then
+        v_scene = 0
+    endif
+endwhile

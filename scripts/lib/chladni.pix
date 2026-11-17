@@ -1,0 +1,110 @@
+# One Chladni step. Zero arguments so the particle arrays and the mode
+# scales set by the script stay put, and mplot lands in the open frame.
+# A fresh numpy Generator is drawn for every step, matching the capture
+# of an unseeded default_rng().
+def step {
+    v_seeded = numpy_reseed()
+    for v_i in (0, v_num_particles - 1, 1)
+        v_cx = v_px[v_i]
+        v_cy = v_py[v_i]
+        v_val = abs(cos(v_n_scale * (v_cx - 32)) * cos(v_m_scale * (v_cy - 32)) + cos(v_m_scale * (v_cx - 32)) * cos(v_n_scale * (v_cy - 32)))
+        v_bx = v_cx
+        v_by = v_cy
+        v_best = v_val
+        v_axis = numpy_integers(0, 2)
+        if v_axis == 0 then
+            v_tx = v_cx - 1
+            if v_tx >= 2 then
+                if v_tx <= 61 then
+                    v_tv = abs(cos(v_n_scale * (v_tx - 32)) * cos(v_m_scale * (v_cy - 32)) + cos(v_m_scale * (v_tx - 32)) * cos(v_n_scale * (v_cy - 32)))
+                    if v_tv < v_best then
+                        v_best = v_tv
+                        v_bx = v_tx
+                        v_by = v_cy
+                    endif
+                endif
+            endif
+            v_tx = v_cx + 1
+            if v_tx >= 2 then
+                if v_tx <= 61 then
+                    v_tv = abs(cos(v_n_scale * (v_tx - 32)) * cos(v_m_scale * (v_cy - 32)) + cos(v_m_scale * (v_tx - 32)) * cos(v_n_scale * (v_cy - 32)))
+                    if v_tv < v_best then
+                        v_best = v_tv
+                        v_bx = v_tx
+                        v_by = v_cy
+                    endif
+                endif
+            endif
+        else
+            v_ty = v_cy - 1
+            if v_ty >= 2 then
+                if v_ty <= 61 then
+                    v_tv = abs(cos(v_n_scale * (v_cx - 32)) * cos(v_m_scale * (v_ty - 32)) + cos(v_m_scale * (v_cx - 32)) * cos(v_n_scale * (v_ty - 32)))
+                    if v_tv < v_best then
+                        v_best = v_tv
+                        v_bx = v_cx
+                        v_by = v_ty
+                    endif
+                endif
+            endif
+            v_ty = v_cy + 1
+            if v_ty >= 2 then
+                if v_ty <= 61 then
+                    v_tv = abs(cos(v_n_scale * (v_cx - 32)) * cos(v_m_scale * (v_ty - 32)) + cos(v_m_scale * (v_cx - 32)) * cos(v_n_scale * (v_ty - 32)))
+                    if v_tv < v_best then
+                        v_best = v_tv
+                        v_bx = v_cx
+                        v_by = v_ty
+                    endif
+                endif
+            endif
+        endif
+        v_nx = v_cx
+        v_ny = v_cy
+        v_roll = numpy_integers(0, 100)
+        if v_val > 0.8 then
+            v_nx = max(2, min(61, v_cx + (v_bx - v_cx) * 2))
+            v_ny = max(2, min(61, v_cy + (v_by - v_cy) * 2))
+        elsif v_val > 0.4 then
+            if v_roll < 90 then
+                v_nx = v_bx
+                v_ny = v_by
+            endif
+        elsif v_val > 0.15 then
+            if v_roll < 70 then
+                v_nx = v_bx
+                v_ny = v_by
+            endif
+        else
+            if v_roll < 20 then
+                v_nx = v_cx + numpy_integers(-1, 2)
+                v_ny = v_cy + numpy_integers(-1, 2)
+                if v_nx <= 2 then
+                    v_nx = v_cx
+                endif
+                if v_nx >= 61 then
+                    v_nx = v_cx
+                endif
+                if v_ny <= 2 then
+                    v_ny = v_cy
+                endif
+                if v_ny >= 61 then
+                    v_ny = v_cy
+                endif
+            endif
+        endif
+        if v_val < 0.15 then
+            v_color = "white"
+            v_pi = 100
+        elsif v_val < 0.4 then
+            v_color = "light_gray"
+            v_pi = 85
+        else
+            v_color = "gold"
+            v_pi = 65
+        endif
+        v_px[v_i] = v_nx
+        v_py[v_i] = v_ny
+        mplot(int(v_nx), int(v_ny), v_color, v_pi)
+    endfor v_i
+}

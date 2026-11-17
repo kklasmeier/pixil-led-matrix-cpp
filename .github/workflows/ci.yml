@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [release, asan, debug]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make -j"$(nproc)" MODE=${{ matrix.mode }}
+      - name: Unit tests (incl. draw_batch goldens)
+        run: make test MODE=${{ matrix.mode }}
+      - name: CLI smoke
+        run: |
+          build/${{ matrix.mode }}/pixil --version
+          build/${{ matrix.mode }}/pixil --help >/dev/null
+
+  python-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Byte-compile bridge and tools
+        run: python -m py_compile bridge/*.py tools/*.py
+      - name: Shell syntax
+        run: bash -n tools/capture_set.sh
+
+# Parity jobs (make crosscheck, gen_command_dialect --check, capture_set.sh) need the
+# legacy Pixil tree and run on the Pi 4; see docs/OPS.md.

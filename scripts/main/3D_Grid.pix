@@ -1,0 +1,148 @@
+# Animated 3D Square - Figure-8 Flight over Infinite Grid
+# Creates a figure-8 flight pattern with banking over an infinite-feeling grid
+
+throttle(0.05)
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(60)
+
+# Animation parameters
+v_time = 0
+v_speed = 0.05
+
+# Zoom settings - large factors keep most of the grid off-screen (infinite feel)
+v_zoom_in_amount = 7.5
+v_zoom_out_amount = 7.0
+v_zoom_speed = 0.3
+
+# Pan settings - left/right movement (East/West) - Figure-8 flight
+v_pan_amount = 15
+v_pan_speed = 0.5        # Speed of panning (creates figure-8 with different north/south speed)
+v_pan_center_x = 32      # Center point for left/right panning (32 = screen center)
+
+# North/South pan settings - up/down movement - Figure-8 flight
+v_pan_ns_amount = 10     # How far up/down to pan (in pixels) 
+v_pan_ns_speed = 1.0     # Speed of north/south panning (2x east/west for figure-8)
+v_pan_center_y = 32      # Center point for north/south panning (moved to screen center)
+
+# Tilt settings - perspective angle control (banking into turns)
+v_tilt_min_angle = 0.35   # Minimum perspective ratio (banking left)
+v_tilt_max_angle = 0.8   # Maximum perspective ratio (banking right)
+v_tilt_speed = 0.2       # Speed of perspective changes (matches pan speed for banking effect)
+
+# Texture settings - grid lines (enlarged for infinite effect)
+v_num_v_lines = 18
+v_num_h_lines = 12
+v_line_intensity = 60    # Intensity of texture lines (lower than edges for subtlety)
+
+# Base square dimensions (enlarged 50% for infinite grid effect)
+v_base_bottom_width = 102
+v_base_top_width = 42
+v_base_bottom_y = 70
+v_base_top_y = 10
+v_base_height = v_base_bottom_y - v_base_top_y
+
+# Animation loop - run forever
+while true then
+    
+    # Calculate zoom factor using sin wave from -1 to +1
+    v_sin_value = sin(v_time * v_zoom_speed)  # -1 to +1
+    
+    # Map sin wave to zoom range
+    # When sin = +1: zoom = v_zoom_in_amount
+    # When sin = -1: zoom = v_zoom_out_amount  
+    # When sin = 0:  zoom = average of the two
+    v_zoom_range = v_zoom_in_amount - v_zoom_out_amount
+    v_zoom_center = (v_zoom_in_amount + v_zoom_out_amount) / 2
+    v_zoom = v_zoom_center + (v_zoom_range / 2) * v_sin_value
+    
+    # Calculate pan offset using cosine wave (90 degrees out of phase with zoom)
+    v_pan_offset = cos(v_time * v_pan_speed) * v_pan_amount
+    
+    # Calculate north/south pan offset (up/down movement)
+    v_pan_ns_offset = sin(v_time * v_pan_ns_speed) * v_pan_ns_amount
+    
+    # Calculate tilt perspective ratio
+    v_tilt_range = v_tilt_max_angle - v_tilt_min_angle
+    v_tilt_center = (v_tilt_max_angle + v_tilt_min_angle) / 2
+    v_perspective_ratio = v_tilt_center + (v_tilt_range / 2) * sin(v_time * v_tilt_speed)
+    
+    # Calculate center positions (custom center points plus pan offsets)
+    v_center_x = v_pan_center_x + v_pan_offset
+    v_center_y = v_pan_center_y + v_pan_ns_offset
+    
+    # Calculate square dimensions based on zoom and perspective
+    # Bottom edge is always full size (closest to viewer)
+    v_bottom_width = v_base_bottom_width * v_zoom
+    # Top edge gets perspective scaling (farther from viewer)
+    v_top_width = v_base_top_width * v_zoom * v_perspective_ratio
+    
+    # Calculate positions (centered on panned position)
+    v_bottom_left_x = v_center_x - v_bottom_width / 2
+    v_bottom_right_x = v_center_x + v_bottom_width / 2
+    v_top_left_x = v_center_x - v_top_width / 2
+    v_top_right_x = v_center_x + v_top_width / 2
+    
+    # Calculate Y positions with proper 3D perspective shift
+    v_base_center_y = v_center_y  # Use the panned center position
+    v_full_height = v_base_height * v_zoom
+    
+    # Calculate perspective shift - when looking down, square appears higher
+    # When looking up, square appears lower
+    v_perspective_shift = (1.0 - v_perspective_ratio) * (v_full_height * 0.3)
+    
+    # Calculate the actual square center with perspective shift
+    v_square_center_y = v_base_center_y + v_perspective_shift
+    
+    # Bottom and top positions relative to the shifted center
+    v_bottom_y = v_square_center_y + (v_full_height / 2)
+    v_top_y = v_square_center_y - (v_full_height * v_perspective_ratio / 2)
+    
+    # Begin frame for smooth animation
+    begin_frame
+    
+    # Draw the 4 lines of the square (edges)
+    draw_line(v_bottom_left_x, v_bottom_y, v_bottom_right_x, v_bottom_y, green, 100)  # Bottom edge
+    draw_line(v_top_left_x, v_top_y, v_top_right_x, v_top_y, green, 100)              # Top edge  
+    draw_line(v_bottom_left_x, v_bottom_y, v_top_left_x, v_top_y, green, 100)         # Left edge
+    draw_line(v_bottom_right_x, v_bottom_y, v_top_right_x, v_top_y, green, 100)       # Right edge
+    
+    # Draw vertical texture lines with 3D perspective
+    for v_line_i in (1, v_num_v_lines, 1) then
+        # Calculate the position ratio across the bottom edge (0 to 1)
+        v_line_ratio = v_line_i / (v_num_v_lines + 1)
+        
+        # Bottom line position (linear interpolation across bottom edge)
+        v_line_bottom_x = v_bottom_left_x + (v_bottom_right_x - v_bottom_left_x) * v_line_ratio
+        
+        # Top line position (linear interpolation across top edge with perspective)
+        v_line_top_x = v_top_left_x + (v_top_right_x - v_top_left_x) * v_line_ratio
+        
+        # Draw the vertical line with perspective
+        draw_line(v_line_bottom_x, v_bottom_y, v_line_top_x, v_top_y, green, v_line_intensity)
+    endfor v_line_i
+    
+    # Draw horizontal texture lines with 3D perspective
+    for v_hline_i in (1, v_num_h_lines, 1) then
+        # Calculate the position ratio from bottom to top (0 = bottom, 1 = top)
+        v_hline_ratio = v_hline_i / (v_num_h_lines + 1)
+        
+        # Left side position (interpolate between bottom-left and top-left)
+        v_hline_left_x = v_bottom_left_x + (v_top_left_x - v_bottom_left_x) * v_hline_ratio
+        v_hline_left_y = v_bottom_y + (v_top_y - v_bottom_y) * v_hline_ratio
+        
+        # Right side position (interpolate between bottom-right and top-right)
+        v_hline_right_x = v_bottom_right_x + (v_top_right_x - v_bottom_right_x) * v_hline_ratio
+        v_hline_right_y = v_bottom_y + (v_top_y - v_bottom_y) * v_hline_ratio
+        
+        # Draw the horizontal line with perspective
+        draw_line(v_hline_left_x, v_hline_left_y, v_hline_right_x, v_hline_right_y, green, v_line_intensity)
+    endfor v_hline_i
+    
+    # End frame and display
+    end_frame
+      
+    # Increment time
+    v_time = v_time + v_speed
+    
+endwhile

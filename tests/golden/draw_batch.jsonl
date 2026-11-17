@@ -1,0 +1,735 @@
+{"id": "plot-basic", "cmd": "plot", "args": [10, 20, "red"], "hex": "010a001400f9ffffffffffff000000000000000000"}
+{"id": "plot-full", "cmd": "plot", "args": [10, 20, 50, 80, 1500, "fade"], "hex": "010a001400320050dc050000010000000000000000"}
+{"id": "plot-strcolor", "cmd": "mplot", "args": ["5", "6", "42", "", "", null], "hex": "01050006002a00ffffffffff000000000000000000"}
+{"id": "plot-floatcolor", "cmd": "plot", "args": [1, 2, 49.5], "hex": "01010002003200ffffffffff000000000000000000"}
+{"id": "plot-floatcolor-clamp", "cmd": "plot", "args": [1, 2, 150.2], "hex": "01010002006300ffffffffff000000000000000000"}
+{"id": "plot-neg", "cmd": "plot", "args": [-5, 70000, "blue"], "hex": "010000ffffddffffffffffff000000000000000000"}
+{"id": "plot-bad-intensity", "cmd": "plot", "args": [1, 1, "red", 101], "error": "ValueError"}
+{"id": "plot-bad-color", "cmd": "plot", "args": [1, 1, 100], "error": "ValueError"}
+{"id": "line-inside", "cmd": "draw_line", "args": [0, 0, 63, 63, "white"], "hex": "02000000003f003f00feff64ffffffff00000000"}
+{"id": "line-clip", "cmd": "draw_line", "args": [-10, 32, 80, 32, "green", 75], "hex": "02000020003f002000e7ff4bffffffff00000000"}
+{"id": "line-diag-clip", "cmd": "draw_line", "args": [-20.5, -3.25, 90.75, 70.5, 3, 100, 250, "fade"], "hex": "0200000a003f003400030064fa00000001000000"}
+{"id": "line-off", "cmd": "draw_line", "args": [-10, -10, -1, -5, "red"], "hex": ""}
+{"id": "line-half", "cmd": "draw_line", "args": [0.5, 1.5, 2.5, 3.5, "red"], "hex": "020000020002000400f9ff64ffffffff00000000"}
+{"id": "rect-basic", "cmd": "draw_rectangle", "args": [5, 5, 10, 8, "yellow", 100, true], "hex": "03050005000a000800e9ff64ffffffff00010000"}
+{"id": "rect-neg", "cmd": "draw_rectangle", "args": [-5, -5, 10, 10, "red", 60, "yes"], "hex": "030000000005000500f9ff3cffffffff00010000"}
+{"id": "rect-off", "cmd": "draw_rectangle", "args": [70, 5, 10, 10, "red"], "hex": ""}
+{"id": "rect-zero", "cmd": "draw_rectangle", "args": [5, 5, 0, 10, "red"], "hex": ""}
+{"id": "rect-burn", "cmd": "draw_rectangle", "args": [1.9, 2.9, 3.9, 4.9, 12, 40, false, 2000.0, "fade"], "hex": "0301000200030004000c0028d007000001000000"}
+{"id": "circle-basic", "cmd": "draw_circle", "args": [32, 32, 10, "cyan", 100, true], "hex": "04200020000a00e0ff64ffffffff0001000000"}
+{"id": "circle-negc", "cmd": "draw_circle", "args": [-1, 32, 10, "cyan"], "hex": ""}
+{"id": "circle-r0", "cmd": "draw_circle", "args": [32, 32, 0, "cyan"], "hex": ""}
+{"id": "circle-edge", "cmd": "draw_circle", "args": [70, 32, 7, "cyan"], "hex": "04460020000700e0ff64ffffffff0000000000"}
+{"id": "polygon-basic", "cmd": "draw_polygon", "args": [32, 32, 12, 6, "purple", 90, 22.5, true, 500, "fade"], "hex": "05200020000c0006000000b441d8ff5af40100000101000000"}
+{"id": "polygon-rot", "cmd": "draw_polygon", "args": [10, 10, 5, 3, 7, 100, 0.1], "hex": "050a000a0005000300cdcccc3d070064ffffffff0000000000"}
+{"id": "ellipse-basic", "cmd": "draw_ellipse", "args": [32, 20, 15, 8, "orange", 80, false, 45.0], "hex": "06200014000f00080000003442edff50ffffffff0000000000"}
+{"id": "ellipse-zero", "cmd": "draw_ellipse", "args": [32, 20, 0, 0, "orange"], "hex": ""}
+{"id": "ellipse-yr", "cmd": "draw_ellipse", "args": [32, 20, 0, 4, "orange"], "hex": "06200014000000040000000000edff64ffffffff0000000000"}
+{"id": "arc-basic", "cmd": "draw_arc", "args": [5, 5, 50, 40, 0.3, "red", 100, false], "hex": "0705000500320028009a99993ef9ff64ffffffff0000000000"}
+{"id": "arc-clip", "cmd": "draw_arc", "args": [-5, 5, 80, 40, -1.7, 22, 55, true, 100, "fade"], "hex": "07000007003f0021009a99d9bf160037640000000101000000"}
+{"id": "mode-bad", "cmd": "draw_circle", "args": [32, 32, 5, "red", 100, false, null, "bogus"], "error": "ValueError"}
+{"id": "intensity-255", "cmd": "draw_circle", "args": [32, 32, 5, "red", 255], "hex": "04200020000500f9ffffffffffff0000000000"}
+{"id": "intensity-256", "cmd": "draw_circle", "args": [32, 32, 5, "red", 256], "error": "error"}
+{"id": "intensity-none", "cmd": "draw_circle", "args": [32, 32, 5, "red", null], "hex": "04200020000500f9ffffffffffff0000000000"}
+{"id": "intensity-float", "cmd": "draw_line", "args": [1, 1, 5, 5, "red", 50.9], "hex": "020100010005000500f9ff32ffffffff00000000"}
+{"id": "fuzz-0000", "cmd": "draw_arc", "args": ["12", -21.0, 86.7, -16.9, 1.3299755636980164, 67], "hex": ""}
+{"id": "fuzz-0001", "cmd": "draw_circle", "args": [58.171, 93.0, 30, 27.02], "hex": "043a005d001e001b0064ffffffff0000000000"}
+{"id": "fuzz-0002", "cmd": "draw_ellipse", "args": [94.501, -19.0, 14, 11, "WHITE"], "hex": ""}
+{"id": "fuzz-0003", "cmd": "draw_line", "args": [100, -6.0, "12", 13.501, 11.57, 77, 300, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0004", "cmd": "draw_polygon", "args": [109.8, 8.0, 32, 8, 88.0, 47, 22.884703340408773, false, 50, "'fade'"], "hex": ""}
+{"id": "fuzz-0005", "cmd": "draw_rectangle", "args": [59.425, 18.0, 52, 51, "transparent", 68, "true"], "hex": "033b00120005002e00d4ff44ffffffff00010000"}
+{"id": "fuzz-0006", "cmd": "plot", "args": [-13.6, -21.0, 16, 26, 1383, "'fade'"], "hex": "010000000010001a67050000010000000000000000"}
+{"id": "fuzz-0007", "cmd": "draw_arc", "args": [65.2, 106.5, 98.276, -35.7, -1.5716961191957983, "WHITE"], "hex": ""}
+{"id": "fuzz-0008", "cmd": "draw_circle", "args": [100.5, 68.211, 70, "black", 46, false], "hex": "04640044004600ffff2effffffff0000000000"}
+{"id": "fuzz-0009", "cmd": "draw_ellipse", "args": [58.0, 36.7, 10, 11, "WHITE", 14, false, 30.0, 70, null], "hex": "063a0024000a000b000000f041feff0e460000000000000000"}
+{"id": "fuzz-0010", "cmd": "draw_line", "args": [100, 1, 62.6, 60.0, 45, 47], "hex": "023f003b003f003c002d002fffffffff00000000"}
+{"id": "fuzz-0011", "cmd": "draw_polygon", "args": [72.891, 16.0, 19, 6, 86, 64, 202.07344643968167], "hex": "054800100013000600cd124a43560040ffffffff0000000000"}
+{"id": "fuzz-0012", "cmd": "draw_rectangle", "args": [-1, 61.396, 17, 53, "red", 78, true], "hex": "0300003d0010000300f9ff4effffffff00010000"}
+{"id": "fuzz-0013", "cmd": "plot", "args": [10.5, 0, "12", 61], "hex": "010a0000000c003dffffffff000000000000000000"}
+{"id": "fuzz-0014", "cmd": "draw_arc", "args": [100, -0.5, "12", -39.968, -0.9495727027757113, 6, 93, false, 999, "fade"], "hex": ""}
+{"id": "fuzz-0015", "cmd": "draw_circle", "args": [41.0, 0, 1, "Blue"], "hex": "04290000000100ddff64ffffffff0000000000"}
+{"id": "fuzz-0016", "cmd": "draw_ellipse", "args": [-27.5, -26.333, 39, 27, 47], "hex": ""}
+{"id": "fuzz-0017", "cmd": "draw_line", "args": [79.7, 63.4, 49.006, 78.0, 100.8], "hex": ""}
+{"id": "fuzz-0018", "cmd": "draw_polygon", "args": [11.276, 11.372, 29, 5, 26], "hex": "050b000b001d000500000000001a0064ffffffff0000000000"}
+{"id": "fuzz-0019", "cmd": "draw_rectangle", "args": ["7.9", -30.2, 47, 28, "Blue"], "hex": ""}
+{"id": "fuzz-0020", "cmd": "plot", "args": ["7.9", 100.2, "red", 19, 3131, "fade"], "hex": "0107006400f9ff133b0c0000010000000000000000"}
+{"id": "fuzz-0021", "cmd": "draw_arc", "args": [24.444, 93.5, 63, 63.4, -1.9046331737102742, 41.0, 7, false, null, "\"instant\""], "hex": ""}
+{"id": "fuzz-0022", "cmd": "draw_circle", "args": [29.694, 89.79, 30, 92, 69, true, 100, "instant"], "hex": "041d0059001e005c0045640000000001000000"}
+{"id": "fuzz-0023", "cmd": "draw_ellipse", "args": [-10, 16.44, 7, 24, "20", 33, false, -120.05188632459675], "hex": ""}
+{"id": "fuzz-0024", "cmd": "draw_line", "args": [0, 31, 83.4, 64, 61, 37], "hex": "0200001f003f0038003d0025ffffffff00000000"}
+{"id": "fuzz-0025", "cmd": "draw_polygon", "args": [103.0, -23.6, 24, 4, "black", 16, 53.7594594186948, false, 50, null], "hex": ""}
+{"id": "fuzz-0026", "cmd": "draw_rectangle", "args": [25.6, 13.096, 3, 24, 9], "hex": "0319000d0003001800090064ffffffff00000000"}
+{"id": "fuzz-0027", "cmd": "plot", "args": [76.043, -37.0, "WHITE"], "hex": "014c000000feffffffffffff000000000000000000"}
+{"id": "fuzz-0028", "cmd": "draw_arc", "args": [100.3, 11.5, 1, 28.052, -0.24823533634339734, "red", 69, false], "hex": "073f00120001001c0067317ebef9ff45ffffffff0000000000"}
+{"id": "fuzz-0029", "cmd": "draw_circle", "args": [35.384, -10, 70, 43.0, 21, true, 100, "bogus"], "hex": ""}
+{"id": "fuzz-0030", "cmd": "draw_ellipse", "args": [104.6, -24.362, 35, 20, 53], "hex": ""}
+{"id": "fuzz-0031", "cmd": "draw_line", "args": [11.4, 88.0, -0.5, 61.0, "nope"], "error": "ValueError"}
+{"id": "fuzz-0032", "cmd": "draw_polygon", "args": [20.0, -22.59, 21, 7, "red", 85, -88.75474339458117], "hex": ""}
+{"id": "fuzz-0033", "cmd": "draw_rectangle", "args": ["12", 1, 34, 38, "lavender"], "hex": "030c00010022002600d5ff64ffffffff00000000"}
+{"id": "fuzz-0034", "cmd": "plot", "args": [21.5, 53.771, 91.5, 13], "hex": "01150035005c000dffffffff000000000000000000"}
+{"id": "fuzz-0035", "cmd": "draw_arc", "args": [13.4, 95.0, 63, -7.126, -0.20039108555518625, 54, 82, false, null, "fade"], "hex": "071d003f003c00000052334dbe360052ffffffff0100000000"}
+{"id": "fuzz-0036", "cmd": "draw_circle", "args": [63, -10, 30, "44", 37, true, null, "FADE"], "hex": ""}
+{"id": "fuzz-0037", "cmd": "draw_ellipse", "args": [13.0, -5.635, 14, 7, "82", 67, false, 30.0, null, "fade"], "hex": ""}
+{"id": "fuzz-0038", "cmd": "draw_line", "args": [92.7, 104.2, 31, 0, 7.41, 93, 300, "'fade'"], "hex": "023f0036001f00000007005d2c01000001000000"}
+{"id": "fuzz-0039", "cmd": "draw_polygon", "args": [107.0, 12.0, 16, 4, "transparent", 87, 80.17219244626796, true, null, "bogus"], "hex": ""}
+{"id": "fuzz-0040", "cmd": "draw_rectangle", "args": [97.0, -10, 28, 39, 1], "hex": ""}
+{"id": "fuzz-0041", "cmd": "plot", "args": [19.0, 64, 22, 94], "hex": "011300400016005effffffff000000000000000000"}
+{"id": "fuzz-0042", "cmd": "draw_arc", "args": [16.0, 60.062, 19.0, -10.0, 1.5895264255777484, "sky_blue", 31, true], "hex": "0710003c00130000009a75cb3fdfff1fffffffff0001000000"}
+{"id": "fuzz-0043", "cmd": "draw_circle", "args": [39.7, 0, 2.7, 46, 37, false], "hex": "042700000002002e0025ffffffff0000000000"}
+{"id": "fuzz-0044", "cmd": "draw_ellipse", "args": [90.8, 4.263, 5, 4, 86.0], "hex": ""}
+{"id": "fuzz-0045", "cmd": "draw_line", "args": [0, 70000, 81.404, 53.6, "15", 43, 300, "FADE"], "hex": ""}
+{"id": "fuzz-0046", "cmd": "draw_polygon", "args": [-17.032, -6.8, 25, 6, 31, 93, 48.948980215747156, false, null, "FADE"], "hex": ""}
+{"id": "fuzz-0047", "cmd": "draw_rectangle", "args": [48.0, 106.825, 17, 32, "lavender"], "hex": ""}
+{"id": "fuzz-0048", "cmd": "plot", "args": [-12.688, 34.7, 20, 78, 43, "fade"], "hex": "010000220014004e2b000000010000000000000000"}
+{"id": "fuzz-0049", "cmd": "draw_arc", "args": [67.0, 94.1, 25.0, 47.0, -0.46567052154775634, 99, 26, true], "hex": "0727003f0019002f005e6ceebe63001affffffff0001000000"}
+{"id": "fuzz-0050", "cmd": "draw_circle", "args": [-6.355, -2.0, 1, 75, 10, true, null, "\"instant\""], "hex": ""}
+{"id": "fuzz-0051", "cmd": "draw_ellipse", "args": [-0.5, 0, 10, 40, 11, 94, false, 30.0, null, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0052", "cmd": "draw_line", "args": [51.6, 67.859, 4.29, 58.9, "red"], "hex": "021a003f0004003b00f9ff64ffffffff00000000"}
+{"id": "fuzz-0053", "cmd": "draw_polygon", "args": [-10, -6.0, 0, 7, "Blue", 37, -277.71846346063273], "hex": ""}
+{"id": "fuzz-0054", "cmd": "draw_rectangle", "args": [-36.688, 95.891, 64, 64, "black", 2, "no"], "hex": ""}
+{"id": "fuzz-0055", "cmd": "plot", "args": [-22.6, 41.352, "Blue", 55, 4587, "FADE"], "hex": "0100002900ddff37eb110000010000000000000000"}
+{"id": "fuzz-0056", "cmd": "draw_arc", "args": [37.0, 15.5, "12", 0, -0.4270078343474135, "24"], "hex": "07250010000c000000c5a0dabe180064ffffffff0000000000"}
+{"id": "fuzz-0057", "cmd": "draw_circle", "args": [11.5, -10.4, 2.7, 29], "hex": ""}
+{"id": "fuzz-0058", "cmd": "draw_ellipse", "args": [81.0, -4.0, 33, 1, "lavender"], "hex": ""}
+{"id": "fuzz-0059", "cmd": "draw_line", "args": [-18.09, 13.427, -14.0, -19.1, 84.0], "hex": ""}
+{"id": "fuzz-0060", "cmd": "draw_polygon", "args": ["12", 0, 1, 9, 36.0], "hex": "050c0000000100090000000000240064ffffffff0000000000"}
+{"id": "fuzz-0061", "cmd": "draw_rectangle", "args": [101.0, 63, 3, 40, 75.1, 89, true, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0062", "cmd": "plot", "args": [11.0, 92.6, "nope", 31], "error": "ValueError"}
+{"id": "fuzz-0063", "cmd": "draw_arc", "args": [10.5, 103.4, 97.6, -40.0, -1.0677188471390977, "77", 25, false], "hex": "0723003f003f00110003ab88bf4d0019ffffffff0000000000"}
+{"id": "fuzz-0064", "cmd": "draw_circle", "args": [100, 19.0, 70, "sky_blue", 94, false], "hex": "04640013004600dfff5effffffff0000000000"}
+{"id": "fuzz-0065", "cmd": "draw_ellipse", "args": [32.0, 25.8, 4, 30, 44, 79, true, 152.10802257218722], "hex": "062000190004001e00a71b18432c004fffffffff0001000000"}
+{"id": "fuzz-0066", "cmd": "draw_line", "args": [10.5, 37.0, 48.313, 23.312, 39, 58], "hex": "020a0025003000170027003affffffff00000000"}
+{"id": "fuzz-0067", "cmd": "draw_polygon", "args": [-34.0, 64, 25, 4, 29], "hex": ""}
+{"id": "fuzz-0068", "cmd": "draw_rectangle", "args": [47.0, -9.185, 26, 32, 76, 97, false, 800, "instant"], "hex": "032f000000110017004c00612003000000000000"}
+{"id": "fuzz-0069", "cmd": "plot", "args": [104.0, 83.0, 57, 7, 95, "FADE"], "hex": "01680053003900075f000000010000000000000000"}
+{"id": "fuzz-0070", "cmd": "draw_arc", "args": [85.506, 100, 63.4, 93.553, -0.5354128811956835, 76, 12, false, null, "bogus"], "hex": ""}
+{"id": "fuzz-0071", "cmd": "draw_circle", "args": [63.4, 62.698, 5, 76.0], "hex": "043f003e0005004c0064ffffffff0000000000"}
+{"id": "fuzz-0072", "cmd": "draw_ellipse", "args": [0, 66.0, 9, 22, "WHITE", 42, true, 31.651990253251398], "hex": "0600004200090016004737fd41feff2affffffff0001000000"}
+{"id": "fuzz-0073", "cmd": "draw_line", "args": [14.574, 106.6, 49.0, 22.0, 100, 90, 300, "instant"], "error": "ValueError"}
+{"id": "fuzz-0074", "cmd": "draw_polygon", "args": [-5.0, 29.69, 21, 7, "56"], "hex": ""}
+{"id": "fuzz-0075", "cmd": "draw_rectangle", "args": [-15.0, 66.758, 34, 34, 57], "hex": ""}
+{"id": "fuzz-0076", "cmd": "plot", "args": [94.083, -10, 26, 20, 1800, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0077", "cmd": "draw_arc", "args": [70.956, 108.017, 63.4, 52.0, -0.6067924749453733, 63, 65, false, null, null], "hex": ""}
+{"id": "fuzz-0078", "cmd": "draw_circle", "args": [99.0, 69.423, 1, "Blue"], "hex": ""}
+{"id": "fuzz-0079", "cmd": "draw_ellipse", "args": [10.5, 9.7, 33, 40, "sky_blue", 34, false, 171.76659580648197], "hex": "060a0009002100280040c42b43dfff22ffffffff0000000000"}
+{"id": "fuzz-0080", "cmd": "draw_line", "args": [65.0, 1.5, -10, 10.5, "lavender", 98], "hex": "023f00020000000900d5ff62ffffffff00000000"}
+{"id": "fuzz-0081", "cmd": "draw_polygon", "args": [-25.0, -25.0, 23, 4, "50", 4, 83.26082011379239, false, null, "FADE"], "hex": ""}
+{"id": "fuzz-0082", "cmd": "draw_rectangle", "args": [22.349, -15.375, 40, 28, 86, 20, true], "hex": "031600000028000d00560014ffffffff00010000"}
+{"id": "fuzz-0083", "cmd": "plot", "args": [-36.0, 77.591, "nope"], "error": "ValueError"}
+{"id": "fuzz-0084", "cmd": "draw_arc", "args": [-15.0, 33.0, 12.415, 23.0, 0.2598149540892094, 5, 11, false, null, "FADE"], "hex": "0700001c000c0017007706853e05000bffffffff0100000000"}
+{"id": "fuzz-0085", "cmd": "draw_circle", "args": [88.734, 11.5, 1, 56, 98, true, 100, "instant"], "hex": ""}
+{"id": "fuzz-0086", "cmd": "draw_ellipse", "args": [82.091, 27.7, 13, 14, 41], "hex": ""}
+{"id": "fuzz-0087", "cmd": "draw_line", "args": [35.0, 71.671, 104.5, 101.273, "WHITE", 2, 1200.0, "\"instant\""], "hex": ""}
+{"id": "fuzz-0088", "cmd": "draw_polygon", "args": [86.4, 62.6, 32, 9, 33.29], "hex": "0556003e002000090000000000210064ffffffff0000000000"}
+{"id": "fuzz-0089", "cmd": "draw_rectangle", "args": [50.0, "7.9", 14, 33, 23, 96, false, 800, null], "hex": "03320007000e0021001700602003000000000000"}
+{"id": "fuzz-0090", "cmd": "plot", "args": [11.5, 23.0, "59"], "hex": "010b0017003b00ffffffffff000000000000000000"}
+{"id": "fuzz-0091", "cmd": "draw_arc", "args": [89.0, 15.3, 0.253, -3.645, 1.0100087605243355, "97", 18, false, null, null], "hex": "073f000a0011000000f847813f610012ffffffff0000000000"}
+{"id": "fuzz-0092", "cmd": "draw_circle", "args": [31, 68.0, 5, 8], "hex": "041f0044000500080064ffffffff0000000000"}
+{"id": "fuzz-0093", "cmd": "draw_ellipse", "args": [0.987, 54.073, 26, 22, "76"], "hex": "06000036001a001600000000004c0064ffffffff0000000000"}
+{"id": "fuzz-0094", "cmd": "draw_line", "args": [31, 36.508, 28.0, 19.4, -1, 91, 300, "instant"], "error": "ValueError"}
+{"id": "fuzz-0095", "cmd": "draw_polygon", "args": [-3.0, 70000, 10, 4, "110", 95, 353.296883738548], "hex": ""}
+{"id": "fuzz-0096", "cmd": "draw_rectangle", "args": [-10.732, 44.9, 29, 26, "18"], "hex": "0300002c0013001400120064ffffffff00000000"}
+{"id": "fuzz-0097", "cmd": "plot", "args": [10.5, 42.41, "47", 28], "hex": "010a002a002f001cffffffff000000000000000000"}
+{"id": "fuzz-0098", "cmd": "draw_arc", "args": [-25.0, 27.9, 88.0, 31, 1.5276769809042934, 83, 92, false, 999, "fade"], "hex": "0700001d003f001e00eb8ac33f53005ce70300000100000000"}
+{"id": "fuzz-0099", "cmd": "draw_circle", "args": [24.808, 88.0, 30, "Blue"], "hex": "04180058001e00ddff64ffffffff0000000000"}
+{"id": "fuzz-0100", "cmd": "draw_ellipse", "args": [-35.0, 63.2, 40, 9, "sky_blue", 97, false, 30.0, 70, null], "hex": ""}
+{"id": "fuzz-0101", "cmd": "draw_line", "args": [64, 0, 83.0, 57.1, "99", 2], "hex": ""}
+{"id": "fuzz-0102", "cmd": "draw_polygon", "args": [73.0, 64.9, 3, 6, 89.5, 94, -279.60657862815685], "hex": ""}
+{"id": "fuzz-0103", "cmd": "draw_rectangle", "args": ["7.9", -15.0, 22, 27, "transparent"], "hex": "030700000016000c00d4ff64ffffffff00000000"}
+{"id": "fuzz-0104", "cmd": "plot", "args": [63.4, 100, "65", 40], "hex": "013f006400410028ffffffff000000000000000000"}
+{"id": "fuzz-0105", "cmd": "draw_arc", "args": [101.056, 48.64, 81.8, 9.2, 0.45646802933314135, 46.96, 27, false, 999, "instant"], "hex": ""}
+{"id": "fuzz-0106", "cmd": "draw_circle", "args": [63, 62.33, 5, 50, 6, false], "hex": "043f003e000500320006ffffffff0000000000"}
+{"id": "fuzz-0107", "cmd": "draw_ellipse", "args": [34.798, 104.0, 7, 33, "lavender"], "hex": ""}
+{"id": "fuzz-0108", "cmd": "draw_line", "args": [31, 100, 84.6, 67.7, "nope", 73, 1200.0, null], "hex": ""}
+{"id": "fuzz-0109", "cmd": "draw_polygon", "args": [-7.767, 52.0, 40, 9, 48], "hex": ""}
+{"id": "fuzz-0110", "cmd": "draw_rectangle", "args": [65, 70000, 4, 7, 23, 45, false, 800, "bogus"], "hex": ""}
+{"id": "fuzz-0111", "cmd": "plot", "args": [-11.552, 63, "32", 28], "hex": "0100003f0020001cffffffff000000000000000000"}
+{"id": "fuzz-0112", "cmd": "draw_arc", "args": [16.031, 109.325, 64, 89.4, -0.9947206745793422, 79, 16, false], "hex": ""}
+{"id": "fuzz-0113", "cmd": "draw_circle", "args": [4.265, -7.7, 5, 9, 50, false], "hex": ""}
+{"id": "fuzz-0114", "cmd": "draw_ellipse", "args": ["12", 13.0, 20, 30, "red", 20, false, 30.0, null, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0115", "cmd": "draw_line", "args": [11.5, -10, 22.0, 97.063, 12.9], "hex": "020c00000013003f000d0064ffffffff00000000"}
+{"id": "fuzz-0116", "cmd": "draw_polygon", "args": [7.6, -8.106, 23, 8, 52], "hex": ""}
+{"id": "fuzz-0117", "cmd": "draw_rectangle", "args": [76.3, -7.2, 66, 41, "97", 78, false, 800, "fade"], "hex": ""}
+{"id": "fuzz-0118", "cmd": "plot", "args": [98.0, -39.0, 68.0], "hex": "01620000004400ffffffffff000000000000000000"}
+{"id": "fuzz-0119", "cmd": "draw_arc", "args": [37.0, 7.0, 11.5, -13.0, 1.9618439000217975, 32, 87, false], "hex": "07250007001c000000b31dfb3f200057ffffffff0000000000"}
+{"id": "fuzz-0120", "cmd": "draw_circle", "args": [63, 41.7, 1, "sky_blue", 29, true, 100, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0121", "cmd": "draw_ellipse", "args": [-7.606, 31, 32, 2, "45", 22, true, -147.9928111536767], "hex": ""}
+{"id": "fuzz-0122", "cmd": "draw_line", "args": ["12", 57.1, 11.5, -10, 86.57], "hex": "020c0039000c000000570064ffffffff00000000"}
+{"id": "fuzz-0123", "cmd": "draw_polygon", "args": [-8.846, 40.8, 6, 6, -1.4], "hex": ""}
+{"id": "fuzz-0124", "cmd": "draw_rectangle", "args": [22.7, 54.314, 15, 51, "sky_blue", 99, false, null, "FADE"], "hex": "03160036000f000a00dfff63ffffffff01000000"}
+{"id": "fuzz-0125", "cmd": "plot", "args": [44.0, -20.635, "transparent", 24, 4782, "instant"], "hex": "012c000000d4ff18ae120000000000000000000000"}
+{"id": "fuzz-0126", "cmd": "draw_arc", "args": [31, 30.1, 31.548, 10.0, 0.31371965118449996, "75", 11, false, 999, "FADE"], "hex": "071f001e0020000a00dd9fa03e4b000be70300000100000000"}
+{"id": "fuzz-0127", "cmd": "draw_circle", "args": [-10.9, 6.0, 30, 40.2, 23, true, 100, "FADE"], "hex": ""}
+{"id": "fuzz-0128", "cmd": "draw_ellipse", "args": [83.0, 10.5, 27, 25, 18.0, 80, false, 30.0, 70, "fade"], "hex": "0653000a001b0019000000f041120050460000000100000000"}
+{"id": "fuzz-0129", "cmd": "draw_line", "args": [62.9, 20.776, 106.4, 18.6, "black"], "hex": "023f0015003f001500ffff64ffffffff00000000"}
+{"id": "fuzz-0130", "cmd": "draw_polygon", "args": [-33.79, 5.982, 6, 7, "Blue", 39, 28.076846600460595, true, null, "\"instant\""], "hex": ""}
+{"id": "fuzz-0131", "cmd": "draw_rectangle", "args": [10.005, "12", 38, 63, "sky_blue", 43, false, 800, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0132", "cmd": "plot", "args": [40.523, 1, 62, 83], "hex": "01280001003e0053ffffffff000000000000000000"}
+{"id": "fuzz-0133", "cmd": "draw_arc", "args": [11.5, 104.0, -40.0, 100, 0.6686983161292095, "lavender", 48, true], "hex": ""}
+{"id": "fuzz-0134", "cmd": "draw_circle", "args": [65, 66.6, 70, "57", 90, true, 100, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0135", "cmd": "draw_ellipse", "args": [82.245, 91.486, 20, 19, "60"], "hex": ""}
+{"id": "fuzz-0136", "cmd": "draw_line", "args": [63.4, 61.553, -18.7, 15.0, 104.8, 34, 1200.0, "instant"], "hex": "023f003d0000001a00630022b004000000000000"}
+{"id": "fuzz-0137", "cmd": "draw_polygon", "args": ["7.9", -27.0, 16, 9, "nope", 30, 39.26247355925642, true, null, "\"instant\""], "hex": ""}
+{"id": "fuzz-0138", "cmd": "draw_rectangle", "args": [110.0, -38.0, 24, 32, 47.64], "hex": ""}
+{"id": "fuzz-0139", "cmd": "plot", "args": [-2.941, 29.0, "WHITE"], "hex": "0100001d00feffffffffffff000000000000000000"}
+{"id": "fuzz-0140", "cmd": "draw_arc", "args": [31, 56.3, 31, 103.6, 0.8076289116707773, 72, 82, true], "hex": "071f0038001f003f00c5c04e3f480052ffffffff0001000000"}
+{"id": "fuzz-0141", "cmd": "draw_circle", "args": [46.0, -0.5, 5, "lavender", 90, true, 100, "FADE"], "hex": "042e0000000500d5ff5a640000000101000000"}
+{"id": "fuzz-0142", "cmd": "draw_ellipse", "args": [-9.05, 95.0, 38, 15, 20, 32, false, -136.4526056209205], "hex": ""}
+{"id": "fuzz-0143", "cmd": "draw_line", "args": [63.4, -12.026, 65, 98.0, "black", 58, 300, "\"instant\""], "hex": ""}
+{"id": "fuzz-0144", "cmd": "draw_polygon", "args": [-38.899, 31.0, 29, 3, 80, 3, 57.58744077544885, true, 50, "FADE"], "hex": ""}
+{"id": "fuzz-0145", "cmd": "draw_rectangle", "args": [65.0, 59.3, 25, 58, "nope", 28, "true"], "hex": ""}
+{"id": "fuzz-0146", "cmd": "plot", "args": [77.444, 9.0, 88, 25], "hex": "014d000900580019ffffffff000000000000000000"}
+{"id": "fuzz-0147", "cmd": "draw_arc", "args": [31.0, 54.366, 64, 93.877, -1.8954899987452039, 74, 42, false, 999, "instant"], "hex": "071f00360026003f006b9ff2bf4a002ae70300000000000000"}
+{"id": "fuzz-0148", "cmd": "draw_circle", "args": [102.858, 75.651, 1, "51", 64, false], "hex": ""}
+{"id": "fuzz-0149", "cmd": "draw_ellipse", "args": [-1, 81.0, 39, 24, 66, 15, false, 30.0, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0150", "cmd": "draw_line", "args": [59.059, 3.0, 56.634, 1, "lavender"], "hex": "023b00030039000100d5ff64ffffffff00000000"}
+{"id": "fuzz-0151", "cmd": "draw_polygon", "args": [51.1, 86.999, 7, 5, 17.01, 70, 297.1835758117735], "hex": ""}
+{"id": "fuzz-0152", "cmd": "draw_rectangle", "args": [10.2, 58.0, 32, 31, 34.56], "hex": "030a003a0020000600230064ffffffff00000000"}
+{"id": "fuzz-0153", "cmd": "plot", "args": [20.1, 1.0, 57.1, 4, 2511, "fade"], "hex": "0114000100390004cf090000010000000000000000"}
+{"id": "fuzz-0154", "cmd": "draw_arc", "args": [6.0, 21.0, -14.0, 39.0, -1.070167157905317, 84, 64, false, 999, null], "hex": "070600150000001a003dfb88bf540040e70300000000000000"}
+{"id": "fuzz-0155", "cmd": "draw_circle", "args": [2.0, 10.5, 1, "Blue", 67, true, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0156", "cmd": "draw_ellipse", "args": [0.246, 31, 4, 7, 93.1, 96, false, -105.18349467510171], "hex": "0600001f0004000700f35dd2c25d0060ffffffff0000000000"}
+{"id": "fuzz-0157", "cmd": "draw_line", "args": [1.4, 66.0, 11.5, 9.0, "sky_blue", 50, 1200.0, "'fade'"], "hex": "0202003f000c000900dfff32b004000001000000"}
+{"id": "fuzz-0158", "cmd": "draw_polygon", "args": [104.467, 77.6, 27, 3, 38, 62, 25.299183190556665, true, 50, "fade"], "hex": ""}
+{"id": "fuzz-0159", "cmd": "draw_rectangle", "args": [10.4, -9.065, 0, 60, "64", 80, true, null, "instant"], "hex": ""}
+{"id": "fuzz-0160", "cmd": "plot", "args": [31, -10, 70, 19, 1216, "'fade'"], "hex": "011f000000460013c0040000010000000000000000"}
+{"id": "fuzz-0161", "cmd": "draw_arc", "args": [-2.0, -28.3, 11.5, -36.095, -0.4917418648386911, "red", 24, false], "hex": ""}
+{"id": "fuzz-0162", "cmd": "draw_circle", "args": [-2.0, 47.2, 70, 54, 43, true, null, "fade"], "hex": ""}
+{"id": "fuzz-0163", "cmd": "draw_ellipse", "args": [14.0, 22.375, 0, 7, 96], "hex": "060e0016000000070000000000600064ffffffff0000000000"}
+{"id": "fuzz-0164", "cmd": "draw_line", "args": [51.107, 95.0, 63, -7.2, "85", 32], "hex": "0237003f003e000000550020ffffffff00000000"}
+{"id": "fuzz-0165", "cmd": "draw_polygon", "args": [58.4, 44.6, 2, 6, 30, 98, 51.346361680487405], "hex": "053a002c0002000600ad624d421e0062ffffffff0000000000"}
+{"id": "fuzz-0166", "cmd": "draw_rectangle", "args": [65, -11.281, 68, 30, "red", 4, false, 800, "\"instant\""], "hex": ""}
+{"id": "fuzz-0167", "cmd": "plot", "args": [11.5, 63.4, 15.4], "hex": "010b003f000f00ffffffffff000000000000000000"}
+{"id": "fuzz-0168", "cmd": "draw_arc", "args": [100.987, 62.6, 97.013, 2.943, -0.42130600381478533, "18", 30, false, null, null], "hex": ""}
+{"id": "fuzz-0169", "cmd": "draw_circle", "args": [70000, 94.0, 2.7, 7, 58, true], "hex": ""}
+{"id": "fuzz-0170", "cmd": "draw_ellipse", "args": [-0.5, 97.0, 25, 26, "WHITE", 76, false, 30.0, null, "bogus"], "hex": ""}
+{"id": "fuzz-0171", "cmd": "draw_line", "args": [86.2, 4.366, -24.0, 75.3, "48"], "hex": "023f00130000003c00300064ffffffff00000000"}
+{"id": "fuzz-0172", "cmd": "draw_polygon", "args": [70000, -0.5, 36, 5, 86, 56, 57.802948609605664, true, null, "fade"], "hex": ""}
+{"id": "fuzz-0173", "cmd": "draw_rectangle", "args": [67.0, 25.5, 55, 17, "WHITE", 2, 1], "hex": ""}
+{"id": "fuzz-0174", "cmd": "plot", "args": [31, 89.803, "transparent", 84], "hex": "011f005900d4ff54ffffffff000000000000000000"}
+{"id": "fuzz-0175", "cmd": "draw_arc", "args": [32.0, -1, 63.4, -24.5, -0.44957911249415083, "sky_blue"], "hex": ""}
+{"id": "fuzz-0176", "cmd": "draw_circle", "args": [69.265, -37.486, 1, 12, 39, true, 100, "bogus"], "hex": ""}
+{"id": "fuzz-0177", "cmd": "draw_ellipse", "args": [64.8, 65.0, 19, 31, "red", 21, false, 103.2993094398663], "hex": "064000410013001f003f99ce42f9ff15ffffffff0000000000"}
+{"id": "fuzz-0178", "cmd": "draw_line", "args": [103.993, 10.5, -10.3, 64, 16, 95], "hex": "023f001e0000003b0010005fffffffff00000000"}
+{"id": "fuzz-0179", "cmd": "draw_polygon", "args": [-25.414, -0.355, 35, 4, "113", 11, -94.15492455641436], "hex": ""}
+{"id": "fuzz-0180", "cmd": "draw_rectangle", "args": [-2.1, -4.195, 13, 5, "62", 0, true, 800, "fade"], "hex": "03000000000b0001003e00002003000001010000"}
+{"id": "fuzz-0181", "cmd": "plot", "args": [65, 11.5, 54, 70], "hex": "0141000b00360046ffffffff000000000000000000"}
+{"id": "fuzz-0182", "cmd": "draw_arc", "args": [-0.5, 33.0, -24.317, 102.154, 1.9544732292343947, 91], "hex": ""}
+{"id": "fuzz-0183", "cmd": "draw_circle", "args": [73.0, 31.7, 0, 38.0, 38, false], "hex": ""}
+{"id": "fuzz-0184", "cmd": "draw_ellipse", "args": [6.668, 93.1, 24, 33, -2, 31, true, 118.57212600249295], "error": "ValueError"}
+{"id": "fuzz-0185", "cmd": "draw_line", "args": [102.0, -4.4, 18.0, 67.0, "52", 29, null, "instant"], "hex": "023f001d0017003f0034001dffffffff00000000"}
+{"id": "fuzz-0186", "cmd": "draw_polygon", "args": [75.0, 63, 24, 9, "nope", 26, -252.0224669211367], "error": "ValueError"}
+{"id": "fuzz-0187", "cmd": "draw_rectangle", "args": [-1, 0, 65, 42, "red", 7, true], "hex": "030000000040002a00f9ff07ffffffff00010000"}
+{"id": "fuzz-0188", "cmd": "plot", "args": [-19.957, -12.4, 7, 63], "hex": "010000000007003fffffffff000000000000000000"}
+{"id": "fuzz-0189", "cmd": "draw_arc", "args": [97.7, -0.5, 6.9, 21.3, 1.4624918150922461, "Blue"], "hex": "073f00080007001500ef32bb3fddff64ffffffff0000000000"}
+{"id": "fuzz-0190", "cmd": "draw_circle", "args": ["7.9", -39.3, 1, 17], "hex": ""}
+{"id": "fuzz-0191", "cmd": "draw_ellipse", "args": [31, 21.737, 33, 19, "red", 42, false, 30.0, null, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0192", "cmd": "draw_line", "args": [84.4, "7.9", 4.909, -31.0, 54.0], "hex": ""}
+{"id": "fuzz-0193", "cmd": "draw_polygon", "args": [20.0, 17.0, 11, 3, "black", 65, -341.3015816500441], "hex": "05140011000b0003009aa6aac3ffff41ffffffff0000000000"}
+{"id": "fuzz-0194", "cmd": "draw_rectangle", "args": [45.0, -36.529, 63, 35, 54.3, 64, true, 800, "FADE"], "hex": ""}
+{"id": "fuzz-0195", "cmd": "plot", "args": [88.0, 13.406, "102", 3], "error": "ValueError"}
+{"id": "fuzz-0196", "cmd": "draw_arc", "args": [65, 52.0, -15.0, 28.1, -0.011708916083179144, "sky_blue", 25, false, 999, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0197", "cmd": "draw_circle", "args": [-1, -1, 2.7, 79.28, 40, true], "hex": ""}
+{"id": "fuzz-0198", "cmd": "draw_ellipse", "args": [61.0, 93.0, 24, 36, "nope"], "error": "ValueError"}
+{"id": "fuzz-0199", "cmd": "draw_line", "args": [64, 54.0, 65, 82.385, "black"], "hex": ""}
+{"id": "fuzz-0200", "cmd": "draw_polygon", "args": [63, 101.3, 16, 3, "sky_blue", 27, 234.41687545313016], "hex": ""}
+{"id": "fuzz-0201", "cmd": "draw_rectangle", "args": [-1, 1, 67, 8, 35, 38, 1], "hex": "030000010040000800230026ffffffff00010000"}
+{"id": "fuzz-0202", "cmd": "plot", "args": [-1, 65, 65, 57], "hex": "0100004100410039ffffffff000000000000000000"}
+{"id": "fuzz-0203", "cmd": "draw_arc", "args": [45.202, 11.5, "12", 86.0, 0.9327408770480092, "20", 6, false, null, null], "hex": "072d000c0016003f001bc86e3f140006ffffffff0000000000"}
+{"id": "fuzz-0204", "cmd": "draw_circle", "args": [31, -1, 30, "black", 68, true], "hex": ""}
+{"id": "fuzz-0205", "cmd": "draw_ellipse", "args": [1, 41.342, 8, 27, "Blue", 24, false, -56.47660042568178], "hex": "060100290008001b000ae861c2ddff18ffffffff0000000000"}
+{"id": "fuzz-0206", "cmd": "draw_line", "args": [9.787, 18.309, -2.0, 62.6, 87], "hex": "020a00120000003700570064ffffffff00000000"}
+{"id": "fuzz-0207", "cmd": "draw_polygon", "args": [-37.0, 17.4, 6, 6, 60, 91, 34.421566165961295, true, 50, "FADE"], "hex": ""}
+{"id": "fuzz-0208", "cmd": "draw_rectangle", "args": [-1, 11.507, 63, 60, 1.1, 68, 1], "hex": "0300000b003e003500010044ffffffff00010000"}
+{"id": "fuzz-0209", "cmd": "plot", "args": [69.9, -34.0, 25, 21, 3620, "instant"], "hex": "0145000000190015240e0000000000000000000000"}
+{"id": "fuzz-0210", "cmd": "draw_arc", "args": [-29.789, -14.0, -10.593, 2.0, -1.0540375806778832, 55], "hex": ""}
+{"id": "fuzz-0211", "cmd": "draw_circle", "args": [-0.5, 23.819, 1, "sky_blue", 95, true], "hex": "04000017000100dfff5fffffffff0001000000"}
+{"id": "fuzz-0212", "cmd": "draw_ellipse", "args": [21.0, -0.5, 26, 32, 82, 45, false, 30.0, 70, "FADE"], "hex": "06150000001a0020000000f04152002d460000000100000000"}
+{"id": "fuzz-0213", "cmd": "draw_line", "args": [43.698, 7.0, -14.0, -16.8, "lavender"], "hex": "022c0007001b000000d5ff64ffffffff00000000"}
+{"id": "fuzz-0214", "cmd": "draw_polygon", "args": [63, -0.5, 6, 9, "34", 81, 39.38734715834252, true, 50, "instant"], "hex": "053f00000006000900a58c1d42220051320000000001000000"}
+{"id": "fuzz-0215", "cmd": "draw_rectangle", "args": [26.737, -27.8, 46, 2, "57", 56, true, null, "FADE"], "hex": ""}
+{"id": "fuzz-0216", "cmd": "plot", "args": [6.063, 10.5, 56], "hex": "0106000a003800ffffffffff000000000000000000"}
+{"id": "fuzz-0217", "cmd": "draw_arc", "args": [90.0, 63.841, 19.0, "7.9", 0.3307073284495332, 87, 85, false, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0218", "cmd": "draw_circle", "args": [102.2, 69.8, 1, 29, 37, true, 100, "fade"], "hex": ""}
+{"id": "fuzz-0219", "cmd": "draw_ellipse", "args": [95.0, 100, 14, 23, 65.75], "hex": ""}
+{"id": "fuzz-0220", "cmd": "draw_line", "args": [50.061, -21.0, -17.158, -6.3, 33], "hex": ""}
+{"id": "fuzz-0221", "cmd": "draw_polygon", "args": [10.5, 61.9, 18, 3, 61.08, 15, -73.8004524638273], "hex": "050a003d0012000300d59993c23d000fffffffff0000000000"}
+{"id": "fuzz-0222", "cmd": "draw_rectangle", "args": [11.5, -1, 14, 40, "nope"], "error": "ValueError"}
+{"id": "fuzz-0223", "cmd": "plot", "args": [80.897, 29.466, 79, 81], "hex": "0150001d004f0051ffffffff000000000000000000"}
+{"id": "fuzz-0224", "cmd": "draw_arc", "args": [89.1, 31, 31, 102.0, -1.8960159240953192, 67], "hex": "073f003f003f003f00a6b0f2bf430064ffffffff0000000000"}
+{"id": "fuzz-0225", "cmd": "draw_circle", "args": [-0.6, 72.635, 5, "red", 41, true, 100, "fade"], "hex": ""}
+{"id": "fuzz-0226", "cmd": "draw_ellipse", "args": [63, 43.103, 31, 23, 31], "hex": "063f002b001f001700000000001f0064ffffffff0000000000"}
+{"id": "fuzz-0227", "cmd": "draw_line", "args": [101.979, -23.35, 75.8, 92.5, 81.13, 8, 1200.0, "FADE"], "hex": ""}
+{"id": "fuzz-0228", "cmd": "draw_polygon", "args": [70000, -34.916, 6, 4, "Blue", 30, 12.060112368650914, false, 50, "FADE"], "hex": ""}
+{"id": "fuzz-0229", "cmd": "draw_rectangle", "args": [-37.0, 64, 7, 14, 40, 71, true, null, "\"instant\""], "hex": ""}
+{"id": "fuzz-0230", "cmd": "plot", "args": [63, -13.4, 45, 54, 3594, "FADE"], "hex": "013f0000002d00360a0e0000010000000000000000"}
+{"id": "fuzz-0231", "cmd": "draw_arc", "args": [-28.0, -0.0, 1, 53.153, -1.6553251264393918, 70.8, 84, true], "hex": "070000330001003500b2e1d3bf470054ffffffff0001000000"}
+{"id": "fuzz-0232", "cmd": "draw_circle", "args": [-18.0, -17.368, 70, "lavender"], "hex": ""}
+{"id": "fuzz-0233", "cmd": "draw_ellipse", "args": [66.4, 5.27, 2, 15, "31", 38, false, 44.2265731450706], "hex": "064200050002000f0003e830421f0026ffffffff0000000000"}
+{"id": "fuzz-0234", "cmd": "draw_line", "args": [89.247, 7.5, 63.4, 65, "43", 2, 1200.0, null], "hex": ""}
+{"id": "fuzz-0235", "cmd": "draw_polygon", "args": [28.0, 0, 27, 6, 75], "hex": "051c0000001b000600000000004b0064ffffffff0000000000"}
+{"id": "fuzz-0236", "cmd": "draw_rectangle", "args": [39.3, 106.0, 9, 5, 45.4, 57, 0], "hex": ""}
+{"id": "fuzz-0237", "cmd": "plot", "args": [70.0, 68.0, 14], "hex": "01460044000e00ffffffffff000000000000000000"}
+{"id": "fuzz-0238", "cmd": "draw_arc", "args": [-19.337, 2.261, 65, 91.5, -1.0981203848537833, "nope", 28, false, null, "FADE"], "error": "ValueError"}
+{"id": "fuzz-0239", "cmd": "draw_circle", "args": [1, -25.0, 0, 86, 65, true, 100, "'fade'"], "hex": ""}
+{"id": "fuzz-0240", "cmd": "draw_ellipse", "args": [70.0, 1, 17, 0, "Blue", 89, true, 144.72516778583486], "hex": "064600010011000000a5b91043ddff59ffffffff0001000000"}
+{"id": "fuzz-0241", "cmd": "draw_line", "args": [-3.1, 66.835, 57.3, 70000, 68, 44], "hex": ""}
+{"id": "fuzz-0242", "cmd": "draw_polygon", "args": [98.083, 25.0, 38, 7, 81.0, 56, -85.18113543372993], "hex": "056200190026000700be5caac2510038ffffffff0000000000"}
+{"id": "fuzz-0243", "cmd": "draw_rectangle", "args": [26.91, -29.868, 3, 47, 75.72, 11, 1], "hex": "031a000000030012004c000bffffffff00010000"}
+{"id": "fuzz-0244", "cmd": "plot", "args": [59.0, 74.9, "transparent"], "hex": "013b004a00d4ffffffffffff000000000000000000"}
+{"id": "fuzz-0245", "cmd": "draw_arc", "args": [58.446, 9.962, 64, 75.0, 0.5266036211836478, "Blue"], "hex": "073a000a003f003f007fcf063fddff64ffffffff0000000000"}
+{"id": "fuzz-0246", "cmd": "draw_circle", "args": [9.9, -21.537, 0, "red", 54, true], "hex": ""}
+{"id": "fuzz-0247", "cmd": "draw_ellipse", "args": [31, 0.792, 16, 6, 7.06], "hex": "061f0000001000060000000000070064ffffffff0000000000"}
+{"id": "fuzz-0248", "cmd": "draw_line", "args": [-35.101, 70.389, 49.9, 70.4, 76.0, 94, 1200.0, "'fade'"], "hex": ""}
+{"id": "fuzz-0249", "cmd": "draw_polygon", "args": [14.0, -22.7, 35, 3, 45, 5, 34.83235863402347, false, null, "fade"], "hex": ""}
+{"id": "fuzz-0250", "cmd": "draw_rectangle", "args": [57.818, 90.3, 34, 44, "Blue", 58, true, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0251", "cmd": "plot", "args": [62.6, -13.858, 55.46], "hex": "013e0000003700ffffffffff000000000000000000"}
+{"id": "fuzz-0252", "cmd": "draw_arc", "args": [-19.054, 31.4, -2.0, -33.0, 0.3859335893964433, 30.08, 5, true], "hex": ""}
+{"id": "fuzz-0253", "cmd": "draw_circle", "args": [89.0, 21.471, 2.7, 99], "hex": ""}
+{"id": "fuzz-0254", "cmd": "draw_ellipse", "args": [64, 45.711, 35, 20, "1"], "hex": "0640002d002300140000000000010064ffffffff0000000000"}
+{"id": "fuzz-0255", "cmd": "draw_line", "args": [12.456, 0.7, -27.0, 69.064, "red"], "hex": "020c00010000001600f9ff64ffffffff00000000"}
+{"id": "fuzz-0256", "cmd": "draw_polygon", "args": [64.5, -0.5, 4, 4, 13.0, 22, -209.78836931861707], "hex": "054000000004000400d3c951c30d0016ffffffff0000000000"}
+{"id": "fuzz-0257", "cmd": "draw_rectangle", "args": [81.431, -12.0, 28, 68, 21.0], "hex": ""}
+{"id": "fuzz-0258", "cmd": "plot", "args": [76.0, 31, "transparent", 75], "hex": "014c001f00d4ff4bffffffff000000000000000000"}
+{"id": "fuzz-0259", "cmd": "draw_arc", "args": [5.165, 99.1, 101.5, 11.5, 1.221643860142009, "transparent"], "hex": "072d003f003f002f00d35e9c3fd4ff64ffffffff0000000000"}
+{"id": "fuzz-0260", "cmd": "draw_circle", "args": [-9.0, 63.4, 5, "red", 72, false], "hex": ""}
+{"id": "fuzz-0261", "cmd": "draw_ellipse", "args": [60.0, 40.807, 30, 2, "Blue", 24, true, 97.47853492801903], "hex": "063c0028001e00020003f5c242ddff18ffffffff0001000000"}
+{"id": "fuzz-0262", "cmd": "draw_line", "args": [56.0, 106.0, -22.0, 11.5, 98], "hex": "0215003f0000002600620064ffffffff00000000"}
+{"id": "fuzz-0263", "cmd": "draw_polygon", "args": [31.702, 44.2, 28, 8, 28.59], "hex": "051f002c001c000800000000001d0064ffffffff0000000000"}
+{"id": "fuzz-0264", "cmd": "draw_rectangle", "args": [-9.621, 56.085, 6, 29, 99, 53, true], "hex": ""}
+{"id": "fuzz-0265", "cmd": "plot", "args": [18.2, 63.4, "74", 63], "hex": "0112003f004a003fffffffff000000000000000000"}
+{"id": "fuzz-0266", "cmd": "draw_arc", "args": [-31.0, -1, 40.0, 70.0, -0.25879252488854654, 40, 22, true], "hex": "0700001e0021003f00748084be280016ffffffff0001000000"}
+{"id": "fuzz-0267", "cmd": "draw_circle", "args": [26.0, 65, 30, "lavender"], "hex": "041a0041001e00d5ff64ffffffff0000000000"}
+{"id": "fuzz-0268", "cmd": "draw_ellipse", "args": [30.804, 42.391, 1, 30, "11", 92, false, 30.0, 70, "instant"], "hex": "061e002a0001001e000000f0410b005c460000000000000000"}
+{"id": "fuzz-0269", "cmd": "draw_line", "args": [-12.1, 94.8, 68.0, 1, "red", 93, 300, "'fade'"], "hex": "020f003f003f000700f9ff5d2c01000001000000"}
+{"id": "fuzz-0270", "cmd": "draw_polygon", "args": [31, 59.8, 20, 3, 92], "hex": "051f003b0014000300000000005c0064ffffffff0000000000"}
+{"id": "fuzz-0271", "cmd": "draw_rectangle", "args": [0, 83.0, 11, 57, "transparent", 50, false, 800, null], "hex": ""}
+{"id": "fuzz-0272", "cmd": "plot", "args": [62.6, 65.3, "nope", 22, 2571, null], "error": "ValueError"}
+{"id": "fuzz-0273", "cmd": "draw_arc", "args": [70000, -12.7, 63.4, -1, -0.5341347099501657, "32", 74, true], "hex": ""}
+{"id": "fuzz-0274", "cmd": "draw_circle", "args": [98.9, -29.937, 70, 41.8, 47, true], "hex": ""}
+{"id": "fuzz-0275", "cmd": "draw_ellipse", "args": [22.0, 63.4, 6, 21, 56, 78, false, 46.38088309220524], "hex": "0616003f00060015000686394238004effffffff0000000000"}
+{"id": "fuzz-0276", "cmd": "draw_line", "args": [65, 69.0, 22.1, 11.5, "WHITE", 94], "hex": "023d003f0016000c00feff5effffffff00000000"}
+{"id": "fuzz-0277", "cmd": "draw_polygon", "args": [31.0, 6.3, 0, 8, "nope", 9, 104.6119947143842], "hex": ""}
+{"id": "fuzz-0278", "cmd": "draw_rectangle", "args": ["12", "7.9", 60, 65, "64", 10, "true"], "hex": "030c0007003400390040000affffffff00010000"}
+{"id": "fuzz-0279", "cmd": "plot", "args": [-1, -10.0, "lavender", 24, 3434, "fade"], "hex": "0100000000d5ff186a0d0000010000000000000000"}
+{"id": "fuzz-0280", "cmd": "draw_arc", "args": [6.9, 17.61, -0.5, -36.16, -0.11879939711213305, 15], "hex": "070700120004000000194df3bd0f0064ffffffff0000000000"}
+{"id": "fuzz-0281", "cmd": "draw_circle", "args": [100, 44.0, 5, 94, 69, true, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0282", "cmd": "draw_ellipse", "args": [-32.8, 108.0, 35, 1, 101.2, 99, false, 30.0, null, "FADE"], "hex": ""}
+{"id": "fuzz-0283", "cmd": "draw_line", "args": [-21.108, 82.0, 53.86, -28.5, 71.0, 41], "hex": "020000330023000000470029ffffffff00000000"}
+{"id": "fuzz-0284", "cmd": "draw_polygon", "args": [11.5, -37.975, 39, 3, "sky_blue", 38, -231.31852433103106], "hex": ""}
+{"id": "fuzz-0285", "cmd": "draw_rectangle", "args": [50.218, -36.926, 68, -3, "106", 5, 1], "hex": ""}
+{"id": "fuzz-0286", "cmd": "plot", "args": [100, "12", 34, 21], "hex": "0164000c00220015ffffffff000000000000000000"}
+{"id": "fuzz-0287", "cmd": "draw_arc", "args": [75.774, -25.274, 62.6, 30.7, 1.8840174147103337, 80, 93, true], "hex": "073f001d003f001f007c27f13f50005dffffffff0001000000"}
+{"id": "fuzz-0288", "cmd": "draw_circle", "args": [4.3, 21.7, 2.7, "Blue", 79, true, null, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0289", "cmd": "draw_ellipse", "args": [-27.192, -3.0, 13, 11, "nope", 33, false, 30.0, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0290", "cmd": "draw_line", "args": [34.0, 77.0, -37.0, 64, "Blue"], "hex": ""}
+{"id": "fuzz-0291", "cmd": "draw_polygon", "args": [107.2, 64, 16, 9, 72, 64, -5.303489450286747], "hex": ""}
+{"id": "fuzz-0292", "cmd": "draw_rectangle", "args": [31, 10.5, 7, 43, 17.78, 1, false, 800, "instant"], "hex": "031f000a0007002b001200012003000000000000"}
+{"id": "fuzz-0293", "cmd": "plot", "args": [32.716, 94.8, "sky_blue", 45], "hex": "0120005e00dfff2dffffffff000000000000000000"}
+{"id": "fuzz-0294", "cmd": "draw_arc", "args": [100, 80.071, 4.0, 0, 1.2269090321501537, "transparent"], "hex": "073f003100040000005b0b9d3fd4ff64ffffffff0000000000"}
+{"id": "fuzz-0295", "cmd": "draw_circle", "args": [62.6, 4.5, 5, "lavender"], "hex": "043e0004000500d5ff64ffffffff0000000000"}
+{"id": "fuzz-0296", "cmd": "draw_ellipse", "args": [-20.719, 0, 14, 22, "lavender"], "hex": ""}
+{"id": "fuzz-0297", "cmd": "draw_line", "args": [1, -26.602, 53.573, 103.3, "Blue"], "hex": "020c00000025003f00ddff64ffffffff00000000"}
+{"id": "fuzz-0298", "cmd": "draw_polygon", "args": [43.715, -7.842, 25, 8, 39], "hex": ""}
+{"id": "fuzz-0299", "cmd": "draw_rectangle", "args": [-21.633, 64, 2, -3, "Blue"], "hex": ""}
+{"id": "fuzz-0300", "cmd": "plot", "args": [63, 81.0, "89", 27], "hex": "013f00510059001bffffffff000000000000000000"}
+{"id": "fuzz-0301", "cmd": "draw_arc", "args": [1, 61.477, 33.3, 63, 0.36741420612355125, "12"], "hex": "0701003d0021003f00b71dbc3e0c0064ffffffff0000000000"}
+{"id": "fuzz-0302", "cmd": "draw_circle", "args": [9.1, -7.06, 1, 67], "hex": ""}
+{"id": "fuzz-0303", "cmd": "draw_ellipse", "args": [-0.5, 73.0, 38, 18, 19, 10, false, -29.58974931714377], "hex": "060000490026001200ceb7ecc113000affffffff0000000000"}
+{"id": "fuzz-0304", "cmd": "draw_line", "args": [100, 20.2, 63, -16.06, "111", 73], "hex": ""}
+{"id": "fuzz-0305", "cmd": "draw_polygon", "args": [69.7, 45.0, 33, 5, 1], "hex": "0545002d002100050000000000010064ffffffff0000000000"}
+{"id": "fuzz-0306", "cmd": "draw_rectangle", "args": [-18.363, -32.2, 13, 62, "black"], "hex": ""}
+{"id": "fuzz-0307", "cmd": "plot", "args": [64, 73.613, "red"], "hex": "0140004900f9ffffffffffff000000000000000000"}
+{"id": "fuzz-0308", "cmd": "draw_arc", "args": [0, 35.587, 3.545, 64, 0.884066410360413, "31", 93, false, 999, null], "hex": "070000240003003f002d52623f1f005de70300000000000000"}
+{"id": "fuzz-0309", "cmd": "draw_circle", "args": [5.457, 53.8, 5, "black"], "hex": "04050035000500ffff64ffffffff0000000000"}
+{"id": "fuzz-0310", "cmd": "draw_ellipse", "args": [100.794, -8.1, 10, 6, "black", 50, false, 30.0, null, "fade"], "hex": ""}
+{"id": "fuzz-0311", "cmd": "draw_line", "args": [109.3, 65.896, 107.6, 61.833, "red", 65, null, "bogus"], "hex": ""}
+{"id": "fuzz-0312", "cmd": "draw_polygon", "args": [53.523, -39.043, 21, 7, 82], "hex": ""}
+{"id": "fuzz-0313", "cmd": "draw_rectangle", "args": [-22.652, 0, -1, 1, 82], "hex": ""}
+{"id": "fuzz-0314", "cmd": "plot", "args": [-35.238, 63.4, 68, 82, 1477, null], "hex": "0100003f00440052c5050000000000000000000000"}
+{"id": "fuzz-0315", "cmd": "draw_arc", "args": [31.0, 63.4, 71.0, 0.0, -0.8350381936139164, 99, 29, false, 999, "instant"], "hex": "071f003f003f000d0010c555bf63001de70300000000000000"}
+{"id": "fuzz-0316", "cmd": "draw_circle", "args": [-21.597, 56.45, 2.7, "115", 83, true, 100, "fade"], "hex": ""}
+{"id": "fuzz-0317", "cmd": "draw_ellipse", "args": [0, 53.443, 25, 16, 34, 57, false, -80.07536971988787], "hex": "0600003500190010009726a0c2220039ffffffff0000000000"}
+{"id": "fuzz-0318", "cmd": "draw_line", "args": [4.0, -9.188, 49.2, 108.569, "65"], "hex": "020800000020003f00410064ffffffff00000000"}
+{"id": "fuzz-0319", "cmd": "draw_polygon", "args": [98.942, 38.3, 30, 5, "lavender", 89, 29.235256393995204, false, 50, "fade"], "hex": ""}
+{"id": "fuzz-0320", "cmd": "draw_rectangle", "args": [103.21, 87.0, -1, 22, 3], "hex": ""}
+{"id": "fuzz-0321", "cmd": "plot", "args": [93.4, 8.0, "111"], "error": "ValueError"}
+{"id": "fuzz-0322", "cmd": "draw_arc", "args": [109.0, 33.8, 109.0, 78.291, -0.9144067522031398, 42, 12, false], "hex": ""}
+{"id": "fuzz-0323", "cmd": "draw_circle", "args": [48.0, 71.831, 70, 46, 57, true, 100, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0324", "cmd": "draw_ellipse", "args": [95.2, 14.6, 8, 27, "transparent", 2, true, 42.79741334678718], "hex": ""}
+{"id": "fuzz-0325", "cmd": "draw_line", "args": [11.5, 28.1, 7.8, 106.0, 24], "hex": "020c001c000a003f00180064ffffffff00000000"}
+{"id": "fuzz-0326", "cmd": "draw_polygon", "args": [57.838, 62.6, 4, 5, 24.1, 25, 42.52552482885714, true, 50, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0327", "cmd": "draw_rectangle", "args": [61.0, 71.718, 32, 10, 87, 62, true], "hex": ""}
+{"id": "fuzz-0328", "cmd": "plot", "args": [10.5, 65, "59", 12, 1092, "\"instant\""], "hex": "010a0041003b000c44040000000000000000000000"}
+{"id": "fuzz-0329", "cmd": "draw_arc", "args": [42.7, 50.0, 20.0, 49.0, -1.01547398225871, "red", 49, true], "hex": "072b003200140031000dfb81bff9ff31ffffffff0001000000"}
+{"id": "fuzz-0330", "cmd": "draw_circle", "args": [85.0, 24.494, 1, "5"], "hex": ""}
+{"id": "fuzz-0331", "cmd": "draw_ellipse", "args": [45.0, 103.0, 3, 25, 87, 61, false, 30.0, null, "fade"], "hex": ""}
+{"id": "fuzz-0332", "cmd": "draw_line", "args": [39.936, 43.0, 51.645, 11.5, 26, 45], "hex": "0228002b0034000c001a002dffffffff00000000"}
+{"id": "fuzz-0333", "cmd": "draw_polygon", "args": [-10, 109.9, 34, 5, "red", 45, 231.3508470220944], "hex": ""}
+{"id": "fuzz-0334", "cmd": "draw_rectangle", "args": [63, 100.865, 8, 4, -2, 8, false, 800, null], "hex": ""}
+{"id": "fuzz-0335", "cmd": "plot", "args": [100, 1, "WHITE", 59, 2116, "\"instant\""], "hex": "0164000100feff3b44080000000000000000000000"}
+{"id": "fuzz-0336", "cmd": "draw_arc", "args": [10.127, -21.9, 106.0, -29.33, -0.5380167795653721, "red"], "hex": ""}
+{"id": "fuzz-0337", "cmd": "draw_circle", "args": [0, -35.589, 70, "black", 25, false], "hex": ""}
+{"id": "fuzz-0338", "cmd": "draw_ellipse", "args": [1, 15.0, 11, 1, "transparent", 77, true, 90.81536725383705], "hex": "0601000f000b00010078a1b542d4ff4dffffffff0001000000"}
+{"id": "fuzz-0339", "cmd": "draw_line", "args": [62.6, 100, 91.0, 22.123, "sky_blue", 93], "hex": ""}
+{"id": "fuzz-0340", "cmd": "draw_polygon", "args": [100, 58.0, 24, 9, "nope", 79, 108.59807526080351], "hex": ""}
+{"id": "fuzz-0341", "cmd": "draw_rectangle", "args": ["7.9", 7.396, 59, 18, 17.0], "hex": "030700070039001200110064ffffffff00000000"}
+{"id": "fuzz-0342", "cmd": "plot", "args": [4.167, 109.0, 20.41, 83], "hex": "0104006d00140053ffffffff000000000000000000"}
+{"id": "fuzz-0343", "cmd": "draw_arc", "args": [-22.611, -16.527, 100.2, 27.0, -0.08048049867364737, 38.0], "hex": "07180000003f000e00f6d2a4bd260064ffffffff0000000000"}
+{"id": "fuzz-0344", "cmd": "draw_circle", "args": [90.634, 7.0, 70, 9.7, 78, true], "hex": "045a00070046000a004effffffff0001000000"}
+{"id": "fuzz-0345", "cmd": "draw_ellipse", "args": [-0.5, 57.0, 29, 31, "WHITE", 85, true, -127.61958739728894], "hex": "06000039001d001f003b3dffc2feff55ffffffff0001000000"}
+{"id": "fuzz-0346", "cmd": "draw_line", "args": [107.0, 43.357, 100, 80.6, "black", 91, null, "instant"], "hex": ""}
+{"id": "fuzz-0347", "cmd": "draw_polygon", "args": [63.4, -0.5, 7, 6, 92, 95, 38.789776194445466, true, 50, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0348", "cmd": "draw_rectangle", "args": [75.0, 78.262, 66, 0, 41], "hex": ""}
+{"id": "fuzz-0349", "cmd": "plot", "args": [-30.7, -28.8, "95"], "hex": "01000000005f00ffffffffff000000000000000000"}
+{"id": "fuzz-0350", "cmd": "draw_arc", "args": [21.0, 8.0, 101.735, 108.0, 1.1508674457867971, 79], "hex": "07150008003f003c00a04f933f4f0064ffffffff0000000000"}
+{"id": "fuzz-0351", "cmd": "draw_circle", "args": [7.0, 1, 5, "lavender", 29, true], "hex": "04070001000500d5ff1dffffffff0001000000"}
+{"id": "fuzz-0352", "cmd": "draw_ellipse", "args": [-10, 10.5, 29, 35, 55.84, 77, true, 39.754258875468196], "hex": ""}
+{"id": "fuzz-0353", "cmd": "draw_line", "args": [0, 41.038, 6.896, 62.0, "39", 55, 1200.0, "\"instant\""], "hex": "020000290007003e00270037b004000000000000"}
+{"id": "fuzz-0354", "cmd": "draw_polygon", "args": [70000, -12.228, 20, 9, 51, 30, 198.92071344661508], "hex": ""}
+{"id": "fuzz-0355", "cmd": "draw_rectangle", "args": [94.455, 97.7, 17, 7, 73], "hex": ""}
+{"id": "fuzz-0356", "cmd": "plot", "args": [6.0, 28.1, 76], "hex": "0106001c004c00ffffffffff000000000000000000"}
+{"id": "fuzz-0357", "cmd": "draw_arc", "args": [102.7, 68.515, 65, 81.6, -1.5326994399546066, "lavender", 76, false], "hex": ""}
+{"id": "fuzz-0358", "cmd": "draw_circle", "args": [-0.5, -0.5, 1, 30, 83, true, null, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0359", "cmd": "draw_ellipse", "args": [-1, 10.5, 26, 1, "sky_blue"], "hex": ""}
+{"id": "fuzz-0360", "cmd": "draw_line", "args": [-25.19, 87.0, 75.2, -10, "transparent", 31, 300, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0361", "cmd": "draw_polygon", "args": [0, "12", 14, 9, 82], "hex": "0500000c000e00090000000000520064ffffffff0000000000"}
+{"id": "fuzz-0362", "cmd": "draw_rectangle", "args": [64.0, 64, 14, 25, "29", 23, true, null, null], "hex": ""}
+{"id": "fuzz-0363", "cmd": "plot", "args": [28.0, 70000, "red", 25, 3363, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0364", "cmd": "draw_arc", "args": [-10, -0.5, 90.956, 109.957, 0.698674981288343, 47], "hex": "0700000a0030003f005ddc323f2f0064ffffffff0000000000"}
+{"id": "fuzz-0365", "cmd": "draw_circle", "args": [1, "7.9", 2.7, 81.28, 38, true, null, null], "hex": "04010007000200510026ffffffff0001000000"}
+{"id": "fuzz-0366", "cmd": "draw_ellipse", "args": [-11.7, 18.229, 36, 5, "red"], "hex": ""}
+{"id": "fuzz-0367", "cmd": "draw_line", "args": [10.5, -36.0, 50.5, -24.791, 74.0, 74], "hex": ""}
+{"id": "fuzz-0368", "cmd": "draw_polygon", "args": [26.0, 70000, 10, 5, 1.26, 98, 71.6939701699781, false, null, null], "hex": ""}
+{"id": "fuzz-0369", "cmd": "draw_rectangle", "args": [10.948, 0, 2, 27, "red"], "hex": "030a00000002001b00f9ff64ffffffff00000000"}
+{"id": "fuzz-0370", "cmd": "plot", "args": [88.4, -33.0, 77.0], "hex": "01580000004d00ffffffffff000000000000000000"}
+{"id": "fuzz-0371", "cmd": "draw_arc", "args": [89.0, 67.1, 62.6, 102.1, 0.7842550176322489, "100", 79, true], "hex": ""}
+{"id": "fuzz-0372", "cmd": "draw_circle", "args": [-1, -1, 5, "WHITE"], "hex": ""}
+{"id": "fuzz-0373", "cmd": "draw_ellipse", "args": [20.626, 107.041, 35, 31, "WHITE"], "hex": ""}
+{"id": "fuzz-0374", "cmd": "draw_line", "args": [6.0, 6.0, 76.0, 44.0, 24, 33, null, "\"instant\""], "hex": "02060006003f002500180021ffffffff00000000"}
+{"id": "fuzz-0375", "cmd": "draw_polygon", "args": [0, 8.614, 13, 5, 21, 15, 76.98637950073194, true, 50, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0376", "cmd": "draw_rectangle", "args": [58.492, 42.9, 38, 65, "Blue", 94, true, null, "fade"], "hex": "033a002a0006001600ddff5effffffff01010000"}
+{"id": "fuzz-0377", "cmd": "plot", "args": [53.9, 64, "lavender", 0], "hex": "0135004000d5ff00ffffffff000000000000000000"}
+{"id": "fuzz-0378", "cmd": "draw_arc", "args": [31, 11.5, 17.839, 30.6, -1.2595591914844815, "nope", 58, false, 999, "instant"], "error": "ValueError"}
+{"id": "fuzz-0379", "cmd": "draw_circle", "args": [62.6, 13.0, 0, "110"], "hex": ""}
+{"id": "fuzz-0380", "cmd": "draw_ellipse", "args": [108.905, 58.0, 23, 36, 13], "hex": ""}
+{"id": "fuzz-0381", "cmd": "draw_line", "args": [87.9, 20.348, 86.7, 70.9, "27", 95], "hex": ""}
+{"id": "fuzz-0382", "cmd": "draw_polygon", "args": [-1, 103.631, 36, 5, 16, 20, 69.42218677368504, true, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0383", "cmd": "draw_rectangle", "args": [3.0, -11.8, 46, 5, "WHITE", 26, false, 800, "fade"], "hex": ""}
+{"id": "fuzz-0384", "cmd": "plot", "args": ["7.9", 34.0, "11", 25, 3844, "'fade'"], "hex": "01070022000b0019040f0000010000000000000000"}
+{"id": "fuzz-0385", "cmd": "draw_arc", "args": [2.8, -1, -24.0, 55.0, 0.8193050287334986, 59, 3, false], "hex": "070200000000000500f9bd513f3b0003ffffffff0000000000"}
+{"id": "fuzz-0386", "cmd": "draw_circle", "args": [63, -2.706, 70, "nope", 71, true], "hex": ""}
+{"id": "fuzz-0387", "cmd": "draw_ellipse", "args": [-10, 64, 17, 35, 82, 31, true, 161.52205013646693], "hex": ""}
+{"id": "fuzz-0388", "cmd": "draw_line", "args": [32.3, 1, 20.1, -0.5, "red", 91, 1200.0, "instant"], "hex": "022000010018000000f9ff5bb004000000000000"}
+{"id": "fuzz-0389", "cmd": "draw_polygon", "args": [62.358, 89.3, 6, 7, 22, 75, 84.43838379265014, true, null, "instant"], "hex": ""}
+{"id": "fuzz-0390", "cmd": "draw_rectangle", "args": [43.019, 92.282, 21, 2, "black"], "hex": ""}
+{"id": "fuzz-0391", "cmd": "plot", "args": [49.581, 11.5, "nope"], "error": "ValueError"}
+{"id": "fuzz-0392", "cmd": "draw_arc", "args": [53.3, -24.8, 10.5, "7.9", 1.148215773346473, 10.0, 19, false], "hex": "07150000000a000800bcf8923f0a0013ffffffff0000000000"}
+{"id": "fuzz-0393", "cmd": "draw_circle", "args": [45.6, -32.43, 0, "Blue"], "hex": ""}
+{"id": "fuzz-0394", "cmd": "draw_ellipse", "args": [100, 47.358, 9, 6, "83", 82, false, -37.22326196702534], "hex": ""}
+{"id": "fuzz-0395", "cmd": "draw_line", "args": [64, 57.043, 33.3, "12", "transparent"], "hex": "023f00380021000c00d4ff64ffffffff00000000"}
+{"id": "fuzz-0396", "cmd": "draw_polygon", "args": [-30.8, -6.359, 10, 3, "transparent"], "hex": ""}
+{"id": "fuzz-0397", "cmd": "draw_rectangle", "args": [29.0, 1, 0, 35, 86], "hex": ""}
+{"id": "fuzz-0398", "cmd": "plot", "args": [11.5, 48.0, "nope", 44], "error": "ValueError"}
+{"id": "fuzz-0399", "cmd": "draw_arc", "args": [91.0, 0.0, 76.2, 63, -1.0313273642294716, "6", 32, false, 999, null], "hex": ""}
+{"id": "fuzz-0400", "cmd": "draw_circle", "args": ["7.9", -20.6, 70, 74.0], "hex": ""}
+{"id": "fuzz-0401", "cmd": "draw_ellipse", "args": [-38.0, 70000, 20, 23, 16, 42, false, 30.0, 70, null], "hex": ""}
+{"id": "fuzz-0402", "cmd": "draw_line", "args": [45.3, 88.0, 63.4, 57.0, "WHITE"], "hex": "023c003f003f003a00feff64ffffffff00000000"}
+{"id": "fuzz-0403", "cmd": "draw_polygon", "args": [70000, 99.211, 16, 9, "transparent"], "hex": ""}
+{"id": "fuzz-0404", "cmd": "draw_rectangle", "args": [102.247, -28.0, 3, 42, "sky_blue"], "hex": ""}
+{"id": "fuzz-0405", "cmd": "plot", "args": [65, -10.6, "red"], "hex": "0141000000f9ffffffffffff000000000000000000"}
+{"id": "fuzz-0406", "cmd": "draw_arc", "args": [45.8, -1, 65, 93.8, -0.5787533567336696, "109", 82, false, null, "fade"], "error": "ValueError"}
+{"id": "fuzz-0407", "cmd": "draw_circle", "args": [55.0, -28.6, 1, "Blue", 29, true, 100, "FADE"], "hex": ""}
+{"id": "fuzz-0408", "cmd": "draw_ellipse", "args": [16.2, -0.58, 36, 30, 76, 67, false, 30.0, 70, null], "hex": "061000000024001e000000f0414c0043460000000000000000"}
+{"id": "fuzz-0409", "cmd": "draw_line", "args": [40.0, 82.329, 100, 100, "transparent"], "hex": ""}
+{"id": "fuzz-0410", "cmd": "draw_polygon", "args": [31, 1, 5, 6, 82.31, 47, 13.368860859566219, false, null, null], "hex": "051f00010005000600dbe6554152002fffffffff0000000000"}
+{"id": "fuzz-0411", "cmd": "draw_rectangle", "args": [15.416, 63.4, -2, 42, "Blue"], "hex": ""}
+{"id": "fuzz-0412", "cmd": "plot", "args": [31.9, 56.0, 53, 18, 4769, "FADE"], "hex": "011f003800350012a1120000010000000000000000"}
+{"id": "fuzz-0413", "cmd": "draw_arc", "args": [103.71, 17.0, 106.0, 2.8, 1.3521498004845176, "black"], "hex": ""}
+{"id": "fuzz-0414", "cmd": "draw_circle", "args": [31, 100, 30, "red", 95, true, 100, null], "hex": ""}
+{"id": "fuzz-0415", "cmd": "draw_ellipse", "args": [100, 64, 9, 12, "lavender"], "hex": ""}
+{"id": "fuzz-0416", "cmd": "draw_line", "args": [87.4, -1, 94.248, 10.5, 71.3, 15, null, "instant"], "hex": ""}
+{"id": "fuzz-0417", "cmd": "draw_polygon", "args": [10.5, 55.3, 9, 4, "93", 82, 37.72905639409596, true, null, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0418", "cmd": "draw_rectangle", "args": [0, -38.0, 43, 69, 37, 32, true, null, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0419", "cmd": "plot", "args": [99.318, 13.6, "sky_blue", 41], "hex": "0163000d00dfff29ffffffff000000000000000000"}
+{"id": "fuzz-0420", "cmd": "draw_arc", "args": [0.586, -21.737, 100, 80.0, 0.14645228255028675, -2.6], "hex": "07160000003f002a0096f7153e000064ffffffff0000000000"}
+{"id": "fuzz-0421", "cmd": "draw_circle", "args": [51.9, 88.0, 2.7, 66, 37, true], "hex": ""}
+{"id": "fuzz-0422", "cmd": "draw_ellipse", "args": [44.58, 34.193, 4, 40, 62, 1, false, 30.0, 70, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0423", "cmd": "draw_line", "args": [-18.9, -27.0, 70000, 60.7, 81, 42], "hex": ""}
+{"id": "fuzz-0424", "cmd": "draw_polygon", "args": [76.7, 65, 4, 5, 61, 7, 126.63945097969548], "hex": ""}
+{"id": "fuzz-0425", "cmd": "draw_rectangle", "args": [31.0, -8.97, 0, 52, "104", 45, false, 800, "FADE"], "hex": ""}
+{"id": "fuzz-0426", "cmd": "plot", "args": [76.3, 65, "transparent", 35, 1741, "fade"], "hex": "014c004100d4ff23cd060000010000000000000000"}
+{"id": "fuzz-0427", "cmd": "draw_arc", "args": [82.7, -11.0, 1, 47.0, 1.6562010952097577, "Blue", 15, false], "hex": "073f00030001002f0066fed33fddff0fffffffff0000000000"}
+{"id": "fuzz-0428", "cmd": "draw_circle", "args": [-10, 62.6, 1, "transparent"], "hex": ""}
+{"id": "fuzz-0429", "cmd": "draw_ellipse", "args": [1, 65, 18, 20, 43.0, 72, false, 30.0, null, null], "hex": "0601004100120014000000f0412b0048ffffffff0000000000"}
+{"id": "fuzz-0430", "cmd": "draw_line", "args": [-1, -18.9, 1, 63.4, "6", 95], "hex": "020000160001003f0006005fffffffff00000000"}
+{"id": "fuzz-0431", "cmd": "draw_polygon", "args": [70.8, 16.0, 23, 7, "32", 8, 10.79585787123049, false, null, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0432", "cmd": "draw_rectangle", "args": [89.724, -15.2, 45, 42, 42.6, 68, "true"], "hex": ""}
+{"id": "fuzz-0433", "cmd": "plot", "args": [60.441, 54.492, "93", 60], "hex": "013c0036005d003cffffffff000000000000000000"}
+{"id": "fuzz-0434", "cmd": "draw_arc", "args": [-10, 0, 62.6, 41.0, -0.08327123064226427, 95, 90, false, null, "fade"], "hex": "07000006003f0029001b8aaabd5f005affffffff0100000000"}
+{"id": "fuzz-0435", "cmd": "draw_circle", "args": [98.1, 6.3, 0, 9], "hex": ""}
+{"id": "fuzz-0436", "cmd": "draw_ellipse", "args": [28.355, -25.456, 18, 23, "black", 90, false, 91.51313292632892], "hex": ""}
+{"id": "fuzz-0437", "cmd": "draw_line", "args": [-11.6, -31.0, -17.0, -27.7, "black"], "hex": ""}
+{"id": "fuzz-0438", "cmd": "draw_polygon", "args": [56.488, -1, 9, 4, "red", 82, 15.370739253539735, false, null, "FADE"], "hex": ""}
+{"id": "fuzz-0439", "cmd": "draw_rectangle", "args": [13.111, 14.0, 19, 67, 8.0, 53, true, null, null], "hex": "030d000e0013003200080035ffffffff00010000"}
+{"id": "fuzz-0440", "cmd": "plot", "args": [-13.0, 1.287, 82.6], "hex": "01000001005300ffffffffff000000000000000000"}
+{"id": "fuzz-0441", "cmd": "draw_arc", "args": [-0.5, 35.0, "7.9", 0, -1.8797881582163938, 16], "hex": "070000210008000000e69cf0bf100064ffffffff0000000000"}
+{"id": "fuzz-0442", "cmd": "draw_circle", "args": [63, 102.8, 30, 51.4, 44, true, 100, "instant"], "hex": ""}
+{"id": "fuzz-0443", "cmd": "draw_ellipse", "args": [107.184, 65, 15, 27, "20"], "hex": ""}
+{"id": "fuzz-0444", "cmd": "draw_line", "args": [0, 10.5, 58.7, -19.0, "43", 24], "hex": "0200000a00150000002b0018ffffffff00000000"}
+{"id": "fuzz-0445", "cmd": "draw_polygon", "args": [24.8, -17.0, 3, 8, 32, 44, 40.82990071283843, false, 50, "\"instant\""], "hex": ""}
+{"id": "fuzz-0446", "cmd": "draw_rectangle", "args": ["7.9", 70.8, 43, 43, 10.9], "hex": ""}
+{"id": "fuzz-0447", "cmd": "plot", "args": [49.0, 81.859, 55, 89], "hex": "0131005100370059ffffffff000000000000000000"}
+{"id": "fuzz-0448", "cmd": "draw_arc", "args": [5.0, 1, 46.9, 43.8, -0.9444972507114122, 99, 53, false, 999, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0449", "cmd": "draw_circle", "args": [25.475, -9.2, 0, 47, 42, true, null, null], "hex": ""}
+{"id": "fuzz-0450", "cmd": "draw_ellipse", "args": [9.877, 63.4, 20, 30, 63], "hex": "0609003f0014001e00000000003f0064ffffffff0000000000"}
+{"id": "fuzz-0451", "cmd": "draw_line", "args": [62.6, 109.0, -9.0, -12.0, "69", 57, 1200.0, "\"instant\""], "hex": "0223003f0000000300450039b004000000000000"}
+{"id": "fuzz-0452", "cmd": "draw_polygon", "args": [109.1, 62.6, 31, 9, "nope", 88, 74.9406474394938, true, 50, null], "hex": ""}
+{"id": "fuzz-0453", "cmd": "draw_rectangle", "args": [-15.0, -6.0, 5, 53, 50, 52, true, 800, null], "hex": ""}
+{"id": "fuzz-0454", "cmd": "plot", "args": [83.371, 6.018, 49, 77], "hex": "015300060031004dffffffff000000000000000000"}
+{"id": "fuzz-0455", "cmd": "draw_arc", "args": [109.0, 63.4, 56.518, 52.412, 1.1362441581144682, "69", 67, false, 999, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0456", "cmd": "draw_circle", "args": [10.177, 59.3, 1, "sky_blue"], "hex": "040a003b000100dfff64ffffffff0000000000"}
+{"id": "fuzz-0457", "cmd": "draw_ellipse", "args": [21.035, 8.515, 0, 3, 41, 40, true, 31.225615519081202], "hex": "06150008000000030010cef941290028ffffffff0001000000"}
+{"id": "fuzz-0458", "cmd": "draw_line", "args": [-10, 70000, -12.1, -23.0, 46, 43], "hex": ""}
+{"id": "fuzz-0459", "cmd": "draw_polygon", "args": [94.086, 42.0, 26, 8, "Blue", 42, -264.563680333269], "hex": ""}
+{"id": "fuzz-0460", "cmd": "draw_rectangle", "args": [71.565, -17.0, 55, 19, "lavender", 31, true, null, "bogus"], "hex": ""}
+{"id": "fuzz-0461", "cmd": "plot", "args": [33.0, -26.7, "WHITE", 57, 1, null], "hex": "0121000000feff3901000000000000000000000000"}
+{"id": "fuzz-0462", "cmd": "draw_arc", "args": [97.9, "12", 48.76, 6.8, 0.7180280603898739, 21.7, 35, false, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0463", "cmd": "draw_circle", "args": [11.5, 8.1, 0, "nope"], "hex": ""}
+{"id": "fuzz-0464", "cmd": "draw_ellipse", "args": [0.5, -37.0, 23, 16, 70.0, 19, false, 30.0, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0465", "cmd": "draw_line", "args": [32.011, 0.0, 77.7, -33.0, "WHITE", 98, 300, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0466", "cmd": "draw_polygon", "args": [72.365, 74.8, 9, 6, "24", 13, -248.58022617018605], "hex": ""}
+{"id": "fuzz-0467", "cmd": "draw_rectangle", "args": [31, 5.0, 14, 49, "103", 60, false, 800, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0468", "cmd": "plot", "args": [0, -16.0, "99", 87], "hex": "0100000000630057ffffffff000000000000000000"}
+{"id": "fuzz-0469", "cmd": "draw_arc", "args": [63.4, "12", 22.0, -32.0, 0.8573184374547282, 9], "hex": "073f000c003400000039795b3f090064ffffffff0000000000"}
+{"id": "fuzz-0470", "cmd": "draw_circle", "args": [2.0, 61.211, 1, 60], "hex": "0402003d0001003c0064ffffffff0000000000"}
+{"id": "fuzz-0471", "cmd": "draw_ellipse", "args": [95.0, 11.5, 0, 28, "WHITE"], "hex": ""}
+{"id": "fuzz-0472", "cmd": "draw_line", "args": [85.837, 65, 23.9, 48.154, 72], "hex": "023f003b0018003000480064ffffffff00000000"}
+{"id": "fuzz-0473", "cmd": "draw_polygon", "args": [9.478, 44.0, 15, 3, 10, 20, 65.955842939028, true, null, null], "hex": "0509002c000f00030064e983420a0014ffffffff0001000000"}
+{"id": "fuzz-0474", "cmd": "draw_rectangle", "args": [94.0, 62.6, 26, 37, "23"], "hex": ""}
+{"id": "fuzz-0475", "cmd": "plot", "args": [87.5, "7.9", "black", 16, 3116, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0476", "cmd": "draw_arc", "args": [83.0, 89.56, -0.5, 105.9, -0.8368178257157286, "transparent", 83, true], "hex": ""}
+{"id": "fuzz-0477", "cmd": "draw_circle", "args": [4.1, 28.0, 5, 14.0, 41, true], "hex": "0404001c0005000e0029ffffffff0001000000"}
+{"id": "fuzz-0478", "cmd": "draw_ellipse", "args": [6.0, 10.7, 25, 7, 43, 50, false, 30.0, null, "fade"], "hex": "0606000a00190007000000f0412b0032ffffffff0100000000"}
+{"id": "fuzz-0479", "cmd": "draw_line", "args": [32.0, 57.724, 26.226, 87.507, "Blue"], "hex": "0220003a001f003f00ddff64ffffffff00000000"}
+{"id": "fuzz-0480", "cmd": "draw_polygon", "args": [63.4, 73.6, 17, 9, "WHITE", 78, 63.81166807485272, true, 50, "FADE"], "hex": "053f00490011000900263f7f42feff4e320000000101000000"}
+{"id": "fuzz-0481", "cmd": "draw_rectangle", "args": ["12", 1, 52, 9, 63.6], "hex": "030c00010034000900400064ffffffff00000000"}
+{"id": "fuzz-0482", "cmd": "plot", "args": [97.0, -36.01, "97", 92], "hex": "016100000061005cffffffff000000000000000000"}
+{"id": "fuzz-0483", "cmd": "draw_arc", "args": [77.8, 68.0, 0, 65, 0.9977321017849188, "black"], "hex": ""}
+{"id": "fuzz-0484", "cmd": "draw_circle", "args": [-0.5, 104.0, 5, "sky_blue", 32, false], "hex": ""}
+{"id": "fuzz-0485", "cmd": "draw_ellipse", "args": [2.0, -17.269, 2, 28, "WHITE"], "hex": ""}
+{"id": "fuzz-0486", "cmd": "draw_line", "args": [51.1, 16.633, 37.3, 3.262, 44.3], "hex": "0233001100250003002c0064ffffffff00000000"}
+{"id": "fuzz-0487", "cmd": "draw_polygon", "args": [92.805, 32.692, 31, 8, 54, 57, -252.58193982113983], "hex": "055c0020001f000800fa947cc3360039ffffffff0000000000"}
+{"id": "fuzz-0488", "cmd": "draw_rectangle", "args": [-0.5, -10, 62, 64, 77], "hex": "03000000003e0036004d0064ffffffff00000000"}
+{"id": "fuzz-0489", "cmd": "plot", "args": [30.164, 52.0, 20, 30], "hex": "011e00340014001effffffff000000000000000000"}
+{"id": "fuzz-0490", "cmd": "draw_arc", "args": [4.0, 92.9, 64, 70000, 0.5449552485697571, 67.0], "hex": ""}
+{"id": "fuzz-0491", "cmd": "draw_circle", "args": [52.0, 1, 0, 7.7], "hex": ""}
+{"id": "fuzz-0492", "cmd": "draw_ellipse", "args": [24.0, 77.0, 26, 25, "lavender", 36, false, 30.0, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0493", "cmd": "draw_line", "args": [65, 83.3, 1, -31.0, 33, 73], "hex": "0236003f0012000000210049ffffffff00000000"}
+{"id": "fuzz-0494", "cmd": "draw_polygon", "args": [106.8, -0.5, 14, 4, "Blue"], "hex": ""}
+{"id": "fuzz-0495", "cmd": "draw_rectangle", "args": [85.333, 10.5, 42, 3, 68.8], "hex": ""}
+{"id": "fuzz-0496", "cmd": "plot", "args": [70.605, "7.9", "88"], "hex": "01460007005800ffffffffff000000000000000000"}
+{"id": "fuzz-0497", "cmd": "draw_arc", "args": [1, -6.601, -10, -35.491, 0.27175315524682864, "63", 50, true], "hex": ""}
+{"id": "fuzz-0498", "cmd": "draw_circle", "args": [65, 63, 1, 5, 49, true], "hex": ""}
+{"id": "fuzz-0499", "cmd": "draw_ellipse", "args": [-37.0, -3.0, 28, 19, 83, 85, false, 30.0, null, "bogus"], "hex": ""}
+{"id": "fuzz-0500", "cmd": "draw_line", "args": [-10, 70000, 10.5, 8.0, "33", 6], "hex": "020a003f000a000800210006ffffffff00000000"}
+{"id": "fuzz-0501", "cmd": "draw_polygon", "args": [95.2, 63, 25, 5, "black", 97, 30.259767747246038, true, 50, null], "hex": ""}
+{"id": "fuzz-0502", "cmd": "draw_rectangle", "args": [-29.9, 100, 56, 65, 88.01], "hex": ""}
+{"id": "fuzz-0503", "cmd": "plot", "args": [70000, 31, "Blue", 53, 1638, null], "hex": "01ffff1f00ddff3566060000000000000000000000"}
+{"id": "fuzz-0504", "cmd": "draw_arc", "args": [-31.0, 11.5, 33.2, 14.861, -0.05588858964482801, 0], "hex": "0700000d0021000f006feb64bd000064ffffffff0000000000"}
+{"id": "fuzz-0505", "cmd": "draw_circle", "args": [65.4, -7.9, 30, 76, 66, false], "hex": ""}
+{"id": "fuzz-0506", "cmd": "draw_ellipse", "args": [66.512, 89.0, 25, 32, "red", 51, false, 30.0, 70, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0507", "cmd": "draw_line", "args": [87.338, 51.453, 91.6, 31, -3.3, 41, 300, "bogus"], "hex": ""}
+{"id": "fuzz-0508", "cmd": "draw_polygon", "args": [18.209, 100, 16, 7, 11], "hex": ""}
+{"id": "fuzz-0509", "cmd": "draw_rectangle", "args": [87.0, 3.12, 56, 69, "Blue", 16, true, 800, "bogus"], "hex": ""}
+{"id": "fuzz-0510", "cmd": "plot", "args": [81.3, 35.0, "WHITE", 49, 4861, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0511", "cmd": "draw_arc", "args": [-27.932, 86.605, 3.917, 100.817, 0.16314306023128466, "nope", 62, true], "hex": ""}
+{"id": "fuzz-0512", "cmd": "draw_circle", "args": [62.6, 29.0, 1, 48.8], "hex": "043e001d000100310064ffffffff0000000000"}
+{"id": "fuzz-0513", "cmd": "draw_ellipse", "args": [58.006, -3.7, 30, 27, 18.0, 40, false, 106.9796531544593], "hex": ""}
+{"id": "fuzz-0514", "cmd": "draw_line", "args": [24.426, 64.0, -10.477, -12.0, 25, 24], "hex": "0218003f0000000b00190018ffffffff00000000"}
+{"id": "fuzz-0515", "cmd": "draw_polygon", "args": [104.306, -38.0, 27, 6, "black", 22, -336.5325794543369], "hex": ""}
+{"id": "fuzz-0516", "cmd": "draw_rectangle", "args": [59.255, 68.325, 29, 46, 25, 75, false, 800, "fade"], "hex": ""}
+{"id": "fuzz-0517", "cmd": "plot", "args": [61.784, 76.0, "sky_blue", 14, 1512, null], "hex": "013d004c00dfff0ee8050000000000000000000000"}
+{"id": "fuzz-0518", "cmd": "draw_arc", "args": [-0.5, -9.1, -27.719, 52.854, -0.5357329831190345, 14, 44, false, null, "'fade'"], "hex": ""}
+{"id": "fuzz-0519", "cmd": "draw_circle", "args": [-38.041, 87.0, 0, 29], "hex": ""}
+{"id": "fuzz-0520", "cmd": "draw_ellipse", "args": [67.8, 83.7, 30, 23, "WHITE"], "hex": "06430053001e00170000000000feff64ffffffff0000000000"}
+{"id": "fuzz-0521", "cmd": "draw_line", "args": [71.0, 64, 20.9, -5.479, "red", 97, 1200.0, "\"instant\""], "hex": "023f00350019000000f9ff61b004000000000000"}
+{"id": "fuzz-0522", "cmd": "draw_polygon", "args": [-10, 43.848, 34, 8, "sky_blue"], "hex": ""}
+{"id": "fuzz-0523", "cmd": "draw_rectangle", "args": [10.5, "12", 27, 18, 54, 45, true], "hex": "030a000c001b00120036002dffffffff00010000"}
+{"id": "fuzz-0524", "cmd": "plot", "args": [77.0, 54.23, "red", 8], "hex": "014d003600f9ff08ffffffff000000000000000000"}
+{"id": "fuzz-0525", "cmd": "draw_arc", "args": [-27.0, 102.0, -2.425, -26.3, -1.3893681433279066, "lavender"], "hex": ""}
+{"id": "fuzz-0526", "cmd": "draw_circle", "args": [78.0, -25.0, 70, 61.5, 20, true, 100, "instant"], "hex": ""}
+{"id": "fuzz-0527", "cmd": "draw_ellipse", "args": [64, 1, 30, 36, 10.3, 43, false, 30.0, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0528", "cmd": "draw_line", "args": [10.543, -10, 60.0, -0.5, "nope", 89], "hex": ""}
+{"id": "fuzz-0529", "cmd": "draw_polygon", "args": [19.5, 0.949, 35, 3, "73", 14, 104.85383550573437], "hex": "0513000000230003002ab5d14249000effffffff0000000000"}
+{"id": "fuzz-0530", "cmd": "draw_rectangle", "args": [-15.0, 85.593, 23, 53, 2.0, 1, false, 800, "'fade'"], "hex": ""}
+{"id": "fuzz-0531", "cmd": "plot", "args": [63, 49.0, 50, 6, 1739, "\"instant\""], "hex": "013f003100320006cb060000000000000000000000"}
+{"id": "fuzz-0532", "cmd": "draw_arc", "args": [19.451, -22.3, 73.671, 18.37, 1.8037125861315366, "black"], "hex": "07310000003f000a000ee0e63fffff64ffffffff0000000000"}
+{"id": "fuzz-0533", "cmd": "draw_circle", "args": [16.089, 76.775, 5, 63, 82, true], "hex": ""}
+{"id": "fuzz-0534", "cmd": "draw_ellipse", "args": [-32.4, -23.0, 2, 3, 62, 5, false, 30.0, 70, "bogus"], "hex": ""}
+{"id": "fuzz-0535", "cmd": "draw_line", "args": [-39.5, -15.0, 92.0, 65, "transparent"], "hex": "02000009003f002f00d4ff64ffffffff00000000"}
+{"id": "fuzz-0536", "cmd": "draw_polygon", "args": [11.5, 22.72, 20, 7, "nope"], "error": "ValueError"}
+{"id": "fuzz-0537", "cmd": "draw_rectangle", "args": [15.0, 32.7, 46, 11, 65], "hex": "030f0020002e000b00410064ffffffff00000000"}
+{"id": "fuzz-0538", "cmd": "plot", "args": [66.934, 49.0, 7.0], "hex": "01420031000700ffffffffff000000000000000000"}
+{"id": "fuzz-0539", "cmd": "draw_arc", "args": [-26.8, 56.0, 16.0, 80.508, 1.9289696652272204, "lavender", 70, true], "hex": ""}
+{"id": "fuzz-0540", "cmd": "draw_circle", "args": [63.4, 106.169, 1, "WHITE"], "hex": ""}
+{"id": "fuzz-0541", "cmd": "draw_ellipse", "args": [13.0, -32.767, 2, 18, 2, 24, false, 30.0, null, null], "hex": ""}
+{"id": "fuzz-0542", "cmd": "draw_line", "args": [65.113, -37.1, 64, 67.23, 34, 85, 300, null], "hex": ""}
+{"id": "fuzz-0543", "cmd": "draw_polygon", "args": [31, 61.413, 18, 3, "100", 12, 9.770938091199646, true, null, "FADE"], "error": "ValueError"}
+{"id": "fuzz-0544", "cmd": "draw_rectangle", "args": [33.0, 30.532, 28, 14, -1, 22, false, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0545", "cmd": "plot", "args": [80.658, -31.723, "24"], "hex": "01500000001800ffffffffff000000000000000000"}
+{"id": "fuzz-0546", "cmd": "draw_arc", "args": [-39.1, 93.624, 47.654, 70000, -1.0075806921612722, 79, 41, true], "hex": ""}
+{"id": "fuzz-0547", "cmd": "draw_circle", "args": [26.0, 11.5, 0, "sky_blue", 65, true, null, "\"instant\""], "hex": ""}
+{"id": "fuzz-0548", "cmd": "draw_ellipse", "args": [31, 58.56, 8, 34, "1", 45, false, 30.0, null, null], "hex": "061f003a00080022000000f04101002dffffffff0000000000"}
+{"id": "fuzz-0549", "cmd": "draw_line", "args": [-1, -13.0, 84.7, -0.5, "Blue", 93, null, "FADE"], "hex": ""}
+{"id": "fuzz-0550", "cmd": "draw_polygon", "args": [31, 59.0, 38, 3, "nope", 75, -246.98478302853655], "error": "ValueError"}
+{"id": "fuzz-0551", "cmd": "draw_rectangle", "args": [0, 5.4, 2, -2, 16.3, 46, false, 800, "FADE"], "hex": ""}
+{"id": "fuzz-0552", "cmd": "plot", "args": [62.6, -26.997, 49], "hex": "013e0000003100ffffffffff000000000000000000"}
+{"id": "fuzz-0553", "cmd": "draw_arc", "args": [37.081, "7.9", 47.697, -1.1, 1.0599350460347492, "black"], "hex": "07250008002e000000f4ab873fffff64ffffffff0000000000"}
+{"id": "fuzz-0554", "cmd": "draw_circle", "args": [99.6, 88.0, 1, "2", 38, true, 100, "instant"], "hex": ""}
+{"id": "fuzz-0555", "cmd": "draw_ellipse", "args": [50.6, 63, 6, 33, "transparent"], "hex": "0632003f000600210000000000d4ff64ffffffff0000000000"}
+{"id": "fuzz-0556", "cmd": "draw_line", "args": [69.046, 2.1, 101.0, 8.284, "red", 66], "hex": ""}
+{"id": "fuzz-0557", "cmd": "draw_polygon", "args": [-10.0, 62.6, 33, 9, "transparent"], "hex": ""}
+{"id": "fuzz-0558", "cmd": "draw_rectangle", "args": [-26.926, -5.2, 70, 11, "red", 87, true, null, "'fade'"], "error": "ValueError"}
+{"id": "fuzz-0559", "cmd": "plot", "args": [76.979, 63.4, "sky_blue"], "hex": "014c003f00dfffffffffffff000000000000000000"}
+{"id": "fuzz-0560", "cmd": "draw_arc", "args": [-3.0, 27.0, 62.6, "12", 0.7749869497222783, "Blue", 30, false, 999, "FADE"], "hex": "0700001a003f000c008b65463fddff1ee70300000100000000"}
+{"id": "fuzz-0561", "cmd": "draw_circle", "args": [73.1, -29.6, 1, "41"], "hex": ""}
+{"id": "fuzz-0562", "cmd": "draw_ellipse", "args": [88.2, 104.8, 5, 5, 0, 94, false, -170.66763209855267], "hex": ""}
+{"id": "fuzz-0563", "cmd": "draw_line", "args": [8.0, -32.7, 52.0, "12", 97], "hex": "022800000034000c00610064ffffffff00000000"}
+{"id": "fuzz-0564", "cmd": "draw_polygon", "args": [82.5, 60.0, 3, 8, "nope"], "hex": ""}
+{"id": "fuzz-0565", "cmd": "draw_rectangle", "args": [29.372, -17.3, 60, 38, "sky_blue"], "hex": "031d00000023001500dfff64ffffffff00000000"}
+{"id": "fuzz-0566", "cmd": "plot", "args": [59.128, 28.3, "sky_blue", 57, 4977, "instant"], "hex": "013b001c00dfff3971130000000000000000000000"}
+{"id": "fuzz-0567", "cmd": "draw_arc", "args": [32.834, 38.4, 11.5, "12", 0.49759676861768165, 95, 99, false, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0568", "cmd": "draw_circle", "args": [105.089, -27.7, 1, "Blue"], "hex": ""}
+{"id": "fuzz-0569", "cmd": "draw_ellipse", "args": [108.4, -35.0, 22, 27, 44.62], "hex": ""}
+{"id": "fuzz-0570", "cmd": "draw_line", "args": [55.7, -0.1, 106.0, 93.6, "black", 29, 300, "fade"], "hex": "02380000003f000d00ffff1d2c01000001000000"}
+{"id": "fuzz-0571", "cmd": "draw_polygon", "args": [100.0, 31, 16, 5, 10, 49, 250.61912067096318], "hex": ""}
+{"id": "fuzz-0572", "cmd": "draw_rectangle", "args": [-10.4, 103.0, 60, 33, 19, 51, 1], "hex": ""}
+{"id": "fuzz-0573", "cmd": "plot", "args": [32.384, 70000, 23], "hex": "012000ffff1700ffffffffff000000000000000000"}
+{"id": "fuzz-0574", "cmd": "draw_arc", "args": [-0.5, 85.093, -10, 9.0, 0.6943443281977446, "72", 56, true], "hex": ""}
+{"id": "fuzz-0575", "cmd": "draw_circle", "args": [-10, 0, 30, 24, 17, false], "hex": ""}
+{"id": "fuzz-0576", "cmd": "draw_ellipse", "args": [14.342, -1.0, 32, 26, 17], "hex": ""}
+{"id": "fuzz-0577", "cmd": "draw_line", "args": ["12", -22.894, 35.16, 63.129, "sky_blue", 5, null, "fade"], "hex": "021200000023003f00dfff05ffffffff01000000"}
+{"id": "fuzz-0578", "cmd": "draw_polygon", "args": [107.0, 25.391, 17, 9, "red", 71, 130.59213450245358], "hex": ""}
+{"id": "fuzz-0579", "cmd": "draw_rectangle", "args": [40.0, 89.0, 17, 43, 82], "hex": ""}
+{"id": "fuzz-0580", "cmd": "plot", "args": [-0.5, 30.0, "black"], "hex": "0100001e00ffffffffffffff000000000000000000"}
+{"id": "fuzz-0581", "cmd": "draw_arc", "args": [-30.0, 65, -30.4, 88.0, 1.9362123220924623, 87, 2, true], "hex": ""}
+{"id": "fuzz-0582", "cmd": "draw_circle", "args": [55.0, 70000, 2.7, 80, 9, true], "hex": ""}
+{"id": "fuzz-0583", "cmd": "draw_ellipse", "args": [63, 48.5, 15, 0, 44.0], "hex": "063f0030000f000000000000002c0064ffffffff0000000000"}
+{"id": "fuzz-0584", "cmd": "draw_line", "args": [11.5, 80.8, 31.0, 85.856, 65], "hex": ""}
+{"id": "fuzz-0585", "cmd": "draw_polygon", "args": [86.571, 43.514, 18, 7, 18, 33, 82.31356376007952, true, null, "FADE"], "hex": ""}
+{"id": "fuzz-0586", "cmd": "draw_rectangle", "args": [31, "7.9", 47, 58, "lavender", 32, false, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0587", "cmd": "plot", "args": [10.5, 57.4, 34], "hex": "010a0039002200ffffffffff000000000000000000"}
+{"id": "fuzz-0588", "cmd": "draw_arc", "args": [32.0, -26.733, 54.7, 1.9, 0.9637389525991193, 47, 98, true], "hex": "07350000003700020099b7763f2f0062ffffffff0001000000"}
+{"id": "fuzz-0589", "cmd": "draw_circle", "args": [64, 24.0, 30, 37.0, 11, true], "hex": "04400018001e0025000bffffffff0001000000"}
+{"id": "fuzz-0590", "cmd": "draw_ellipse", "args": [-18.0, 46.049, 21, 23, "lavender"], "hex": ""}
+{"id": "fuzz-0591", "cmd": "draw_line", "args": [70000, -1, -10.0, -31.4, 52, 65, 1200.0, "instant"], "hex": ""}
+{"id": "fuzz-0592", "cmd": "draw_polygon", "args": [18.4, 77.99, 10, 5, "Blue", 11, 137.21188845058322], "hex": ""}
+{"id": "fuzz-0593", "cmd": "draw_rectangle", "args": [56.574, 49.61, 67, 9, "25", 40, true, null, "fade"], "hex": "033800310008000900190028ffffffff01010000"}
+{"id": "fuzz-0594", "cmd": "plot", "args": [102.0, -0.5, "11", 83, 978, "\"instant\""], "hex": "01660000000b0053d2030000000000000000000000"}
+{"id": "fuzz-0595", "cmd": "draw_arc", "args": [2.2, -15.6, 60.2, 22.361, -1.7990752658962084, "red", 11, true], "hex": "071a0000003c0016001948e6bff9ff0bffffffff0001000000"}
+{"id": "fuzz-0596", "cmd": "draw_circle", "args": [44.5, 57.0, 0, "62"], "hex": ""}
+{"id": "fuzz-0597", "cmd": "draw_ellipse", "args": [0, 70000, 8, 22, 12, 0, false, 30.0, 70, "fade"], "hex": ""}
+{"id": "fuzz-0598", "cmd": "draw_line", "args": [13.0, 109.895, 64, -25.0, "transparent"], "hex": "021f003f0037000000d4ff64ffffffff00000000"}
+{"id": "fuzz-0599", "cmd": "draw_polygon", "args": [11.5, 0, 36, 9, "56", 97, 30.66809936163304], "hex": "050b000000240009004458f541380061ffffffff0000000000"}
+{"id": "fuzz-0600", "cmd": "draw_rectangle", "args": [65, 63.8, 15, 6, 76, 10, true, null, null], "hex": ""}
+{"id": "fuzz-0601", "cmd": "plot", "args": [-1, 1.7, "red", 11], "hex": "0100000100f9ff0bffffffff000000000000000000"}
+{"id": "fuzz-0602", "cmd": "draw_arc", "args": [-10, "12", 31, 0, -0.2448167993757182, -2], "error": "ValueError"}
+{"id": "fuzz-0603", "cmd": "draw_circle", "args": [-10, 63.4, 1, "WHITE", 92, false], "hex": ""}
+{"id": "fuzz-0604", "cmd": "draw_ellipse", "args": [13.387, 96.9, 20, 14, "red"], "hex": ""}
+{"id": "fuzz-0605", "cmd": "draw_line", "args": [44.93, 100, -15.052, -0.5, 72.0], "hex": "0217003f0000001900480064ffffffff00000000"}
+{"id": "fuzz-0606", "cmd": "draw_polygon", "args": [77.8, "12", 31, 9, "WHITE", 17, 22.0528325618388, true, 50, "FADE"], "hex": "054d000c001f000900336cb041feff11320000000101000000"}
+{"id": "fuzz-0607", "cmd": "draw_rectangle", "args": [-12.235, 102.5, 30, 38, 81, 85, "no"], "hex": ""}
+{"id": "fuzz-0608", "cmd": "plot", "args": [75.0, 70000, "40", 10, 4815, "fade"], "hex": "014b00ffff28000acf120000010000000000000000"}
+{"id": "fuzz-0609", "cmd": "draw_arc", "args": [100, 64.0, 41.0, 11.5, 1.3047751048942082, "49"], "hex": "073f001f0029000c00df02a73f310064ffffffff0000000000"}
+{"id": "fuzz-0610", "cmd": "draw_circle", "args": [-37.5, 0, 1, 62, 68, true, 100, "'fade'"], "hex": ""}
+{"id": "fuzz-0611", "cmd": "draw_ellipse", "args": [1, 44.6, 27, 29, "red", 18, false, 30.0, 70, "FADE"], "hex": "0601002c001b001d000000f041f9ff12460000000100000000"}
+{"id": "fuzz-0612", "cmd": "draw_line", "args": ["12", 63, 43.7, 65, "75", 27, 1200.0, "instant"], "hex": "020c003f000c003f004b001bb004000000000000"}
+{"id": "fuzz-0613", "cmd": "draw_polygon", "args": [-1, 52.0, 40, 7, 43], "hex": ""}
+{"id": "fuzz-0614", "cmd": "draw_rectangle", "args": [67.6, 100, 62, 27, "red"], "hex": ""}
+{"id": "fuzz-0615", "cmd": "plot", "args": [31, 7.024, "WHITE"], "hex": "011f000700feffffffffffff000000000000000000"}
+{"id": "fuzz-0616", "cmd": "draw_arc", "args": [37.4, 72.0, 94.0, "12", -1.5096115928530955, 56.0, 92, false, null, "instant"], "hex": "072e003f003f002d00f43ac1bf38005cffffffff0000000000"}
+{"id": "fuzz-0617", "cmd": "draw_circle", "args": [1.0, -26.1, 2.7, 75.5, 73, true, 100, null], "hex": ""}
+{"id": "fuzz-0618", "cmd": "draw_ellipse", "args": [65, -1.6, 28, 23, "black", 27, true, 29.14989646130681], "hex": ""}
+{"id": "fuzz-0619", "cmd": "draw_line", "args": [100.8, 21.5, 70000, 70000, "transparent"], "hex": ""}
+{"id": "fuzz-0620", "cmd": "draw_polygon", "args": [63.905, 11.5, 27, 6, "nope"], "error": "ValueError"}
+{"id": "fuzz-0621", "cmd": "draw_rectangle", "args": [-11.177, 12.0, 42, 22, 13.2, 22, false, 800, null], "hex": "0300000c001f0016000d00162003000000000000"}
+{"id": "fuzz-0622", "cmd": "plot", "args": [58.9, 65.5, "Blue"], "hex": "013a004100ddffffffffffff000000000000000000"}
+{"id": "fuzz-0623", "cmd": "draw_arc", "args": [100, 99.0, 79.0, 62.6, 0.6227477063763711, 40, 1, false, 999, "\"instant\""], "hex": ""}
+{"id": "fuzz-0624", "cmd": "draw_circle", "args": [49.1, 31, 5, 52.77, 64, false], "hex": "0431001f000500350040ffffffff0000000000"}
+{"id": "fuzz-0625", "cmd": "draw_ellipse", "args": [64, -33.9, 5, 10, "118", 44, true, 167.91188462183283], "hex": ""}
+{"id": "fuzz-0626", "cmd": "draw_line", "args": [-10, 10.5, 107.4, 103.0, 27, 18, null, "\"instant\""], "hex": "020000120039003f001b0012ffffffff00000000"}
+{"id": "fuzz-0627", "cmd": "draw_polygon", "args": [-18.9, 13.8, 6, 7, "lavender"], "hex": ""}
+{"id": "fuzz-0628", "cmd": "draw_rectangle", "args": [-6.502, -36.0, 42, 30, 88, 63, true], "hex": ""}
+{"id": "fuzz-0629", "cmd": "plot", "args": [-33.599, 64, "lavender", 95], "hex": "0100004000d5ff5fffffffff000000000000000000"}
+{"id": "fuzz-0630", "cmd": "draw_arc", "args": [0, 61.1, -24.0, 98.301, -0.7468178618426338, "sky_blue"], "hex": "0700003d0000003d00752f3fbfdfff64ffffffff0000000000"}
+{"id": "fuzz-0631", "cmd": "draw_circle", "args": [20.8, 21.3, 2.7, "WHITE", 73, false], "hex": "04140015000200feff49ffffffff0000000000"}
+{"id": "fuzz-0632", "cmd": "draw_ellipse", "args": [93.0, -0.5, 8, 18, "sky_blue"], "hex": ""}
+{"id": "fuzz-0633", "cmd": "draw_line", "args": [54.639, 92.288, -6.486, "12", 4.29, 35], "hex": "0220003f0000001500040023ffffffff00000000"}
+{"id": "fuzz-0634", "cmd": "draw_polygon", "args": [-1.903, 45.7, 21, 9, "black", 10, 0.07558874979390895, false, 50, null], "hex": ""}
+{"id": "fuzz-0635", "cmd": "draw_rectangle", "args": [-31.832, 63.4, 46, 58, "110", 34, false, null, "bogus"], "error": "ValueError"}
+{"id": "fuzz-0636", "cmd": "plot", "args": [-3.0, 46.978, 88], "hex": "0100002e005800ffffffffff000000000000000000"}
+{"id": "fuzz-0637", "cmd": "draw_arc", "args": [73.0, -5.7, 64, 49.0, 0.7157384467047998, "104"], "hex": ""}
+{"id": "fuzz-0638", "cmd": "draw_circle", "args": [105.287, 91.011, 0, 53], "hex": ""}
+{"id": "fuzz-0639", "cmd": "draw_ellipse", "args": [0, 58.6, 37, 4, "WHITE"], "hex": "0600003a002500040000000000feff64ffffffff0000000000"}
+{"id": "fuzz-0640", "cmd": "draw_line", "args": [63, 65.0, 31, 10.736, "red", 37, 300, "\"instant\""], "hex": "023e003f001f000b00f9ff252c01000000000000"}
+{"id": "fuzz-0641", "cmd": "draw_polygon", "args": [-30.3, 106.224, 27, 7, "lavender", 84, 195.3249914468837], "hex": ""}
+{"id": "fuzz-0642", "cmd": "draw_rectangle", "args": ["12", 60.919, 33, 32, "WHITE"], "hex": "030c003c0021000400feff64ffffffff00000000"}
+{"id": "fuzz-0643", "cmd": "plot", "args": [16.9, 31, 42.6, 40, 3853, "instant"], "hex": "0110001f002b00280d0f0000000000000000000000"}
+{"id": "fuzz-0644", "cmd": "draw_arc", "args": [79.476, 98.8, 58.0, 4.0, 0.2546871422181689, "transparent", 25, false, null, "FADE"], "hex": "073f001a003a0004005a66823ed4ff19ffffffff0100000000"}
+{"id": "fuzz-0645", "cmd": "draw_circle", "args": [30.292, 100, 2.7, 40], "hex": ""}
+{"id": "fuzz-0646", "cmd": "draw_ellipse", "args": [106.2, -7.0, 38, 21, "WHITE", 71, false, 37.548450477612874], "hex": ""}
+{"id": "fuzz-0647", "cmd": "draw_line", "args": [64.2, -23.0, -24.4, -1.212, "black"], "hex": ""}
+{"id": "fuzz-0648", "cmd": "draw_polygon", "args": [-3.0, 31, 38, 3, 86, 23, 54.259429854608314, true, null, "instant"], "hex": ""}
+{"id": "fuzz-0649", "cmd": "draw_rectangle", "args": [-14.0, 97.7, 43, 20, "red", 95, 0], "hex": ""}
+{"id": "fuzz-0650", "cmd": "plot", "args": [-10, 10.0, 62.0, 63, 2962, "fade"], "hex": "0100000a003e003f920b0000010000000000000000"}
+{"id": "fuzz-0651", "cmd": "draw_arc", "args": [-17.013, 8.601, 0, 77.2, 1.3948130530744636, 92, 10, true], "hex": ""}
+{"id": "fuzz-0652", "cmd": "draw_circle", "args": [31, 102.335, 30, 74, 71, true], "hex": ""}
+{"id": "fuzz-0653", "cmd": "draw_ellipse", "args": [65, 88.0, 10, 22, "73"], "hex": ""}
+{"id": "fuzz-0654", "cmd": "draw_line", "args": [70000, 74.013, 14.091, 20.012, 59], "hex": "023f0014000e0014003b0064ffffffff00000000"}
+{"id": "fuzz-0655", "cmd": "draw_polygon", "args": [55.0, 32.0, 24, 5, 5.6], "hex": "05370020001800050000000000060064ffffffff0000000000"}
+{"id": "fuzz-0656", "cmd": "draw_rectangle", "args": [103.0, 64, 21, 26, 10, 35, "true"], "hex": ""}
+{"id": "fuzz-0657", "cmd": "plot", "args": [-17.7, 88.0, 49.22], "hex": "01000058003100ffffffffff000000000000000000"}
+{"id": "fuzz-0658", "cmd": "draw_arc", "args": [-30.0, 8.5, -39.0, 98.0, -1.6502781961779456, 34.0, 22, true], "hex": ""}
+{"id": "fuzz-0659", "cmd": "draw_circle", "args": [70000, 65, 1, 28], "hex": ""}
+{"id": "fuzz-0660", "cmd": "draw_ellipse", "args": [47.838, 64, 14, 19, 62], "hex": "062f0040000e001300000000003e0064ffffffff0000000000"}
+{"id": "fuzz-0661", "cmd": "draw_line", "args": [107.4, -37.0, -37.649, 100.0, "55"], "hex": "023f00050002003f00370064ffffffff00000000"}
+{"id": "fuzz-0662", "cmd": "draw_polygon", "args": [58.946, -33.49, 30, 9, "lavender", 97, 86.25867025857973, false, 50, "FADE"], "hex": ""}
+{"id": "fuzz-0663", "cmd": "draw_rectangle", "args": [31.0, 51.0, 7, 3, "black", 52, false], "hex": "031f00330007000300ffff34ffffffff00000000"}
+{"id": "fuzz-0664", "cmd": "plot", "args": [87.0, 93.33, "14"], "hex": "0157005d000e00ffffffffff000000000000000000"}
+{"id": "fuzz-0665", "cmd": "draw_arc", "args": [70000, 40.786, -1, 16.3, -1.4216001079816318, "79"], "hex": "073f00100000001000fef6b5bf4f0064ffffffff0000000000"}
+{"id": "fuzz-0666", "cmd": "draw_circle", "args": [70000, 53.093, 70, "Blue", 72, true, 100, "fade"], "hex": ""}
+{"id": "fuzz-0667", "cmd": "draw_ellipse", "args": [102.9, 63, 3, 34, 63, 96, true, -104.7031295901116], "hex": ""}
+{"id": "fuzz-0668", "cmd": "draw_line", "args": [20.0, 15.0, 2.0, 50.875, "transparent"], "hex": "0214000f0002003300d4ff64ffffffff00000000"}
+{"id": "fuzz-0669", "cmd": "draw_polygon", "args": [34.549, -27.4, 30, 8, 2, 16, 53.13660625725914, false, null, "bogus"], "hex": ""}
+{"id": "fuzz-0670", "cmd": "draw_rectangle", "args": [72.0, 98.5, 52, 1, "sky_blue", 63, 1], "hex": ""}
+{"id": "fuzz-0671", "cmd": "plot", "args": [55.0, 31, 77, 34], "hex": "0137001f004d0022ffffffff000000000000000000"}
+{"id": "fuzz-0672", "cmd": "draw_arc", "args": [100, 61.048, 63.4, -20.2, -0.8000567141009784, "nope", 30, false, 999, "FADE"], "hex": ""}
+{"id": "fuzz-0673", "cmd": "draw_circle", "args": [-0.5, 7.0, 70, 43.0, 44, true], "hex": "040000070046002b002cffffffff0001000000"}
+{"id": "fuzz-0674", "cmd": "draw_ellipse", "args": [39.3, 28.0, 20, 22, "black"], "hex": "0627001c001400160000000000ffff64ffffffff0000000000"}
+{"id": "fuzz-0675", "cmd": "draw_line", "args": [46.333, -27.0, 42.0, 12.0, "red", 74, 300, null], "hex": "022b0000002a000c00f9ff4a2c01000000000000"}
+{"id": "fuzz-0676", "cmd": "draw_polygon", "args": [62.6, 0, 12, 8, "Blue", 78, 51.377199458865505, false, null, "instant"], "hex": "053e0000000c00080041824d42ddff4effffffff0000000000"}
+{"id": "fuzz-0677", "cmd": "draw_rectangle", "args": [63.4, 83.0, 1, 32, 41, 20, true], "hex": ""}
+{"id": "fuzz-0678", "cmd": "plot", "args": [-15.1, 86.988, 92.0, 34], "hex": "01000056005c0022ffffffff000000000000000000"}
+{"id": "fuzz-0679", "cmd": "draw_arc", "args": [70000, 11.0, "12", -31.427, -1.4985300453254133, "transparent"], "hex": ""}
+{"id": "fuzz-0680", "cmd": "draw_circle", "args": [10.0, 63, 5, 97], "hex": "040a003f000500610064ffffffff0000000000"}
+{"id": "fuzz-0681", "cmd": "draw_ellipse", "args": [-0.5, -33.0, 36, 18, 74], "hex": ""}
+{"id": "fuzz-0682", "cmd": "draw_line", "args": [-20.8, 49.483, 11.5, 1, 42, 63, 1200.0, "\"instant\""], "hex": "02000012000c0001002a003fb004000000000000"}
+{"id": "fuzz-0683", "cmd": "draw_polygon", "args": [-24.1, -0.5, 11, 4, 101], "hex": ""}
+{"id": "fuzz-0684", "cmd": "draw_rectangle", "args": ["12", 106.3, 15, 21, 99], "hex": ""}
+{"id": "fuzz-0685", "cmd": "plot", "args": [4.3, 95.0, "112", 30, 4176, null], "error": "ValueError"}
+{"id": "fuzz-0686", "cmd": "draw_arc", "args": [100, 10.0, 2.481, -23.0, -1.340635109755309, 28.67, 16, false, 999, null], "hex": ""}
+{"id": "fuzz-0687", "cmd": "draw_circle", "args": [77.2, 15.1, 70, 93, 95, true, 100, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0688", "cmd": "draw_ellipse", "args": [64, 68.0, 33, 5, "115", 86, false, 30.0, null, "\"instant\""], "error": "ValueError"}
+{"id": "fuzz-0689", "cmd": "draw_line", "args": [70000, 101.503, 63.4, 68.0, "transparent", 78], "hex": ""}
+{"id": "fuzz-0690", "cmd": "draw_polygon", "args": [-4.0, 0, 9, 7, "3", 33, 2.2866768647553224, false, 50, "\"instant\""], "hex": ""}
+{"id": "fuzz-0691", "cmd": "draw_rectangle", "args": [16.7, 52.3, 67, 57, 47, 93, false], "hex": "031000340030000c002f005dffffffff00000000"}
+{"id": "fuzz-0692", "cmd": "plot", "args": [1, 75.561, "45", 10], "hex": "0101004b002d000affffffff000000000000000000"}
+{"id": "fuzz-0693", "cmd": "draw_arc", "args": [28.0, 78.0, 28.0, 87.0, 0.44377113957439773, "red"], "hex": ""}
+{"id": "fuzz-0694", "cmd": "draw_circle", "args": [-16.278, 103.919, 2.7, "Blue", 53, false], "hex": ""}
+{"id": "fuzz-0695", "cmd": "draw_ellipse", "args": [-18.0, 1, 27, 16, 92.0, 23, false, 30.0, 70, "bogus"], "hex": ""}
+{"id": "fuzz-0696", "cmd": "draw_line", "args": [10.533, 16.6, 52.0, 4.711, 16, 75], "hex": "020b0011003400050010004bffffffff00000000"}
+{"id": "fuzz-0697", "cmd": "draw_polygon", "args": [62.6, 31.6, 5, 3, 7.7], "hex": "053e001f000500030000000000080064ffffffff0000000000"}
+{"id": "fuzz-0698", "cmd": "draw_rectangle", "args": [54.1, 23.9, 34, 37, 19.0], "hex": "03360017000a002500130064ffffffff00000000"}
+{"id": "fuzz-0699", "cmd": "plot", "args": [101.0, 11.5, "sky_blue", 75, 1872, "'fade'"], "hex": "0165000b00dfff4b50070000010000000000000000"}
+{"id": "batch", "b64": "AQoAFAD5////////AAAAAAAAAAAAAQoAFAAyAFDcBQAAAQAAAAAAAAAAAQUABgAqAP//////AAAAAAAAAAAAAQEAAgAyAP//////AAAAAAAAAAAAAQEAAgBjAP//////AAAAAAAAAAAAAQAA///d////////AAAAAAAAAAAAAgAAAAA/AD8A/v9k/////wAAAAACAAAgAD8AIADn/0v/////AAAAAAIAAAoAPwA0AAMAZPoAAAABAAAAAgAAAgACAAQA+f9k/////wAAAAADBQAFAAoACADp/2T/////AAEAAAMAAAAABQAFAPn/PP////8AAQAAAwEAAgADAAQADAAo0AcAAAEAAAAEIAAgAAoA4P9k/////wABAAAABEYAIAAHAOD/ZP////8AAAAAAAUgACAADAAGAAAAtEHY/1r0AQAAAQEAAAAFCgAKAAUAAwDNzMw9BwBk/////wAAAAAABiAAFAAPAAgAAAA0Qu3/UP////8AAAAAAAYgABQAAAAEAAAAAADt/2T/////AAAAAAAHBQAFADIAKACamZk++f9k/////wAAAAAABwAABwA/ACEAmpnZvxYAN2QAAAABAQAAAAQgACAABQD5////////AAAAAAAEIAAgAAUA+f///////wAAAAAAAgEAAQAFAAUA+f8y/////wAAAAAEOgBdAB4AGwBk/////wAAAAAAAzsAEgAFAC4A1P9E/////wABAAABAAAAABAAGmcFAAABAAAAAAAAAAAEZABEAEYA//8u/////wAAAAAABjoAJAAKAAsAAADwQf7/DkYAAAAAAAAAAAI/ADsAPwA8AC0AL/////8AAAAABUgAEAATAAYAzRJKQ1YAQP////8AAAAAAAMAAD0AEAADAPn/Tv////8AAQAAAQoAAAAMAD3/////AAAAAAAAAAAABCkAAAABAN3/ZP////8AAAAAAAULAAsAHQAFAAAAAAAaAGT/////AAAAAAABBwBkAPn/EzsMAAABAAAAAAAAAAAEHQBZAB4AXABFZAAAAAABAAAAAgAAHwA/ADgAPQAl/////wAAAAADGQANAAMAGAAJAGT/////AAAAAAFMAAAA/v///////wAAAAAAAAAAAAc/ABIAAQAcAGcxfr75/0X/////AAAAAAADDAABACIAJgDV/2T/////AAAAAAEVADUAXAAN/////wAAAAAAAAAAAAcdAD8APAAAAFIzTb42AFL/////AQAAAAACPwA2AB8AAAAHAF0sAQAAAQAAAAETAEAAFgBe/////wAAAAAAAAAAAAcQADwAEwAAAJp1yz/f/x//////AAEAAAAEJwAAAAIALgAl/////wAAAAAAAQAAIgAUAE4rAAAAAQAAAAAAAAAABycAPwAZAC8AXmzuvmMAGv////8AAQAAAAIaAD8ABAA7APn/ZP////8AAAAAAQAAKQDd/zfrEQAAAQAAAAAAAAAAByUAEAAMAAAAxaDavhgAZP////8AAAAAAAUMAAAAAQAJAAAAAAAkAGT/////AAAAAAAHIwA/AD8AEQADq4i/TQAZ/////wAAAAAABGQAEwBGAN//Xv////8AAAAAAAYgABkABAAeAKcbGEMsAE//////AAEAAAACCgAlADAAFwAnADr/////AAAAAAMvAAAAEQAXAEwAYSADAAAAAAAAAWgAUwA5AAdfAAAAAQAAAAAAAAAABD8APgAFAEwAZP////8AAAAAAAYAAEIACQAWAEc3/UH+/yr/////AAEAAAAGCgAJACEAKABAxCtD3/8i/////wAAAAAAAj8AAgAAAAkA1f9i/////wAAAAADFgAAACgADQBWABT/////AAEAAAcAABwADAAXAHcGhT4FAAv/////AQAAAAAFVgA+ACAACQAAAAAAIQBk/////wAAAAAAAzIABwAOACEAFwBgIAMAAAAAAAABCwAXADsA//////8AAAAAAAAAAAAHPwAKABEAAAD4R4E/YQAS/////wAAAAAABB8ARAAFAAgAZP////8AAAAAAAYAADYAGgAWAAAAAABMAGT/////AAAAAAADAAAsABMAFAASAGT/////AAAAAAEKACoALwAc/////wAAAAAAAAAAAAcAAB0APwAeAOuKwz9TAFznAwAAAQAAAAAEGABYAB4A3f9k/////wAAAAAAAwcAAAAWAAwA1P9k/////wAAAAABPwBkAEEAKP////8AAAAAAAAAAAAEPwA+AAUAMgAG/////wAAAAAAAQAAPwAgABz/////AAAAAAAAAAAAAgwAAAATAD8ADQBk/////wAAAAABYgAAAEQA//////8AAAAAAAAAAAAHJQAHABwAAACzHfs/IABX/////wAAAAAAAgwAOQAMAAAAVwBk/////wAAAAADFgA2AA8ACgDf/2P/////AQAAAAEsAAAA1P8YrhIAAAAAAAAAAAAAAAcfAB4AIAAKAN2foD5LAAvnAwAAAQAAAAAGUwAKABsAGQAAAPBBEgBQRgAAAAEAAAAAAj8AFQA/ABUA//9k/////wAAAAABKAABAD4AU/////8AAAAAAAAAAAACPwA9AAAAGgBjACKwBAAAAAAAAAEAAB0A/v///////wAAAAAAAAAAAAcfADgAHwA/AMXATj9IAFL/////AAEAAAAELgAAAAUA1f9aZAAAAAEBAAAAAU0ACQBYABn/////AAAAAAAAAAAABx8ANgAmAD8Aa5/yv0oAKucDAAAAAAAAAAI7AAMAOQABANX/ZP////8AAAAAAwoAOgAgAAYAIwBk/////wAAAAABFAABADkABM8JAAABAAAAAAAAAAAHBgAVAAAAGgA9+4i/VABA5wMAAAAAAAAABgAAHwAEAAcA813Swl0AYP////8AAAAAAAICAD8ADAAJAN//MrAEAAABAAAAAR8AAABGABPABAAAAQAAAAAAAAAABg4AFgAAAAcAAAAAAGAAZP////8AAAAAAAI3AD8APgAAAFUAIP////8AAAAABToALAACAAYArWJNQh4AYv////8AAAAAAAELAD8ADwD//////wAAAAAAAAAAAAI/ABMAAAA8ADAAZP////8AAAAAAR8AWQDU/1T/////AAAAAAAAAAAABkAAQQATAB8AP5nOQvn/Ff////8AAAAAAAI/AB4AAAA7ABAAX/////8AAAAAAwAAAAALAAEAPgAAIAMAAAEBAAABQQALADYARv////8AAAAAAAAAAAACPwAdABcAPwA0AB3/////AAAAAAMAAAAAQAAqAPn/B/////8AAQAAAQAAAAAHAD//////AAAAAAAAAAAABz8ACAAHABUA7zK7P93/ZP////8AAAAAAAUUABEACwADAJqmqsP//0H/////AAAAAAADAAABAEAACAAjACb/////AAEAAAEAAEEAQQA5/////wAAAAAAAAAAAActAAwAFgA/ABvIbj8UAAb/////AAAAAAAGAQApAAgAGwAK6GHC3f8Y/////wAAAAAAAgoAEgAAADcAVwBk/////wAAAAADAAALAD4ANQABAET/////AAEAAAFFAAAAGQAVJA4AAAAAAAAAAAAAAAQAABcAAQDf/1//////AAEAAAAGFQAAABoAIAAAAPBBUgAtRgAAAAEAAAAAAiwABwAbAAAA1f9k/////wAAAAAFPwAAAAYACQCljB1CIgBRMgAAAAABAAAAAQYACgA4AP//////AAAAAAAAAAAABQoAPQASAAMA1ZmTwj0AD/////8AAAAAAAFQAB0ATwBR/////wAAAAAAAAAAAAc/AD8APwA/AKaw8r9DAGT/////AAAAAAAGPwArAB8AFwAAAAAAHwBk/////wAAAAAAAT8AAAAtADYKDgAAAQAAAAAAAAAABwAAMwABADUAsuHTv0cAVP////8AAQAAAAZCAAUAAgAPAAPoMEIfACb/////AAAAAAAFHAAAABsABgAAAAAASwBk/////wAAAAAAAUYARAAOAP//////AAAAAAAAAAAABkYAAQARAAAApbkQQ93/Wf////8AAQAAAAViABkAJgAHAL5cqsJRADj/////AAAAAAADGgAAAAMAEgBMAAv/////AAEAAAE7AEoA1P///////wAAAAAAAAAAAAc6AAoAPwA/AH/PBj/d/2T/////AAAAAAAGHwAAABAABgAAAAAABwBk/////wAAAAAAAT4AAAA3AP//////AAAAAAAAAAAABkAALQAjABQAAAAAAAEAZP////8AAAAAAAIMAAEAAAAWAPn/ZP////8AAAAABUAAAAAEAAQA08lRww0AFv////8AAAAAAAFMAB8A1P9L/////wAAAAAAAAAAAActAD8APwAvANNenD/U/2T/////AAAAAAAGPAAoAB4AAgAD9cJC3f8Y/////wABAAAAAhUAPwAAACYAYgBk/////wAAAAAFHwAsABwACAAAAAAAHQBk/////wAAAAAAARIAPwBKAD//////AAAAAAAAAAAABwAAHgAhAD8AdICEvigAFv////8AAQAAAAQaAEEAHgDV/2T/////AAAAAAAGHgAqAAEAHgAAAPBBCwBcRgAAAAAAAAAAAg8APwA/AAcA+f9dLAEAAAEAAAAFHwA7ABQAAwAAAAAAXABk/////wAAAAAABhYAPwAGABUABoY5QjgATv////8AAAAAAAI9AD8AFgAMAP7/Xv////8AAAAAAwwABwA0ADkAQAAK/////wABAAABAAAAANX/GGoNAAABAAAAAAAAAAAHBwASAAQAAAAZTfO9DwBk/////wAAAAAAAgAAMwAjAAAARwAp/////wAAAAABZAAMACIAFf////8AAAAAAAAAAAAHPwAdAD8AHwB8J/E/UABd/////wABAAAAAx8ACgAHACsAEgABIAMAAAAAAAABIABeAN//Lf////8AAAAAAAAAAAAHPwAxAAQAAABbC50/1P9k/////wAAAAAABD4ABAAFANX/ZP////8AAAAAAAIMAAAAJQA/AN3/ZP////8AAAAAAT8AUQBZABv/////AAAAAAAAAAAABwEAPQAhAD8Atx28PgwAZP////8AAAAAAAYAAEkAJgASAM637METAAr/////AAAAAAAFRQAtACEABQAAAAAAAQBk/////wAAAAAAAUAASQD5////////AAAAAAAAAAAABwAAJAADAD8ALVJiPx8AXecDAAAAAAAAAAQFADUABQD//2T/////AAAAAAABAAA/AEQAUsUFAAAAAAAAAAAAAAAHHwA/AD8ADQAQxVW/YwAd5wMAAAAAAAAABgAANQAZABAAlyagwiIAOf////8AAAAAAAIIAAAAIAA/AEEAZP////8AAAAAAgwAHAAKAD8AGABk/////wAAAAABCgBBADsADEQEAAAAAAAAAAAAAAAHKwAyABQAMQAN+4G/+f8x/////wABAAAAAigAKwA0AAwAGgAt/////wAAAAABZAABAP7/O0QIAAAAAAAAAAAAAAAGAQAPAAsAAQB4obVC1P9N/////wABAAAAAwcABwA5ABIAEQBk/////wAAAAABBABtABQAU/////8AAAAAAAAAAAAHGAAAAD8ADgD20qS9JgBk/////wAAAAAABFoABwBGAAoATv////8AAQAAAAYAADkAHQAfADs9/8L+/1X/////AAEAAAABAAAAAF8A//////8AAAAAAAAAAAAHFQAIAD8APACgT5M/TwBk/////wAAAAAABAcAAQAFANX/Hf////8AAQAAAAIAACkABwA+ACcAN7AEAAAAAAAAAQYAHABMAP//////AAAAAAAAAAAABQAADAAOAAkAAAAAAFIAZP////8AAAAAAAcAAAoAMAA/AF3cMj8vAGT/////AAAAAAAEAQAHAAIAUQAm/////wABAAAAAwoAAAACABsA+f9k/////wAAAAABWAAAAE0A//////8AAAAAAAAAAAACBgAGAD8AJQAYACH/////AAAAAAM6ACoABgAWAN3/Xv////8BAQAAATUAQADV/wD/////AAAAAAAAAAAAAQcAIgALABkEDwAAAQAAAAAAAAAABwIAAAAAAAUA+b1RPzsAA/////8AAAAAAAIgAAEAGAAAAPn/W7AEAAAAAAAABxUAAAAKAAgAvPiSPwoAE/////8AAAAAAAI/ADgAIQAMANT/ZP////8AAAAAAjwAPwA/ADoA/v9k/////wAAAAABQQAAAPn///////8AAAAAAAAAAAAGEAAAACQAHgAAAPBBTABDRgAAAAAAAAAABR8AAQAFAAYA2+ZVQVIAL/////8AAAAAAAEfADgANQASoRIAAAEAAAAAAAAAAAFjAA0A3/8p/////wAAAAAAAAAAAAcWAAAAPwAqAJb3FT4AAGT/////AAAAAAABTABBANT/I80GAAABAAAAAAAAAAAHPwADAAEALwBm/tM/3f8P/////wAAAAAABgEAQQASABQAAADwQSsASP////8AAAAAAAIAABYAAQA/AAYAX/////8AAAAAATwANgBdADz/////AAAAAAAAAAAABwAABgA/ACkAG4qqvV8AWv////8BAAAAAAMNAA4AEwAyAAgANf////8AAQAAAQAAAQBTAP//////AAAAAAAAAAAABwAAIQAIAAAA5pzwvxAAZP////8AAAAAAAIAAAoAFQAAACsAGP////8AAAAAATEAUQA3AFn/////AAAAAAAAAAAABgkAPwAUAB4AAAAAAD8AZP////8AAAAAAAIjAD8AAAADAEUAObAEAAAAAAAAAVMABgAxAE3/////AAAAAAAAAAAABAoAOwABAN//ZP////8AAAAAAAYVAAgAAAADABDO+UEpACj/////AAEAAAABIQAAAP7/OQEAAAAAAAAAAAAAAAABAAAAAGMAV/////8AAAAAAAAAAAAHPwAMADQAAAA5eVs/CQBk/////wAAAAAABAIAPQABADwAZP////8AAAAAAAI/ADsAGAAwAEgAZP////8AAAAABQkALAAPAAMAZOmDQgoAFP////8AAQAAAAQEABwABQAOACn/////AAEAAAAGBgAKABkABwAAAPBBKwAy/////wEAAAAAAiAAOgAfAD8A3f9k/////wAAAAAFPwBJABEACQAmP39C/v9OMgAAAAEBAAAAAwwAAQA0AAkAQABk/////wAAAAABYQAAAGEAXP////8AAAAAAAAAAAACMwARACUAAwAsAGT/////AAAAAAVcACAAHwAIAPqUfMM2ADn/////AAAAAAADAAAAAD4ANgBNAGT/////AAAAAAEeADQAFAAe/////wAAAAAAAAAAAAI2AD8AEgAAACEASf////8AAAAAAUYABwBYAP//////AAAAAAAAAAAAAgoAPwAKAAgAIQAG/////wAAAAAB//8fAN3/NWYGAAAAAAAAAAAAAAAHAAANACEADwBv62S9AABk/////wAAAAAABD4AHQABADEAZP////8AAAAAAAIYAD8AAAALABkAGP////8AAAAAAT0ATADf/w7oBQAAAAAAAAAAAAAABkMAUwAeABcAAAAAAP7/ZP////8AAAAAAAI/ADUAGQAAAPn/YbAEAAAAAAAAAwoADAAbABIANgAt/////wABAAABTQA2APn/CP////8AAAAAAAAAAAAFEwAAACMAAwAqtdFCSQAO/////wAAAAAAAT8AMQAyAAbLBgAAAAAAAAAAAAAABzEAAAA/AAoADuDmP///ZP////8AAAAAAAIAAAkAPwAvANT/ZP////8AAAAAAw8AIAAuAAsAQQBk/////wAAAAABQgAxAAcA//////8AAAAAAAAAAAABUAAAABgA//////8AAAAAAAAAAAAGHwA6AAgAIgAAAPBBAQAt/////wAAAAAAAT4AAAAxAP//////AAAAAAAAAAAAByUACAAuAAAA9KuHP///ZP////8AAAAAAAYyAD8ABgAhAAAAAADU/2T/////AAAAAAABTAA/AN////////8AAAAAAAAAAAAHAAAaAD8ADACLZUY/3f8e5wMAAAEAAAAAAigAAAA0AAwAYQBk/////wAAAAADHQAAACMAFQDf/2T/////AAAAAAE7ABwA3/85cRMAAAAAAAAAAAAAAAI4AAAAPwANAP//HSwBAAABAAAAASAA//8XAP//////AAAAAAAAAAAAAhIAAAAjAD8A3/8F/////wEAAAABAAAeAP////////8AAAAAAAAAAAAGPwAwAA8AAAAAAAAALABk/////wAAAAAAAQoAOQAiAP//////AAAAAAAAAAAABzUAAAA3AAIAmbd2Py8AYv////8AAQAAAARAABgAHgAlAAv/////AAEAAAADOAAxAAgACQAZACj/////AQEAAAFmAAAACwBT0gMAAAAAAAAAAAAAAAcaAAAAPAAWABlI5r/5/wv/////AAEAAAACHwA/ADcAAADU/2T/////AAAAAAULAAAAJAAJAERY9UE4AGH/////AAAAAAABAAABAPn/C/////8AAAAAAAAAAAACFwA/AAAAGQBIAGT/////AAAAAAVNAAwAHwAJADNssEH+/xEyAAAAAQEAAAABSwD//ygACs8SAAABAAAAAAAAAAAHPwAfACkADADfAqc/MQBk/////wAAAAAABgEALAAbAB0AAADwQfn/EkYAAAABAAAAAAIMAD8ADAA/AEsAG7AEAAAAAAAAAR8ABwD+////////AAAAAAAAAAAABy4APwA/AC0A9DrBvzgAXP////8AAAAAAAMAAAwAHwAWAA0AFiADAAAAAAAAAToAQQDd////////AAAAAAAAAAAABDEAHwAFADUAQP////8AAAAAAAIAABIAOQA/ABsAEv////8AAAAAAQAAQADV/1//////AAAAAAAAAAAABwAAPQAAAD0AdS8/v9//ZP////8AAAAAAAQUABUAAgD+/0n/////AAAAAAACIAA/AAAAFQAEACP/////AAAAAAEAAC4AWAD//////wAAAAAAAAAAAAYAADoAJQAEAAAAAAD+/2T/////AAAAAAACPgA/AB8ACwD5/yUsAQAAAAAAAAMMADwAIQAEAP7/ZP////8AAAAAARAAHwArACgNDwAAAAAAAAAAAAAABz8AGgA6AAQAWmaCPtT/Gf////8BAAAAAAEAAAoAPgA/kgsAAAEAAAAAAAAAAAI/ABQADgAUADsAZP////8AAAAABTcAIAAYAAUAAAAAAAYAZP////8AAAAAAAEAAFgAMQD//////wAAAAAAAAAAAAYvAEAADgATAAAAAAA+AGT/////AAAAAAACPwAFAAIAPwA3AGT/////AAAAAAMfADMABwADAP//NP////8AAAAAAVcAXQAOAP//////AAAAAAAAAAAABz8AEAAAABAA/va1v08AZP////8AAAAAAAIUAA8AAgAzANT/ZP////8AAAAAATcAHwBNACL/////AAAAAAAAAAAABAAABwBGACsALP////8AAQAAAAYnABwAFAAWAAAAAAD//2T/////AAAAAAACKwAAACoADAD5/0osAQAAAAAAAAU+AAAADAAIAEGCTULd/07/////AAAAAAABAABWAFwAIv////8AAAAAAAAAAAAECgA/AAUAYQBk/////wAAAAAAAgAAEgAMAAEAKgA/sAQAAAAAAAADEAA0ADAADAAvAF3/////AAAAAAEBAEsALQAK/////wAAAAAAAAAAAAILABEANAAFABAAS/////8AAAAABT4AHwAFAAMAAAAAAAgAZP////8AAAAAAAM2ABcACgAlABMAZP////8AAAAAAWUACwDf/0tQBwAAAQAAAAAAAAAA"}

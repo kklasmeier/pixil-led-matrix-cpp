@@ -1,0 +1,66 @@
+# Front View Pendulums - True front view looking at pendulums swinging toward/away
+# Pendulums stacked vertically with different string lengths.
+# High FPS for fluid arcs; small v_dt keeps the swing slow and realistic.
+
+throttle(0)
+fps(60)
+
+clear()
+
+# Parameters
+v_num_pendulums = 8
+v_time = 0
+v_mount_x = 32
+v_sync_cycle = 40
+# Sim step per frame — was 0.06 (too zippy). 0.014 was too languid; this sits in between.
+v_dt = 0.04
+v_max_angle = 1.1
+
+# Pendulum arrays
+create_array(v_pendulum_x, 8, numeric)
+create_array(v_pendulum_y, 8, numeric)
+create_array(v_string_length, 8, numeric)
+create_array(v_periods, 8, numeric)
+create_array(v_colors, 8, numeric)
+
+# Initialize pendulums - with synchronized periods for convergence
+for v_i in (0, 7, 1)
+    v_string_length[v_i] = 50 - v_i * 5
+    # Each pendulum completes exactly (51 + i) swings in v_sync_cycle time
+    v_periods[v_i] = v_sync_cycle / (51 + v_i)
+    v_colors[v_i] = 65 + v_i * 3
+endfor v_i
+
+while 1 == 1 then
+    begin_frame
+        draw_rectangle(30, 5, 5, 3, 40, 80, true)
+        plot(v_mount_x, 8, 90, 100)
+
+        for v_i in (0, 7, 1)
+            v_swing_angle = sin(v_time / v_periods[v_i]) * v_max_angle
+
+            v_pendulum_x[v_i] = v_mount_x + sin(v_swing_angle) * v_string_length[v_i]
+            v_pendulum_y[v_i] = 8 + cos(v_swing_angle) * v_string_length[v_i]
+
+            draw_line(v_mount_x, 8, v_pendulum_x[v_i], v_pendulum_y[v_i], gray, 25)
+            draw_circle(v_pendulum_x[v_i], v_pendulum_y[v_i], 2, v_colors[v_i], 90, true)
+        endfor v_i
+
+        v_sync_factor = 0
+        for v_i in (0, 7, 1)
+            v_sync_factor = v_sync_factor + cos(v_time / v_periods[v_i])
+        endfor v_i
+        v_sync_factor = abs(v_sync_factor)
+
+        if v_sync_factor > 6 then
+            v_glow_intensity = (v_sync_factor - 6) * 15
+            if v_glow_intensity > 80 then
+                v_glow_intensity = 80
+            endif
+            draw_circle(32, 3, 3, 95, v_glow_intensity, true)
+        endif
+    end_frame
+    sync_queue
+
+    v_time = v_time + v_dt
+endwhile

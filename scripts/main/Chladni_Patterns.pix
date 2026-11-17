@@ -1,0 +1,80 @@
+import chladni
+
+# Chladni Patterns — native particle step / NumPy path
+
+fps(60)
+
+v_num_particles = 75
+v_frames_per_mode = 350
+v_num_modes = 12
+v_scale = 0.09817477
+
+create_array(v_px, v_num_particles, numeric)
+create_array(v_py, v_num_particles, numeric)
+create_array(v_mode_n, v_num_modes, numeric)
+create_array(v_mode_m, v_num_modes, numeric)
+
+v_mode_n[0] = 1
+v_mode_m[0] = 2
+v_mode_n[1] = 2
+v_mode_m[1] = 3
+v_mode_n[2] = 3
+v_mode_m[2] = 4
+v_mode_n[3] = 2
+v_mode_m[3] = 5
+v_mode_n[4] = 4
+v_mode_m[4] = 5
+v_mode_n[5] = 3
+v_mode_m[5] = 7
+v_mode_n[6] = 5
+v_mode_m[6] = 6
+v_mode_n[7] = 4
+v_mode_m[7] = 7
+v_mode_n[8] = 6
+v_mode_m[8] = 7
+v_mode_n[9] = 5
+v_mode_m[9] = 8
+v_mode_n[10] = 3
+v_mode_m[10] = 5
+v_mode_n[11] = 4
+v_mode_m[11] = 9
+
+for v_i in (0, v_num_particles - 1, 1)
+    v_px[v_i] = random(2, 61, 0)
+    v_py[v_i] = random(2, 61, 0)
+endfor v_i
+
+while true then
+    for v_current_mode in (0, v_num_modes - 1, 1)
+        v_n = v_mode_n[v_current_mode]
+        v_m = v_mode_m[v_current_mode]
+        print(f"Chladni mode ({v_n}, {v_m})")
+
+        for v_i in (0, v_num_particles - 1, 1)
+            v_px[v_i] = v_px[v_i] + random(-10, 10, 0)
+            v_py[v_i] = v_py[v_i] + random(-10, 10, 0)
+            if v_px[v_i] < 2 then
+                v_px[v_i] = random(2, 30, 0)
+            endif
+            if v_px[v_i] > 61 then
+                v_px[v_i] = random(33, 61, 0)
+            endif
+            if v_py[v_i] < 2 then
+                v_py[v_i] = random(2, 30, 0)
+            endif
+            if v_py[v_i] > 61 then
+                v_py[v_i] = random(33, 61, 0)
+            endif
+        endfor v_i
+
+        v_n_scale = v_n * v_scale
+        v_m_scale = v_m * v_scale
+
+        for v_frame in (0, v_frames_per_mode - 1, 1)
+            begin_frame(false)
+                draw_rectangle(0, 0, 64, 64, dark_gray, 40, false)
+                call chladni.step
+            end_frame
+        endfor v_frame
+    endfor v_current_mode
+endwhile

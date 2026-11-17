@@ -1,0 +1,49 @@
+# Metaballs — field_program / NumPy path
+
+throttle(0)
+fps(60)
+
+v_num_balls = 5
+create_array(v_pos_x, v_num_balls)
+create_array(v_pos_y, v_num_balls)
+create_array(v_vel_x, v_num_balls)
+create_array(v_vel_y, v_num_balls)
+create_array(v_radius, v_num_balls)
+
+for v_i in (0, v_num_balls - 1, 1)
+    v_pos_x[v_i] = random(10, 54, 0)
+    v_pos_y[v_i] = random(10, 54, 0)
+    v_vel_x[v_i] = random(-20, 20, 10) / 10
+    v_vel_y[v_i] = random(-20, 20, 10) / 10
+    v_radius[v_i] = random(8, 16, 0)
+endfor v_i
+
+field_program metaballs {
+    size 64
+    sites v_pos_x, v_pos_y
+    weights v_radius
+    mode formula
+    value {
+        v_sum = sum_sites((weight * weight) / max(dist2, 1))
+    }
+    plot_if v_sum > 1
+    color min(v_sum * 15, 95)
+    opacity 75
+}
+
+while true then
+    begin_frame
+        field_render(metaballs)
+    end_frame
+
+    for v_i in (0, v_num_balls - 1, 1)
+        v_pos_x[v_i] = v_pos_x[v_i] + v_vel_x[v_i]
+        v_pos_y[v_i] = v_pos_y[v_i] + v_vel_y[v_i]
+        if v_pos_x[v_i] < 5 or v_pos_x[v_i] > 59 then
+            v_vel_x[v_i] = -v_vel_x[v_i]
+        endif
+        if v_pos_y[v_i] < 5 or v_pos_y[v_i] > 59 then
+            v_vel_y[v_i] = -v_vel_y[v_i]
+        endif
+    endfor v_i
+endwhile

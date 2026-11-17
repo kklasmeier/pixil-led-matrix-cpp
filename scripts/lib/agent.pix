@@ -1,0 +1,209 @@
+# Chemotaxis. All ten arguments are required. Heading is an 8-way code:
+# 0 E, 1 SE, 2 S, 3 SW, 4 W, 5 NW, 6 N, 7 NE. wrap is 0 or 1.
+# Deposits are added after every agent has moved, then the whole field
+# is clipped to 0..1.5.
+
+def chemotaxis(v_x, v_y, v_h, v_field, v_size, v_sensor, v_step, v_deposit, v_count, v_wrap) {
+    for v_i in (0, v_count - 1, 1)
+        v_h0 = floor(v_h[v_i]) % 8
+
+        v_d = (v_h0 + 7) % 8
+        v_dx = 0
+        v_dy = 0
+        if v_d == 0 or v_d == 1 or v_d == 7 then
+            v_dx = 1
+        endif
+        if v_d == 3 or v_d == 4 or v_d == 5 then
+            v_dx = 0 - 1
+        endif
+        if v_d == 1 or v_d == 2 or v_d == 3 then
+            v_dy = 1
+        endif
+        if v_d == 5 or v_d == 6 or v_d == 7 then
+            v_dy = 0 - 1
+        endif
+        v_sx = v_x[v_i] + v_dx * v_sensor
+        v_sy = v_y[v_i] + v_dy * v_sensor
+        v_ix = floor(v_sx)
+        v_iy = floor(v_sy)
+        if v_wrap != 0 then
+            v_ix = v_ix % v_size
+            v_iy = v_iy % v_size
+        else
+            if v_ix < 0 then
+                v_ix = 0
+            endif
+            if v_ix > v_size - 1 then
+                v_ix = v_size - 1
+            endif
+            if v_iy < 0 then
+                v_iy = 0
+            endif
+            if v_iy > v_size - 1 then
+                v_iy = v_size - 1
+            endif
+        endif
+        v_left = v_field[v_iy * v_size + v_ix]
+
+        v_d = v_h0
+        v_dx = 0
+        v_dy = 0
+        if v_d == 0 or v_d == 1 or v_d == 7 then
+            v_dx = 1
+        endif
+        if v_d == 3 or v_d == 4 or v_d == 5 then
+            v_dx = 0 - 1
+        endif
+        if v_d == 1 or v_d == 2 or v_d == 3 then
+            v_dy = 1
+        endif
+        if v_d == 5 or v_d == 6 or v_d == 7 then
+            v_dy = 0 - 1
+        endif
+        v_sx = v_x[v_i] + v_dx * v_sensor
+        v_sy = v_y[v_i] + v_dy * v_sensor
+        v_ix = floor(v_sx)
+        v_iy = floor(v_sy)
+        if v_wrap != 0 then
+            v_ix = v_ix % v_size
+            v_iy = v_iy % v_size
+        else
+            if v_ix < 0 then
+                v_ix = 0
+            endif
+            if v_ix > v_size - 1 then
+                v_ix = v_size - 1
+            endif
+            if v_iy < 0 then
+                v_iy = 0
+            endif
+            if v_iy > v_size - 1 then
+                v_iy = v_size - 1
+            endif
+        endif
+        v_ahead = v_field[v_iy * v_size + v_ix]
+
+        v_d = (v_h0 + 1) % 8
+        v_dx = 0
+        v_dy = 0
+        if v_d == 0 or v_d == 1 or v_d == 7 then
+            v_dx = 1
+        endif
+        if v_d == 3 or v_d == 4 or v_d == 5 then
+            v_dx = 0 - 1
+        endif
+        if v_d == 1 or v_d == 2 or v_d == 3 then
+            v_dy = 1
+        endif
+        if v_d == 5 or v_d == 6 or v_d == 7 then
+            v_dy = 0 - 1
+        endif
+        v_sx = v_x[v_i] + v_dx * v_sensor
+        v_sy = v_y[v_i] + v_dy * v_sensor
+        v_ix = floor(v_sx)
+        v_iy = floor(v_sy)
+        if v_wrap != 0 then
+            v_ix = v_ix % v_size
+            v_iy = v_iy % v_size
+        else
+            if v_ix < 0 then
+                v_ix = 0
+            endif
+            if v_ix > v_size - 1 then
+                v_ix = v_size - 1
+            endif
+            if v_iy < 0 then
+                v_iy = 0
+            endif
+            if v_iy > v_size - 1 then
+                v_iy = v_size - 1
+            endif
+        endif
+        v_right = v_field[v_iy * v_size + v_ix]
+
+        v_turn = 0
+        v_best = v_ahead
+        if v_left > v_best then
+            v_turn = 0 - 1
+            v_best = v_left
+        endif
+        if v_right > v_best then
+            v_turn = 1
+        endif
+
+        v_h1 = (v_h0 + v_turn) % 8
+        v_d = v_h1
+        v_dx = 0
+        v_dy = 0
+        if v_d == 0 or v_d == 1 or v_d == 7 then
+            v_dx = 1
+        endif
+        if v_d == 3 or v_d == 4 or v_d == 5 then
+            v_dx = 0 - 1
+        endif
+        if v_d == 1 or v_d == 2 or v_d == 3 then
+            v_dy = 1
+        endif
+        if v_d == 5 or v_d == 6 or v_d == 7 then
+            v_dy = 0 - 1
+        endif
+        v_nx = v_x[v_i] + v_dx * v_step
+        v_ny = v_y[v_i] + v_dy * v_step
+        if v_wrap != 0 then
+            v_nx = v_nx % v_size
+            v_ny = v_ny % v_size
+        else
+            v_lim = v_size - 1.0000001
+            if v_nx < 0 then
+                v_nx = 0
+            endif
+            if v_nx > v_lim then
+                v_nx = v_lim
+            endif
+            if v_ny < 0 then
+                v_ny = 0
+            endif
+            if v_ny > v_lim then
+                v_ny = v_lim
+            endif
+        endif
+        v_x[v_i] = v_nx
+        v_y[v_i] = v_ny
+        v_h[v_i] = v_h1
+    endfor v_i
+
+    if v_deposit != 0 then
+        for v_i in (0, v_count - 1, 1)
+            v_ix = floor(v_x[v_i])
+            v_iy = floor(v_y[v_i])
+            if v_wrap != 0 then
+                v_ix = v_ix % v_size
+                v_iy = v_iy % v_size
+            else
+                if v_ix < 0 then
+                    v_ix = 0
+                endif
+                if v_ix > v_size - 1 then
+                    v_ix = v_size - 1
+                endif
+                if v_iy < 0 then
+                    v_iy = 0
+                endif
+                if v_iy > v_size - 1 then
+                    v_iy = v_size - 1
+                endif
+            endif
+            v_at = v_iy * v_size + v_ix
+            v_field[v_at] = v_field[v_at] + v_deposit
+        endfor v_i
+        v_cells = v_size * v_size
+        for v_k in (0, v_cells - 1, 1)
+            if v_field[v_k] < 0 then
+                v_field[v_k] = 0
+            endif
+            if v_field[v_k] > 1.5 then
+                v_field[v_k] = 1.5
+            endif
+        endfor v_k
+    endif
+}

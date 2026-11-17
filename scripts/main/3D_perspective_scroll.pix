@@ -1,0 +1,103 @@
+# 3D Dot Matrix - Endless parallax scroll (background layers)
+# Same five tiled dot layers as before, but now they drift forever.
+# v_mode = 0 : steady scroll in one fixed direction (default: left)
+# v_mode = 1 : direction wanders randomly (smooth curving drift)
+fps(30)
+
+# ---- Settings ----
+v_mode = 1            # 0 = fixed direction, 1 = random wander
+v_heading = pi        # radians: pi = left, 0 = right, -pi/2 = up, pi/2 = down
+v_speed = 0.8         # pixels per frame for the closest layer
+v_turn = 0.06         # max heading change per frame in wander mode
+
+# Per-layer positions (float accumulators, wrapped to the tile spacing)
+v_p5x = 0
+v_p5y = 0
+v_p4x = 0
+v_p4y = 0
+v_p3x = 0
+v_p3y = 0
+v_p2x = 0
+v_p2y = 0
+v_p1x = 0
+v_p1y = 0
+
+# One-dot tiles; dot at 32 mod spacing keeps the lattice centered on (32, 32)
+
+# Layer 5 - Furthest (5 px spacing)
+define_sprite(dots5, 5, 5)
+    plot(2, 2, white, 10)
+endsprite
+
+# Layer 4 (7 px spacing)
+define_sprite(dots4, 7, 7)
+    plot(4, 4, white, 25)
+endsprite
+
+# Layer 3 (10 px spacing)
+define_sprite(dots3, 10, 10)
+    plot(2, 2, white, 45)
+endsprite
+
+# Layer 2 (14 px spacing)
+define_sprite(dots2, 14, 14)
+    plot(4, 4, white, 70)
+endsprite
+
+# Layer 1 - Closest (20 px spacing)
+define_sprite(dots1, 20, 20)
+    plot(12, 12, white, 90)
+endsprite
+
+# Higher layer numbers render on top, so furthest = layer 0
+set_background(dots5, 0)
+set_background(dots4, 1)
+set_background(dots3, 2)
+set_background(dots2, 3)
+set_background(dots1, 4)
+
+# Animation loop
+while 1 then
+    # Random mode: nudge the heading a little each frame for a smooth wander
+    if v_mode == 1 then
+        v_heading = v_heading + random(-1, 1, 2) * v_turn
+    endif
+
+    v_vx = cos(v_heading) * v_speed
+    v_vy = sin(v_heading) * v_speed
+
+    # Farther layers move slower (parallax). Wrap into [0, spacing) so the
+    # numbers never grow; the tiles repeat, so the picture is identical.
+    v_p5x = v_p5x + v_vx * 0.1
+    v_p5y = v_p5y + v_vy * 0.1
+    v_p5x = v_p5x - 5 * floor(v_p5x / 5)
+    v_p5y = v_p5y - 5 * floor(v_p5y / 5)
+
+    v_p4x = v_p4x + v_vx * 0.25
+    v_p4y = v_p4y + v_vy * 0.25
+    v_p4x = v_p4x - 7 * floor(v_p4x / 7)
+    v_p4y = v_p4y - 7 * floor(v_p4y / 7)
+
+    v_p3x = v_p3x + v_vx * 0.45
+    v_p3y = v_p3y + v_vy * 0.45
+    v_p3x = v_p3x - 10 * floor(v_p3x / 10)
+    v_p3y = v_p3y - 10 * floor(v_p3y / 10)
+
+    v_p2x = v_p2x + v_vx * 0.7
+    v_p2y = v_p2y + v_vy * 0.7
+    v_p2x = v_p2x - 14 * floor(v_p2x / 14)
+    v_p2y = v_p2y - 14 * floor(v_p2y / 14)
+
+    v_p1x = v_p1x + v_vx
+    v_p1y = v_p1y + v_vy
+    v_p1x = v_p1x - 20 * floor(v_p1x / 20)
+    v_p1y = v_p1y - 20 * floor(v_p1y / 20)
+
+    begin_frame(true)
+        set_background_offset(round(v_p5x), round(v_p5y), 0)
+        set_background_offset(round(v_p4x), round(v_p4y), 1)
+        set_background_offset(round(v_p3x), round(v_p3y), 2)
+        set_background_offset(round(v_p2x), round(v_p2y), 3)
+        set_background_offset(round(v_p1x), round(v_p1y), 4)
+    end_frame
+endwhile

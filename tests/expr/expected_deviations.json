@@ -1,0 +1,53 @@
+{
+  "_comment": "case id -> DEVIATIONS.md id. Every entry here must be a documented, intentional or owner-pending difference.",
+  "legacy-math-03": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "legacy-fast-02": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "legacy-fast-03": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "legacy-fast-04": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "legacy-fast-06": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "legacy-fast-07": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "legacy-fast-08": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "h-mod-neg-var": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "h-abs-int": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "h-abs-var": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "h-m-grid-index": {
+    "deviation": "D-001",
+    "numeric_equal": true
+  },
+  "h-pow-negvar": "D-002",
+  "h-pow-negfvar": "D-002",
+  "h-pow-neg-frac": "D-003",
+  "h-pow-big-int": "D-004",
+  "h-cond-nested-parens": "D-005",
+  "h-cat-arith-part": "D-006"
+}

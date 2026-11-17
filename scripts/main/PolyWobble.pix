@@ -1,0 +1,170 @@
+# Shape-Shifting Cylinder Animation
+# Displays a wireframe cylinder that shifts between different polygon shapes
+# Features wobbling top, color transitions, and rotation
+# Cycles through 5, 6, 3, and 4-sided shapes with smooth transitions
+# Runs infinitely until stopped
+
+# Clear display at the start
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(60)
+
+clear()
+
+# Set up variables for cylinder position and dimensions
+v_center_x = 32       # Center X position
+v_center_y = 50       # Center Y position
+v_radius = 15         # Radius of the cylinder
+v_base_height = 40    # Base height of the cylinder
+v_current_sides = 5   # Starting shape (5-sided)
+v_target_sides = 5    # Target shape to transition to
+v_transition_speed = 0.01 # Speed of shape transition
+v_shape_duration = 300 # How long to hold each shape before transitioning (in frames)
+v_top_squish = 0.4    # Vertical squish factor for perspective (top ellipse)
+v_base_rotation = 20  # Initial rotation in degrees
+v_shade_rotation = 90 # Additional rotation for shading calculation
+
+# Animation parameters
+v_wobble_amount = 8   # Maximum height variation amount
+v_wobble_speed = 3    # Speed of the wobbling animation (degrees per frame)
+v_color_speed = 0.5   # Speed of color transition
+v_rot_speed = 0.05    # Speed of overall rotation (degrees per frame)
+v_frame = 0           # Frame counter for infinite animation
+v_shape_timer = 0     # Timer for shape transitions
+
+# Maximum number of sides we might need (for arrays)
+v_max_sides = 8
+
+# Create arrays to store the polygon points and depths
+create_array(v_top_x, v_max_sides)
+create_array(v_top_y, v_max_sides)
+create_array(v_bottom_x, v_max_sides)
+create_array(v_bottom_y, v_max_sides)
+create_array(v_heights, v_max_sides)   # Array to store current height of each side
+create_array(v_depth, v_max_sides)     # For storing depth values
+create_array(v_draw_order, v_max_sides) # For storing draw order
+
+# Create sequence of shapes to cycle through
+create_array(v_shape_sequence, 4)
+v_shape_sequence[0] = 5  # Pentagon
+v_shape_sequence[1] = 6  # Hexagon
+v_shape_sequence[2] = 3  # Triangle
+v_shape_sequence[3] = 4  # Square
+
+# Current position in shape sequence
+v_sequence_pos = 0
+
+# Set bottom Y position (remains constant)
+v_bottom_y_pos = v_center_y + v_base_height/4
+
+# Main animation loop - runs infinitely
+while 1 == 1 then
+    # Update shape timer and check for transition
+    v_shape_timer = v_shape_timer + 1
+    
+    # If it's time to change shapes
+    if v_shape_timer >= v_shape_duration then
+        v_shape_timer = 0
+        v_sequence_pos = (v_sequence_pos + 1) % 4
+        v_target_sides = v_shape_sequence[v_sequence_pos]
+    endif
+    
+    # Gradually transition to target number of sides
+    if v_current_sides < v_target_sides then
+        v_current_sides = v_current_sides + v_transition_speed
+    elseif v_current_sides > v_target_sides then
+        v_current_sides = v_current_sides - v_transition_speed
+    endif
+    
+    # Calculate current wobble phase (counter-clockwise rotation)
+    v_phase = v_frame * v_wobble_speed
+    
+    # Calculate overall rotation of the shape (counter-clockwise)
+    v_rotation = v_base_rotation - v_frame * v_rot_speed
+    
+    # Calculate color for this frame (cycling through 10-90)
+    v_color_value = 10 + (sin(radians(v_frame * v_color_speed)) * 0.5 + 0.5) * 80
+    
+    # Determine how many actual vertices to use for drawing
+    # Use ceiling to ensure we always have enough points during transitions
+    v_sides_to_draw = ceil(v_current_sides)
+    if v_sides_to_draw < 3 then
+        v_sides_to_draw = 3  # Minimum of 3 sides
+    endif
+    
+    # Calculate the polygon points for this frame
+    for v_i in (0, v_sides_to_draw - 1, 1)
+        # Calculate the angle for this vertex, adjusted for current shape
+        v_angle = v_i * (360 / v_current_sides) + v_rotation
+        
+        # Convert angle to radians for the trig functions
+        v_rad = radians(v_angle)
+        
+        # Calculate wobble effect for this side (counter-clockwise)
+        v_wobble_phase = radians(v_angle - v_phase)
+        v_height_mod = v_wobble_amount * (cos(v_wobble_phase) - 0.5) * 2 
+        v_heights[v_i] = v_base_height + v_height_mod
+        
+        # Calculate coordinates for bottom face (fixed, never moves)
+        v_bottom_x[v_i] = v_center_x + cos(v_rad) * v_radius
+        v_bottom_y[v_i] = v_bottom_y_pos
+        
+        # Calculate coordinates for top face with wobble effect
+        v_top_x[v_i] = v_center_x + cos(v_rad) * v_radius
+        v_top_y[v_i] = v_bottom_y[v_i] - v_heights[v_i] + sin(v_rad) * v_radius * v_top_squish
+        
+        # Calculate depth value using the shading rotation angle
+        v_shade_angle = v_i * (360 / v_current_sides) + v_rotation + v_shade_rotation
+        v_shade_rad = radians(v_shade_angle)
+        v_depth[v_i] = sin(v_shade_rad + radians(90)) * 0.5 + 0.5
+        
+        # Store original index for sorting
+        v_draw_order[v_i] = v_i
+    endfor v_i
+    
+    # Sort sides from back to front based on depth
+    for v_i in (0, v_sides_to_draw - 2, 1)
+        for v_j in (0, v_sides_to_draw - 2 - v_i, 1)
+            if v_depth[v_draw_order[v_j]] > v_depth[v_draw_order[v_j + 1]] then
+                # Swap
+                v_temp = v_draw_order[v_j]
+                v_draw_order[v_j] = v_draw_order[v_j + 1]
+                v_draw_order[v_j + 1] = v_temp
+            endif
+        endfor v_j
+    endfor v_i
+    
+    # Begin drawing this frame
+    begin_frame
+        
+        # Draw from back to front based on sorted order
+        for v_idx in (0, v_sides_to_draw - 1, 1)
+            # Get the actual side index
+            v_i = v_draw_order[v_idx]
+            v_next = (v_i + 1) % v_sides_to_draw
+            
+            # Calculate intensity based on depth
+            v_intensity = 30 + v_depth[v_i] * 70
+            
+            # Draw vertical line for this side
+            draw_line(v_top_x[v_i], v_top_y[v_i], v_bottom_x[v_i], v_bottom_y[v_i], v_color_value, v_intensity)
+            
+            # Draw top and bottom edges for this side
+            draw_line(v_top_x[v_i], v_top_y[v_i], v_top_x[v_next], v_top_y[v_next], v_color_value, v_intensity)
+            draw_line(v_bottom_x[v_i], v_bottom_y[v_i], v_bottom_x[v_next], v_bottom_y[v_next], v_color_value, v_intensity)
+        endfor v_idx
+        
+    end_frame
+    
+    # Increment frame counter
+    v_frame = v_frame + 1
+    
+    # Reset frame counter if it gets too large to prevent overflow
+    if v_frame > 10000 then
+        v_frame = 0
+    endif
+    
+endwhile
+
+# This point is never reached due to infinite loop
+clear()

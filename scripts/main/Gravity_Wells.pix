@@ -1,0 +1,103 @@
+import particle
+# Gravity Wells v2
+# Same show as Gravity_Wells.pix, using reusable particle primitives for
+# attractor forces, movement, and wall collisions.
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(60)
+
+v_num_wells = 3
+v_num_particles = 15
+
+create_array(v_wells_x, v_num_wells, numeric)
+create_array(v_wells_y, v_num_wells, numeric)
+create_array(v_wells_force, v_num_wells, numeric)
+v_wells_x[0] = 32
+v_wells_y[0] = 32
+v_wells_force[0] = 0.7
+v_wells_x[1] = 16
+v_wells_y[1] = 16
+v_wells_force[1] = 0.5
+v_wells_x[2] = 48
+v_wells_y[2] = 48
+v_wells_force[2] = 0.6
+
+create_array(v_colors, 3, string)
+v_colors[0] = "cyan"
+v_colors[1] = "purple"
+v_colors[2] = "yellow"
+
+create_array(v_particles_x, v_num_particles, numeric)
+create_array(v_particles_y, v_num_particles, numeric)
+create_array(v_vel_x, v_num_particles, numeric)
+create_array(v_vel_y, v_num_particles, numeric)
+create_array(v_accel_x, v_num_particles, numeric)
+create_array(v_accel_y, v_num_particles, numeric)
+create_array(v_active, v_num_particles, numeric)
+create_array(v_wall_hit, v_num_particles, numeric)
+
+for v_i in (0, v_num_particles - 1, 1)
+    v_particles_x[v_i] = random(0, 63, 0)
+    v_particles_y[v_i] = random(0, 63, 0)
+    v_vel_x[v_i] = random(-0.5, 0.5, 1)
+    v_vel_y[v_i] = random(-0.5, 0.5, 1)
+    v_accel_x[v_i] = 0
+    v_accel_y[v_i] = 0
+    v_active[v_i] = 1
+endfor v_i
+
+v_time = 0
+v_change_timer = 0
+v_change_interval = 1.5
+
+while true then
+    v_change_timer = v_change_timer + 0.025
+    if v_change_timer >= v_change_interval then
+        v_well_idx = random(0, v_num_wells - 1, 0)
+        v_wells_x[v_well_idx] = random(10, 54, 0)
+        v_wells_y[v_well_idx] = random(10, 54, 0)
+
+        for v_j in (0, v_num_wells - 1, 1)
+            v_wells_force[v_j] = random(0.3, 2.0, 1)
+        endfor v_j
+
+        if random(0, 1, 0) == 1 then
+            for v_i in (0, v_num_particles - 1, 1)
+                v_vel_x[v_i] = v_vel_x[v_i] + random(-1.0, 1.0, 1)
+                v_vel_y[v_i] = v_vel_y[v_i] + random(-1.0, 1.0, 1)
+            endfor v_i
+        endif
+
+        v_change_timer = 0
+    endif
+
+    # Preserve the original show's moving-well behavior for a fair comparison.
+    v_wells_x[1] = v_wells_x[1] + sin(v_time) * 2
+    v_wells_y[1] = v_wells_y[1] + cos(v_time) * 2
+    v_wells_x[2] = v_wells_x[2] + sin(v_time + 1.5) * 2
+    v_wells_y[2] = v_wells_y[2] + cos(v_time + 1.5) * 2
+
+    begin_frame
+
+    # Draw the current positions and clear acceleration for this frame.
+    for v_i in (0, v_num_particles - 1, 1)
+        mplot(v_particles_x[v_i], v_particles_y[v_i], v_colors[v_i % 3], 75)
+        v_accel_x[v_i] = 0
+        v_accel_y[v_i] = 0
+    endfor v_i
+
+    # falloff=0 matches the original constant-strength pull. The per-particle
+    # strength of 0.05 replaces the original velocity update multiplier.
+    call particle.apply_attractors(v_particles_x, v_particles_y, v_accel_x, v_accel_y, v_active, v_wells_x, v_wells_y, v_wells_force, 0.05, 0, 0, 10, v_num_particles, v_num_wells, 0)
+    call particle.integrate(v_particles_x, v_particles_y, v_vel_x, v_vel_y, v_active, v_accel_x, v_accel_y, 1, 0, v_num_particles, "post_move", "none", 1)
+    call particle.collide_bounds(v_particles_x, v_particles_y, v_vel_x, v_vel_y, v_active, 0, 63, 0, 63, 0.8, 0, v_wall_hit, v_num_particles)
+
+    for v_j in (0, v_num_wells - 1, 1)
+        mplot(v_wells_x[v_j], v_wells_y[v_j], white, 30)
+    endfor v_j
+    mflush()
+    end_frame
+
+    v_time = v_time + 0.1
+    rest(0.025)
+endwhile

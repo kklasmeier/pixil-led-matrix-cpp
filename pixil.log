@@ -1,0 +1,4161 @@
+[pixil] consumer ready: {"pid": 1005740, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Style: Fat Bursts
+Lightning Roots: Style: Fat Bursts — strike 1/3
+Lightning Roots: Style: Fat Bursts — strike 2/3
+Lightning Roots: Style: Fat Bursts — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Style: Sheet Flash
+Lightning Roots: Style: Sheet Flash — strike 1/3
+Lightning Roots: Style: Sheet Flash — strike 2/3
+Lightning Roots: Style: Sheet Flash — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lightning_Roots.pix frames=2208 commands=6627
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Shepherd_Moons.pix frames=2196 commands=6592
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Seaweed_Forest.pix frames=1893 commands=5682
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Gravity_Wells.pix frames=1694 commands=6778
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Bouncing_Pixels.pix frames=2232 commands=6699
+Rendering bob cels...
+Building shapes...
+Vector balls ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Vector_Balls.pix frames=3119 commands=9691
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wave_Interference.pix frames=314 commands=945
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/game_of_life_highres.pix frames=1431 commands=5726
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1005869, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1005889, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+Ink in Water - Starting
+Drop at (19, 43) - behavior=2
+Drop at (37, 36) - behavior=2
+Drop at (47, 30) - behavior=2
+Drop at (34, 24) - behavior=2
+Drop at (17, 21) - behavior=2
+Drop at (26, 47) - behavior=1
+Drop at (29, 44) - behavior=2
+Drop at (18, 33) - behavior=1
+Drop at (18, 37) - behavior=1
+Drop at (33, 37) - behavior=1
+Drop at (41, 33) - behavior=2
+Drop at (22, 35) - behavior=3
+Drop at (28, 25) - behavior=3
+Drop at (36, 23) - behavior=1
+Drop at (43, 36) - behavior=1
+Drop at (46, 31) - behavior=1
+Drop at (48, 42) - behavior=3
+Drop at (36, 47) - behavior=2
+Drop at (28, 19) - behavior=3
+Drop at (48, 25) - behavior=3
+Drop at (48, 16) - behavior=2
+Drop at (31, 27) - behavior=3
+Drop at (45, 27) - behavior=3
+Drop at (38, 17) - behavior=1
+Drop at (23, 21) - behavior=3
+Drop at (23, 38) - behavior=3
+Drop at (39, 26) - behavior=2
+Drop at (41, 34) - behavior=1
+Drop at (46, 45) - behavior=1
+Drop at (18, 28) - behavior=1
+Drop at (42, 40) - behavior=1
+Drop at (47, 29) - behavior=2
+Drop at (47, 34) - behavior=2
+Drop at (23, 26) - behavior=3
+Drop at (38, 29) - behavior=2
+Drop at (46, 38) - behavior=2
+Drop at (19, 26) - behavior=2
+Drop at (36, 25) - behavior=3
+Drop at (46, 38) - behavior=2
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ink_In_Water.pix frames=1932 commands=5727
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Shape_Lock.pix frames=1942 commands=5829
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pinball_Magnet_Table.pix frames=2088 commands=6297
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/swarm.pix frames=1876 commands=5631
+Slime mold highways...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Slime_Mold_Highways.pix frames=366 commands=1103
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Burning_Ship.pix frames=319 commands=961
+Iron Filings: Dipole
+Iron Filings: Dipole + polarity flip
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Iron_Filings.pix frames=530 commands=1593
+Rendering bob cels...
+Building shapes...
+Vector balls ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Vector_Balls.pix frames=1869 commands=5941
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1006054, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1006020, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+Rendering starfield...
+Rendering ships...
+Building formations...
+Squadron ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Formation_Flyer.pix frames=1516 commands=7755
+Iron Filings: Dipole
+Iron Filings: Dipole + polarity flip
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stir
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Dipole
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + stir
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Dipole
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + stretch poles
+[pixil] interrupted; blacking out
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1006273, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spring_Network.pix frames=2390 commands=7173
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ember_Moths.pix frames=1803 commands=5413
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lava_Lamp.pix frames=179 commands=542
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Elastic_Collision.pix frames=1875 commands=5629
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Billiard_Break.pix frames=1581 commands=5272
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Particle_Tumbler.pix frames=1258 commands=4204
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Boids_Flocking_Simulation.pix frames=1605 commands=4645
+Whirlpool: Single Spiral
+Whirlpool: Single Spiral + eccentric well
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Whirlpool.pix frames=256 commands=772
+Color scheme: Cosmic Ripples
+Pattern: Radial Pulse
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Blob.pix frames=90 commands=273
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Magnetic_Marbles.pix frames=1303 commands=3913
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Magnetic_Pendulum.pix frames=1442 commands=5787
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Orbiting_Ripples.pix frames=87 commands=265
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ripple_Chase.pix frames=1870 commands=5613
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hyperspace_Transition.pix frames=1781 commands=5346
+Rendering sky...
+Rendering field stars...
+Constellation Map
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Constellation_Map.pix frames=973 commands=6199
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Swaying_Meadow_Grass.pix frames=7443 commands=26102
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1006710, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Asteroid_Miner.pix frames=1643 commands=5480
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Twin_Star_Vortex.pix frames=1362 commands=5480
+Slime mold highways...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Slime_Mold_Highways.pix frames=107 commands=325
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Gravity_Wells.pix frames=1393 commands=5574
+Rendering strand cels...
+Helix ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/DNA_Helix_Ribbon.pix frames=1806 commands=5952
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Shepherd_Moons.pix frames=958 commands=2878
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Vortex_Rings.pix frames=893 commands=2683
+Rendering nebula...
+Rendering star cels...
+Building galaxies...
+Starfield ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Morphing_Starfield.pix frames=1144 commands=5845
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/RD_HighRes.pix frames=73 commands=222
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[ERROR   ] [api     ] [COMMAND ] Command execution failed: 'mplot'
+[BRIDGE] command failed: mplot(33, 44, 16, 87, 1767, fade)
+Traceback (most recent call last):
+  File "/home/pi/Lightshow/pixil-led-matrix-cpp/bridge/pixil_consumer_bridge.py", line 282, in loop
+    self.api.execute_command(command)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/api.py", line 1367, in execute_command
+    self.command_executor.execute_command(command)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/commands.py", line 138, in execute_command
+    self._execute_parsed_command(cmd_name, params)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/commands.py", line 268, in _execute_parsed_command
+    handler = self.command_handlers[cmd_name]
+              ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+KeyError: 'mplot'
+
+[pixil] consumer ready: {"pid": 1011143, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/bubble_pop.pix frames=4574 commands=15596
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Drone_Show.pix frames=1449 commands=5798
+Stars initialized
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Liquid_Starfield.pix frames=2644 commands=7789
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pong.pix frames=3785 commands=11409
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/sprite_with_grid.pix frames=1809 commands=7284
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Geometric_Kaleidoscope.pix frames=2724 commands=8386
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Starburst.pix frames=219 commands=7234
+Slime mold highways...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Slime_Mold_Highways.pix frames=554 commands=1666
+Starting Dynamic Pixel Spray
+Sequence duration: 6 seconds
+Total sequences: 16
+=== Playing sequence 3 of 16 ===
+Playing: Warm Embers
+  density=30 burnout=2771 rest=0.1
+=== Playing sequence 10 of 16 ===
+Playing: Galaxy Spiral
+  arms=5 tight=9 rot=5 burnout=1767
+v_start_color = 10
+[pixil] consumer error: command failed: mplot(33, 44, 16, 87, 1767, fade)
+Traceback (most recent call last):
+  File "/home/pi/Lightshow/pixil-led-matrix-cpp/bridge/pixil_consumer_bridge.py", line 282, in loop
+    self.api.execute_command(command)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/api.py", line 1367, in execute_command
+    self.command_executor.execute_command(command)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/commands.py", line 138, in execute_command
+    self._execute_parsed_command(cmd_name, params)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/commands.py", line 268, in _execute_parsed_command
+    handler = self.command_handlers[cmd_name]
+              ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+KeyError: 'mplot'
+
+[pixil] error: consumer failed: command failed: mplot(33, 44, 16, 87, 1767, fade)
+Traceback (most recent call last):
+  File "/home/pi/Lightshow/pixil-led-matrix-cpp/bridge/pixil_consumer_bridge.py", line 282, in loop
+    self.api.execute_command(command)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/api.py", line 1367, in execute_command
+    self.command_executor.execute_command(command)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/commands.py", line 138, in execute_command
+    self._execute_parsed_command(cmd_name, params)
+  File "/home/pi/Lightshow/git/rgb_matrix_lib/commands.py", line 268, in _execute_parsed_command
+    handler = self.command_handlers[cmd_name]
+              ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+KeyError: 'mplot'
+
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+=== pixil start 2026-11-15 17:34:42 ===
+[pixil] consumer ready: {"pid": 1013710, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[SHUFFLE] New random style order generated
+[STYLE] 10.0: Erratic Scribble (burnout=10.0, mode=instant)
+[STYLE] 4.0: Petal Burst (burnout=0.0, mode=instant)
+[STYLE] 0.0: Ink Core (burnout=0.0, mode=instant)
+[STYLE] 5.0: Nebula Cloud (burnout=40000.0, mode=fade)
+[STYLE] 9.0: Erratic Mirror (burnout=10.0, mode=instant)
+[STYLE] 7.0: Kaleido Storm (burnout=40000.0, mode=fade)
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/pen_art.pix frames=12320 commands=36978
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/pachinko_machine.pix frames=10944 commands=32869
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Twin_Star_Vortex.pix frames=10241 commands=40996
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Color_Mandala.pix frames=6769 commands=34974
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Polygon_Zoom.pix frames=0 commands=20829
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Tetris.pix frames=2606 commands=12758
+Color scheme: Blue Galaxy
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cosmic_Nebula.pix frames=0 commands=22969
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Binary_Star_Dance.pix frames=19658 commands=58977
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Digital_Rain.pix frames=501 commands=63288
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Soap_Bubbles.pix frames=8860 commands=26583
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Atom_Viewer.pix frames=9730 commands=68109
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Gravity_Wells.pix frames=9641 commands=38566
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Vortex_Spiral.pix frames=5729 commands=25317
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_Shapes.pix frames=9518 commands=38120
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pendulum_Wave.pix frames=17660 commands=70642
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Nuclear_Fission.pix frames=9566 commands=73236
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Metaballs_Effect.pix frames=6085 commands=18259
+Pattern #1: R=30, r=21, d=8, color=83
+Complete in 7.0 rotations with 1866.6666666666667 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #2: R=27, r=10, d=9, color=34
+Complete in 10.0 rotations with 1963.6363636363635 points (step=3)
+Pattern #3: R=28, r=23, d=14, color=85
+Complete in 23.0 rotations with 1981.5384615384617 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #4: R=30, r=12, d=11, color=36
+Complete in 2.0 rotations with 1600.0 points (step=3)
+Pattern #5: R=31, r=6, d=4, color=87
+Complete in 6.0 rotations with 1860.0 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #6: R=29, r=14, d=10, color=38
+Complete in 14.0 rotations with 1910.5882352941178 points (step=3)
+Pattern #7: R=26, r=8, d=7, color=89
+Complete in 4.0 rotations with 1664.0 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #8: R=29, r=16, d=8, color=40
+Complete in 16.0 rotations with 1953.6842105263156 points (step=3)
+Pattern #9: R=29, r=10, d=5, color=91
+Complete in 10.0 rotations with 1933.3333333333335 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #10: R=30, r=18, d=13, color=42
+Complete in 3.0 rotations with 1800.0 points (step=3)
+Pattern #11: R=28, r=12, d=5, color=93
+Complete in 3.0 rotations with 1680.0 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #12: R=25, r=20, d=7, color=44
+Complete in 4.0 rotations with 1600.0 points (step=3)
+Pattern #13: R=28, r=14, d=7, color=95
+Complete in 1.0 rotations with 1120.0 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #14: R=28, r=22, d=5, color=46
+Complete in 11.0 rotations with 1895.3846153846155 points (step=3)
+Pattern #15: R=29, r=16, d=7, color=97
+Complete in 16.0 rotations with 1953.6842105263156 points (step=3)
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+** Using 500ms burnout for this pattern **
+Pattern #16: R=27, r=5, d=3, color=48
+Complete in 5.0 rotations with 1800.0 points (step=3)
+Pattern #17: R=31, r=18, d=17, color=99
+Complete in 18.0 rotations with 1940.8695652173913 points (step=3)
+** Using 500ms burnout for this pattern **
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spirograph_Pen.pix frames=0 commands=38634
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_perspective_bg.pix frames=9996 commands=69990
+=== Frost Forming ===
+Dynamic ice crystal simulation
+Over 1 million unique combinations
+
+
+=== Frost Cycle 1 ===
+Formation: Multi-Corner (1)
+Crystal: Geometric (2)
+Speed: Medium (2)
+Density: Medium (1)
+Palette: Ice Blue (1)
+Shimmer: Subtle (1)
+Thaw: Warm Glow (3)
+Target Coverage: 30%
+Connection Flash: On (1)
+[pixil] Frost.pix: line 1445: procedure 'get_frost_color' is not defined
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Frost.pix frames=0 commands=7
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Missile_Command.pix frames=8629 commands=25459
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Voronoi_Pattern.pix frames=4109 commands=12334
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Kaleidoscope.pix frames=0 commands=25542
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Starburst.pix frames=325 commands=24398
+Color scheme: Cosmic Ripples
+Pattern: Radial Pulse
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Blob.pix frames=4113 commands=12342
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Space_Flight.pix frames=11803 commands=94665
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni mode (5.0, 6.0)
+Chladni mode (4.0, 7.0)
+Chladni mode (6.0, 7.0)
+Chladni mode (5.0, 8.0)
+Chladni mode (3.0, 5.0)
+Chladni mode (4.0, 9.0)
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni mode (5.0, 6.0)
+Chladni mode (4.0, 7.0)
+Chladni mode (6.0, 7.0)
+Chladni mode (5.0, 8.0)
+Chladni mode (3.0, 5.0)
+Chladni mode (4.0, 9.0)
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni mode (5.0, 6.0)
+Chladni mode (4.0, 7.0)
+Chladni mode (6.0, 7.0)
+Chladni mode (5.0, 8.0)
+Chladni mode (3.0, 5.0)
+Chladni mode (4.0, 9.0)
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni mode (5.0, 6.0)
+Chladni mode (4.0, 7.0)
+Chladni mode (6.0, 7.0)
+Chladni mode (5.0, 8.0)
+Chladni mode (3.0, 5.0)
+Chladni mode (4.0, 9.0)
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni mode (5.0, 6.0)
+Chladni mode (4.0, 7.0)
+Chladni mode (6.0, 7.0)
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Chladni_Patterns.pix frames=19611 commands=58836
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fireworks.pix frames=13876 commands=38625
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spring_Network.pix frames=19656 commands=58971
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Comet_Buzzer.pix frames=19963 commands=59886
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Photon.pix frames=16273 commands=65094
+Rendering starfield...
+Rendering ships...
+Building formations...
+Squadron ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Formation_Flyer.pix frames=19019 commands=95269
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/KITT_Scanner.pix frames=18620 commands=55860
+=== DYNAMIC BUILDING CONSTRUCTION ===
+=== Building #1 ===
+Style: Office Tower
+Floors: 7, Width: 44
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Building floor 7.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #2 ===
+Style: Apartment Building
+Floors: 6, Width: 36
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Sunset...
+Night falls...
+Fade out...
+=== Building #3 ===
+Style: Office Tower
+Floors: 5, Width: 44
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #4 ===
+Style: Industrial Warehouse
+Floors: 5, Width: 36
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Sunset...
+Night falls...
+Fade out...
+=== Building #5 ===
+Style: Apartment Building
+Floors: 7, Width: 44
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Building floor 7.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #6 ===
+Style: Office Tower
+Floors: 6, Width: 44
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #7 ===
+Style: Apartment Building
+Floors: 6, Width: 28
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #8 ===
+Style: Apartment Building
+Floors: 6, Width: 28
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #9 ===
+Style: Apartment Building
+Floors: 6, Width: 36
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #10 ===
+Style: Modern Glass Tower
+Floors: 6, Width: 36
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #11 ===
+Style: Modern Glass Tower
+Floors: 7, Width: 28
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Building floor 7.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #12 ===
+Style: Industrial Warehouse
+Floors: 6, Width: 44
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+Installing windows...
+Adding rooftop...
+Construction complete!
+Night falls...
+Fade out...
+=== Building #13 ===
+Style: Industrial Warehouse
+Floors: 6, Width: 36
+Building floor 1.0...
+Building floor 2.0...
+Building floor 3.0...
+Building floor 4.0...
+Building floor 5.0...
+Building floor 6.0...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Building_Construction.pix frames=4512 commands=18192
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Kinetic_Rainbow.pix frames=19626 commands=58881
+Wobble: 0.2796690358246214, Momentum: 0.013724922051423569, 0.0035139490942887697
+Wobble: 0.18916669810667588, Momentum: 0.0032502732150071372, 0.0012517189626506482
+Wobble: 0.1595252480831372, Momentum: 0.002359800897979245, 0.002548019563542929
+Wobble: 0.12169585575045538, Momentum: 0.0014700291295268691, 0.0003617182123663209
+Wobble: 0.08231445121445684, Momentum: 0.0013751110825536638, -0.00015606895760423079
+Wobble: 0.07298439713428678, Momentum: 0.000170209635560417, -0.00018727908475138966
+Wobble: 0.07499504707211214, Momentum: -0.0018530443098797448, -0.010334901886586164
+Wobble: 0.050981170155139026, Momentum: -0.0010631873713495387, -0.004509595121788215
+Wobble: 0.1498908649340827, Momentum: 0.001501121094801294, 0.0043966270141887545
+Wobble: 0.1418499065025674, Momentum: 0.002674475538582313, 0.0057523662720068685
+Wobble: 0.1302631051758345, Momentum: 0.00151364831546576, 0.0033922222507082613
+Wobble: 0.10731068807132964, Momentum: -0.003146522938036145, -0.0036500738434170643
+Wobble: 0.059397273149252285, Momentum: -0.0017016539882170347, -0.0007228033141071302
+Wobble: 0.05622183717633944, Momentum: -0.006496223030934306, 0.005802996338787702
+Wobble: 0.13139820254354104, Momentum: -0.021244125034110967, 0.0005897086261324494
+Wobble: 0.12006180764135667, Momentum: -0.019843258449182846, -0.0005643259715412017
+Wobble: 0.07762701788486197, Momentum: -0.007238494779266073, 0.0007592324037135671
+Wobble: 0.06645511375834655, Momentum: -0.005153722014023545, 0.0001971681188102231
+Wobble: 0.08883662523418592, Momentum: 0.002252882245932857, 0.013747388614244693
+Wobble: 0.05860136793682081, Momentum: 0.0010077838777888138, 0.005636029931220983
+Wobble: 0.054904482642862865, Momentum: 0.0006105126959152582, 0.005157457558687302
+Wobble: 0.1257192675607579, Momentum: 0.0006088508677147966, 0.006090833097709711
+Wobble: 0.12260755893202452, Momentum: 0.0006330600276824477, 0.004843552735656022
+Wobble: 0.08807255086708983, Momentum: 0.000672308569716453, 0.0032056073492100264
+Wobble: 0.086324266751148, Momentum: 0.0012999624053753021, 0.0026571264438884903
+Wobble: 0.07064088441499307, Momentum: 0.0010293596614792434, 0.0019930824236222087
+Wobble: 0.06519667085166367, Momentum: 5.1955432269606e-05, 0.0009008433275052328
+Wobble: 0.05927396153912525, Momentum: 0.00039161624978638695, 0.0009553278280481882
+Wobble: 0.05780685708362588, Momentum: -0.00011606673764947343, 0.0006566407051800374
+Wobble: 0.056659362103216655, Momentum: -0.00019996291473364414, 0.0008994810886069028
+Wobble: 0.1321042470967653, Momentum: -0.005420715893334247, -0.006998283394203099
+Wobble: 0.07804413267105918, Momentum: -0.002219098181561449, -0.0016951930434559274
+Wobble: 0.0691981042068244, Momentum: -0.0017938902723557432, -0.0013114879946043965
+Wobble: 0.06043901482109929, Momentum: -0.000913896523945599, -0.0008470383313525169
+Wobble: 0.06171728816342678, Momentum: -0.014140989239969048, -0.0018126328826392117
+Wobble: 0.07740044915186918, Momentum: -0.01092996313196872, -0.0020147009669159036
+Wobble: 0.06527219630241264, Momentum: -0.007791915400142657, -0.0017590519828991184
+Wobble: 0.11406946674839571, Momentum: 0.007705051967711473, -0.006050315953975292
+Wobble: 0.08071643696737948, Momentum: 0.0031969686895335333, -0.00349399803819717
+Wobble: 0.2476414616483654, Momentum: 0.013479039777392605, -0.007964575118388315
+Wobble: 0.20988675025849454, Momentum: 0.008950672899193837, -0.003697531060552974
+Wobble: 0.19664598015797752, Momentum: 0.010766393183724401, -0.005653542891370319
+Wobble: 0.176113581609597, Momentum: 0.006070122501522195, -0.004949541955206072
+Wobble: 0.1691910927314948, Momentum: 0.007815750937387957, -0.002484577027300773
+Wobble: 0.13502560407850242, Momentum: 0.004341019198831779, -0.0021494949039948938
+Wobble: 0.08220554685433025, Momentum: 0.0009169419787889283, -0.0003898670147767469
+Wobble: 0.19883129391406706, Momentum: -0.009616273397764852, -0.004175583079180621
+Wobble: 0.1285561221503787, Momentum: -0.002932831399505913, -0.002299048771690496
+Wobble: 0.11766104430512986, Momentum: 0.004050291921056809, 0.014710461222718919
+Wobble: 0.08709987734090979, Momentum: 0.0020789208063648414, 0.007882366657574039
+Wobble: 0.08623105606443422, Momentum: 0.0018723166624906927, 0.0074450977528656165
+Wobble: 0.080387187692264, Momentum: 0.002996510021726069, 0.007502998190311905
+Wobble: 0.058326243024593716, Momentum: 0.001795095080476745, 0.0034352984280678497
+Wobble: 0.11255190211376045, Momentum: -0.0003842896846715897, 0.011890807644476177
+Wobble: 0.07537013594029601, Momentum: 0.0008005453859428178, 0.005946658976832087
+Wobble: 0.06852323102644664, Momentum: -0.0005468353769427048, 0.004320960355704291
+Wobble: 0.0504714472609894, Momentum: -0.00045375628317288725, 0.0027209784941323424
+Wobble: 0.10725669704783769, Momentum: 0.009933626079527257, 0.005665830886040732
+Wobble: 0.100490375373877, Momentum: 0.009756732958772184, 0.005621353848362017
+Wobble: 0.08777031330867882, Momentum: 0.006887617659806497, 0.004600457209312381
+Wobble: 0.08141301900859278, Momentum: 0.006444444437840012, 0.0030176410952221606
+Wobble: 0.07860595077188935, Momentum: 0.005065455512555183, 0.003714684412942777
+Wobble: 0.11859010157244979, Momentum: -0.0053881570233480286, -0.005178025047362061
+Wobble: 0.06149956143156641, Momentum: -0.0018397461309219696, -0.001839010906105662
+Wobble: 0.05032632855352082, Momentum: -0.001298786837140135, -0.0008674538290730625
+Wobble: 0.14641809279840326, Momentum: -0.00812434371061461, 0.009978765774740408
+Wobble: 0.1324513412472571, Momentum: -0.008739241230027431, 0.007677819747813497
+Wobble: 0.09658516975479334, Momentum: -0.004801637240367911, 0.0031859714676492315
+Wobble: 0.062135751185360355, Momentum: -0.0022917657295685135, 0.0020303553244329477
+Wobble: 0.09145926609972871, Momentum: -0.0010875445252145277, 0.0033245581629094485
+Wobble: 0.06093927071449303, Momentum: -0.000286198604226395, 0.00218137382332779
+Wobble: 0.05190818411729412, Momentum: -0.00011575657874607055, 0.0011591165582607395
+Wobble: 0.1762670355332945, Momentum: -0.013128730039064073, 0.0007303401124555174
+Wobble: 0.160254279065685, Momentum: -0.007917439349056815, 0.002046336360082397
+Wobble: 0.15241946826986189, Momentum: -0.009658681305127682, 0.0005343803270519688
+Wobble: 0.14939386571023316, Momentum: -0.00965371732437492, 0.001542427885812852
+Wobble: 0.12535469117668852, Momentum: -0.006698460805145382, 0.0013541847516122644
+Wobble: 0.05085048805027062, Momentum: -0.001125221116923622, -0.0001509519810163999
+Wobble: 0.10565637726239854, Momentum: -0.014468208205290925, 0.0018355774533827776
+Wobble: 0.08689521550571186, Momentum: -0.00896920574962284, 0.00040852461384363375
+Wobble: 0.08517030208462523, Momentum: -0.008044353143541154, 0.0003182452030744606
+Wobble: 0.1278268749128079, Momentum: 0.0009306638880304262, -0.0020947522087893717
+Wobble: 0.07704657310212143, Momentum: -0.00038900037647864104, -0.0010894916159382604
+Wobble: 0.22981513959902694, Momentum: -0.01160013434658207, 0.014033764834297637
+Wobble: 0.12343566124692336, Momentum: -0.0026854668383110842, 0.0036271678435123023
+Wobble: 0.07008745894352163, Momentum: -0.0034709098035158024, -0.005854856767438777
+Wobble: 0.15384364628725183, Momentum: -0.00710408565635977, -0.01888494733349635
+Wobble: 0.1530744280558156, Momentum: -0.007286519793863269, -0.018946269137565894
+Wobble: 0.13572397900366875, Momentum: -0.0036728244111806038, -0.014595025824140885
+Wobble: 0.13437013231310715, Momentum: -0.003940285395603516, -0.01474416593232931
+Wobble: 0.09134398665869287, Momentum: -0.0031435621973636713, -0.007129597025335533
+Wobble: 0.06335266033016855, Momentum: -0.0008590809781681636, -0.003541413509308822
+Wobble: 0.05673781842008122, Momentum: -0.0014241925086159236, -0.002715507732977996
+Wobble: 0.15258313361869794, Momentum: 0.003811408774567315, -0.00039563324599746204
+Wobble: 0.09816069744127032, Momentum: 0.001094529079114212, 0.0008932084289747352
+Wobble: 0.08403363278406137, Momentum: 0.0007040084741560916, -0.0002725829445625335
+Wobble: 0.09320224199340524, Momentum: -0.0014047993668246748, -0.008676656641471454
+Wobble: 0.08181378005192097, Momentum: -0.0015712424790269722, -0.006881309252039877
+Wobble: 0.06431826706968215, Momentum: -0.0013234472048281839, -0.004169717392238789
+Wobble: 0.06272630976266726, Momentum: -0.0016773340625913544, -0.004338906356438664
+Wobble: 0.09853513173331953, Momentum: -0.0009899465427503917, 0.005441834654552702
+Wobble: 0.06664865655412476, Momentum: -0.0010564586042162317, 0.0021378160224884445
+Wobble: 0.08829583097372644, Momentum: 0.0022634769569483356, 0.00904552776027397
+Wobble: 0.08314136820031759, Momentum: 0.0017350134925871966, 0.006989379473631672
+Wobble: 0.17316577234896724, Momentum: -0.009530760627579954, 0.006903823176297353
+Wobble: 0.15277034975212267, Momentum: -0.0074333973737042746, 0.00537861426298439
+Wobble: 0.14029152805363046, Momentum: -0.004043533257087427, 0.004990557378512791
+Wobble: 0.134777095073691, Momentum: -0.0043343927117662434, 0.004245662923702586
+Wobble: 0.1288320205822472, Momentum: -0.00573067889809623, 0.005497376675439908
+Wobble: 0.09208104264492357, Momentum: -0.0030166716267547335, 0.0024217105290029535
+Wobble: 0.12110830198858462, Momentum: -0.0010327752804602346, 0.006103584087374575
+Wobble: 0.10419966854060934, Momentum: -0.000999773378995969, 0.004482903607703396
+Wobble: 0.09473378110851917, Momentum: 0.00030718981294349304, 0.003968052134747591
+Wobble: 0.09010225890963955, Momentum: -0.0009499535056202114, 0.00255711508284382
+Wobble: 0.07909258656177051, Momentum: -0.0004602678752681466, 0.0017341253715852836
+Wobble: 0.06737121231391752, Momentum: -0.000468551340238933, 0.0017283888857707258
+Wobble: 0.06003509739182301, Momentum: 0.00046315262538443585, 0.0012483456248129922
+Wobble: 0.056247764834868964, Momentum: -0.0005812862415649119, 0.0011222673057600739
+Wobble: 0.0909819397249299, Momentum: -0.0037898504726126348, 0.0008060168211319638
+Wobble: 0.06975550243947291, Momentum: -0.0014611108850320909, -5.3685877874119236e-05
+Wobble: 0.056289708065957705, Momentum: -0.012024406476106413, -0.012512788821749226
+Wobble: 0.0644620786842358, Momentum: 0.000909791042466557, -0.0002859080550722023
+Wobble: 0.1095752275058675, Momentum: 0.006013765510173229, -0.01598209900222862
+Wobble: 0.09057105975474213, Momentum: 0.005031664936105407, -0.012195755363784654
+Wobble: 0.07676285413943819, Momentum: 0.0038061387989379056, -0.007888046684061258
+Wobble: 0.05625771909518301, Momentum: 0.0020348223475625, -0.00476477136762364
+Wobble: 0.051404077967574575, Momentum: 0.000994837083223799, -0.0034275946041973306
+Wobble: 0.16034250816911969, Momentum: -0.00413833673336277, 0.0019370181210306777
+Wobble: 0.1345415723629599, Momentum: -0.002236562786990204, 0.001440193283949815
+Wobble: 0.07908662780537688, Momentum: -0.0015119855585700494, 0.0010261333948845955
+Wobble: 0.07262655274028985, Momentum: -0.0005856794596378669, 0.0006453614258655121
+Wobble: 0.06977182399646104, Momentum: -0.0003939749985989943, 0.0007710636994543061
+Wobble: 0.1371211438864217, Momentum: 0.004962587350114024, 0.004763776837782896
+Wobble: 0.134399220705405, Momentum: 0.004527575209763254, 0.004879791239777553
+Wobble: 0.09462641847189918, Momentum: 0.0010895350819207653, 0.0021076612546194985
+Wobble: 0.09415328637953968, Momentum: 0.000952960336543423, 0.0021946747497908615
+Wobble: 0.07254971024481786, Momentum: 0.0016631327779480366, 0.0017539640087427517
+Wobble: 0.05646635049523326, Momentum: 0.0003520724011803415, 0.0012722395796770148
+Wobble: 0.08756225663046878, Momentum: 0.0005020354675364961, -0.002008095072460804
+Wobble: 0.07960777389388715, Momentum: -0.0001309448075154286, -0.001733276493448122
+Wobble: 0.051213750968693676, Momentum: 0.00045030996433659753, -0.0012798563192188196
+Wobble: 0.15307751065705053, Momentum: -0.016110656440209523, -0.013887858280668314
+Wobble: 0.10723835021895103, Momentum: -0.007290636431576586, -0.006786144347590031
+Wobble: 0.07588268607432117, Momentum: -0.0030542680024716828, -0.004038819442173633
+Wobble: 0.104556355053747, Momentum: -0.005894528259288323, -0.0033136910773883432
+Wobble: 0.0851327662756656, Momentum: -0.0039144734931651345, -0.002357393404123226
+Wobble: 0.07662693262479793, Momentum: -0.0032814394835193206, -0.002415140254707897
+Wobble: 0.07251624862653365, Momentum: -0.00278761417004627, -0.0013978361754645584
+Wobble: 0.07001593527808815, Momentum: -0.0034826122346262494, -0.002140715516254874
+Wobble: 0.06897093869207077, Momentum: -0.0035746216443742138, -0.002211386521293825
+Wobble: 0.06176947543132249, Momentum: -0.0019962358249432095, -0.0017476691804095507
+Wobble: 0.05531993862074833, Momentum: -0.0015090376826108645, -0.001240082150828869
+Wobble: 0.10252177108143144, Momentum: 0.003372408862395968, -0.0039471662963975205
+Wobble: 0.0570317302192628, Momentum: 0.0017351599750241426, -0.0008498903859148175
+Wobble: 0.15082262701809424, Momentum: -0.0041640931617223835, 0.004168640044775583
+Wobble: 0.09415341811572861, Momentum: -0.001975971969882072, 0.002052404509017604
+Wobble: 0.09228442574826823, Momentum: -0.0016359790668746175, 0.001279488676795175
+Wobble: 0.0729143836723537, Momentum: -0.00010621581579124666, 0.0009285021962306163
+Wobble: 0.07075411345230738, Momentum: -0.0008702686447958403, 0.00036850726112828817
+Wobble: 0.05936897073469892, Momentum: -0.0009500814226720745, 0.0010845058429410175
+Wobble: 0.05159478185942899, Momentum: -0.0005383358330238102, 0.0007765620202625013
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rolling_Cylinder.pix frames=9565 commands=38262
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fractal_Fire.pix frames=3937 commands=15750
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hex_Grid_Glow.pix frames=9631 commands=28896
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Billiard_Break.pix frames=10544 commands=35149
+String Art
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/String_Art.pix frames=19666 commands=59002
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Steampunk_Airship.pix frames=6187 commands=44095
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Mouse_escape.pix frames=0 commands=21546
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Murmuration_Panic.pix frames=10806 commands=32421
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Meteor_Shower.pix frames=10705 commands=32118
+Starting Dynamic Pixel Spray
+Sequence duration: 6 seconds
+Total sequences: 16
+=== Playing sequence 3 of 16 ===
+Playing: Warm Embers
+  density=30 burnout=2771 rest=0.1
+=== Playing sequence 10 of 16 ===
+Playing: Galaxy Spiral
+  arms=5 tight=9 rot=5 burnout=1767
+v_start_color = 10
+=== Playing sequence 9 of 16 ===
+Playing: Rainfall
+  color_mode=2 drops=33 speed=4
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Burnout.pix frames=0 commands=23532
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lissajous_Curves.pix frames=0 commands=25549
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Particle_Tumbler.pix frames=12365 commands=41226
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/clockwork_gears.pix frames=19212 commands=57639
+[pixil] Moire_Patterns.pix: line 381: procedure 'do_the_cyan_triangle_two_times' is not defined
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Moire_Patterns.pix frames=2016 commands=8068
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/snake.pix frames=0 commands=29125
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hypnosis.pix frames=14428 commands=57714
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Magic_Carpets.pix frames=0 commands=24439
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Elastic_Collision.pix frames=17777 commands=53335
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Electric_arcs.pix frames=4055 commands=16222
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Dancing_Squares.pix frames=0 commands=18396
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Analog_Clock.pix frames=5377 commands=43014
+Rendering bob cels...
+Building shapes...
+Vector balls ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Vector_Balls.pix frames=18100 commands=54634
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ember_Moths.pix frames=16634 commands=49905
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spinning_Earth.pix frames=2668 commands=169868
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hourglass_Marbles.pix frames=10696 commands=32092
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Earthquake_Waves.pix frames=19700 commands=59104
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cloth_simulation.pix frames=19624 commands=58875
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Orbiting_Ripples.pix frames=4100 commands=12303
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Split_Brain.pix frames=19674 commands=59025
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/swarm.pix frames=19689 commands=59070
+There are 18 in the animation.
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Starfield.pix frames=16615 commands=66637
+Jellyfish Drift v7 - Ocean Background
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Jellyfish.pix frames=7701 commands=36574
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Qix.pix frames=0 commands=18187
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+Mode: Echoes in the Void
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+Mode: Echoes in the Void
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+Mode: Echoes in the Void
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+Mode: Echoes in the Void
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+Mode: Echoes in the Void
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+Mode: Echoes in the Void
+Mode: Original
+Mode: Colorful Ripple Symphony
+Mode: Ripple Pulse Wave
+Mode: Gravitational Ripple Dance
+Mode: Ripple Echo Storm
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rain_Drops.pix frames=20004 commands=59535
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/game_of_life.pix frames=19224 commands=76898
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hanging_Lanterns.pix frames=10681 commands=32046
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Color_Blend.pix frames=19559 commands=58680
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wave_grid.pix frames=243 commands=11749
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pathfinder.pix frames=0 commands=23201
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Vortex_Rings.pix frames=19685 commands=59058
+Starting Solar System Animation
+Each state lasts ~12 seconds (1200 frames)
+Planets move at realistic orbital speeds
+State 0: Top view
+State 1: Perspective with rings
+State 2: Perspective without rings
+*** SWITCHING to perspective with rings ***
+Mercury revolution 1 (total: 1) - State: 1
+*** SWITCHING to perspective without rings ***
+*** SWITCHING to top view ***
+*** SWITCHING to perspective with rings ***
+Mercury revolution 2 (total: 2) - State: 1
+*** SWITCHING to perspective without rings ***
+*** SWITCHING to top view ***
+Mercury revolution 3 (total: 3) - State: 0
+*** SWITCHING to perspective with rings ***
+*** SWITCHING to perspective without rings ***
+Mercury revolution 4 (total: 4) - State: 2
+*** SWITCHING to top view ***
+*** SWITCHING to perspective with rings ***
+Mercury revolution 5 (total: 5) - State: 1
+*** SWITCHING to perspective without rings ***
+*** SWITCHING to top view ***
+*** SWITCHING to perspective with rings ***
+Mercury revolution 6 (total: 6) - State: 1
+*** SWITCHING to perspective without rings ***
+*** SWITCHING to top view ***
+Mercury revolution 7 (total: 7) - State: 0
+*** SWITCHING to perspective with rings ***
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Solar_system.pix frames=19786 commands=59362
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/PolyWobble.pix frames=19705 commands=59119
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hyperspace_Transition.pix frames=19622 commands=58869
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Outrun.pix frames=12527 commands=37584
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Spot Fire
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Spot Fire
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Sweep
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Spot Fire
+Wildfire: Spot Fire
+Wildfire: Longshore Burn
+Wildfire: Sweep
+Wildfire: Longshore Burn
+Wildfire: Spot Fire
+Wildfire: Spot Fire
+Wildfire: Sweep
+Wildfire: Sweep
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wildfire.pix frames=8339 commands=25020
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Slime_Mold.pix frames=8088 commands=24267
+Whirlpool: Single Spiral
+Whirlpool: Single Spiral + eccentric well
+Whirlpool: Single Spiral + eccentric well
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + tighten/flare
+Whirlpool: Single Spiral
+Whirlpool: Single Spiral + reverse gulp
+Whirlpool: Single Spiral + eccentric well
+Whirlpool: Single Spiral + tighten/flare
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + tighten/flare
+Whirlpool: Single Spiral
+Whirlpool: Single Spiral + reverse gulp
+Whirlpool: Single Spiral + tighten/flare
+Whirlpool: Single Spiral + reverse gulp
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + tighten/flare
+Whirlpool: Single Spiral
+Whirlpool: Single Spiral + reverse gulp
+Whirlpool: Single Spiral + tighten/flare
+Whirlpool: Single Spiral + reverse gulp
+Whirlpool: Galaxy
+Whirlpool: Galaxy + tighten/flare
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + tighten/flare
+Whirlpool: Galaxy
+Whirlpool: Galaxy + reverse gulp
+Whirlpool: Galaxy + tighten/flare
+Whirlpool: Galaxy + reverse gulp
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + tighten/flare
+Whirlpool: Double Whirl + tighten/flare
+Whirlpool: Galaxy
+Whirlpool: Galaxy + reverse gulp
+Whirlpool: Galaxy + tighten/flare
+Whirlpool: Galaxy + reverse gulp
+Whirlpool: Double Whirl
+Whirlpool: Double Whirl + eccentric well
+Whirlpool: Double Whirl + reverse gulp
+Whirlpool: Single Spiral
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Whirlpool.pix frames=8085 commands=24258
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Drone_Show.pix frames=5299 commands=21198
+Tensegrity Figure
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Tensegrity_Figure.pix frames=19464 commands=58396
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Morse_Code.pix frames=2303 commands=12151
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Tron.pix frames=0 commands=24614
+Stars initialized
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Liquid_Starfield.pix frames=19803 commands=58264
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Helix_Drift.pix frames=16101 commands=46891
+Pre-calculating animation frames...
+Pre-calculating... 0.0% complete
+Pre-calculating... 12.5% complete
+Pre-calculating... 25.0% complete
+Pre-calculating... 37.5% complete
+Pre-calculating... 50.0% complete
+Pre-calculating... 62.5% complete
+Pre-calculating... 75.0% complete
+Pre-calculating... 87.5% complete
+Calculation complete. Starting animation...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/RGB_Color_Cube.pix frames=19703 commands=59123
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cloth_of_Stars.pix frames=19626 commands=58881
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/game_of_life_highres.pix frames=12008 commands=48034
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Watching_Eyes.pix frames=1862 commands=7601
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pendulums_Front.pix frames=1777 commands=7111
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Burning_Ship.pix frames=374 commands=1125
+Selected: Hail Mary
+Selected: Grace Before Meals
+Selected: Glory Be
+Selected: Fatima Prayer
+Selected: Nicene Creed
+Selected: Our Father
+Selected: Nicene Creed
+Selected: Angel of God
+Selected: Nicene Creed
+Selected: Gloria
+Selected: Divine Mercy Chaplet
+Selected: Fatima Prayer
+Selected: Gloria
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Prayers.pix frames=1129 commands=6799
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_asterisk.pix frames=19753 commands=59262
+Laser Mirror Field - Starting
+Cycle 0: Generating new field...
+  Mirrors: 7, Edges: 10, Walls: 0, Burnout: 0, Lasers: 3
+Cycle 1: Generating new field...
+  Mirrors: 7, Edges: 8, Walls: 1, Burnout: 1, Lasers: 1
+Cycle 2: Generating new field...
+  Mirrors: 5, Edges: 9, Walls: 0, Burnout: 1, Lasers: 3
+Cycle 3: Generating new field...
+  Mirrors: 9, Edges: 14, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 4: Generating new field...
+  Mirrors: 9, Edges: 13, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 5: Generating new field...
+  Mirrors: 5, Edges: 10, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 6: Generating new field...
+  Mirrors: 9, Edges: 10, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 7: Generating new field...
+  Mirrors: 7, Edges: 20, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 8: Generating new field...
+  Mirrors: 6, Edges: 7, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 9: Generating new field...
+  Mirrors: 8, Edges: 14, Walls: 1, Burnout: 1, Lasers: 1
+Cycle 10: Generating new field...
+  Mirrors: 7, Edges: 14, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 11: Generating new field...
+  Mirrors: 7, Edges: 15, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 12: Generating new field...
+  Mirrors: 7, Edges: 10, Walls: 0, Burnout: 0, Lasers: 2
+Cycle 13: Generating new field...
+  Mirrors: 6, Edges: 13, Walls: 1, Burnout: 0, Lasers: 2
+Cycle 14: Generating new field...
+  Mirrors: 8, Edges: 15, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 15: Generating new field...
+  Mirrors: 8, Edges: 15, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 16: Generating new field...
+  Mirrors: 7, Edges: 12, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 17: Generating new field...
+  Mirrors: 7, Edges: 9, Walls: 1, Burnout: 0, Lasers: 3
+Cycle 18: Generating new field...
+  Mirrors: 6, Edges: 15, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 19: Generating new field...
+  Mirrors: 6, Edges: 12, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 20: Generating new field...
+  Mirrors: 9, Edges: 15, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 21: Generating new field...
+  Mirrors: 6, Edges: 15, Walls: 0, Burnout: 1, Lasers: 1
+Cycle 22: Generating new field...
+  Mirrors: 7, Edges: 13, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 23: Generating new field...
+  Mirrors: 10, Edges: 10, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 24: Generating new field...
+  Mirrors: 9, Edges: 12, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 25: Generating new field...
+  Mirrors: 10, Edges: 15, Walls: 1, Burnout: 1, Lasers: 1
+Cycle 26: Generating new field...
+  Mirrors: 7, Edges: 10, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 27: Generating new field...
+  Mirrors: 8, Edges: 21, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 28: Generating new field...
+  Mirrors: 8, Edges: 10, Walls: 0, Burnout: 0, Lasers: 1
+Cycle 29: Generating new field...
+  Mirrors: 6, Edges: 11, Walls: 0, Burnout: 0, Lasers: 2
+Cycle 30: Generating new field...
+  Mirrors: 10, Edges: 14, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 31: Generating new field...
+  Mirrors: 10, Edges: 8, Walls: 1, Burnout: 0, Lasers: 1
+Cycle 32: Generating new field...
+  Mirrors: 7, Edges: 11, Walls: 1, Burnout: 0, Lasers: 3
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Laser_Mirror.pix frames=8809 commands=35862
+Rendering ball cels...
+Ball ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Amiga_Boing_Ball.pix frames=20173 commands=67743
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Abstract_Geometry.pix frames=6776 commands=27106
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sunny_Meadow.pix frames=7323 commands=48792
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wave_Interference.pix frames=4046 commands=12141
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni patterns complete
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Chlandi_Patterns.pix frames=2400 commands=7205
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Gravity_Flip.pix frames=9182 commands=27579
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pulse_Matrix.pix frames=2745 commands=10983
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rainbow_wave_collapse.pix frames=6778 commands=27114
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Snowflake.pix frames=0 commands=13734
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Particle_Eruption.pix frames=19668 commands=59007
+Bake took 15206 ms
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+Scene 2 finished, moved 192 px
+Playing scene 3
+Scene 3 finished, moved 192 px
+Playing scene 4
+Scene 4 finished, moved 192 px
+Playing scene 5
+Scene 5 finished, moved 192 px
+Playing scene 0
+Scene 0 finished, moved 192 px
+Playing scene 1
+Scene 1 finished, moved 192 px
+Playing scene 2
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rule_Playlist.pix frames=11246 commands=50594
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_Grid.pix frames=19871 commands=59616
+Starfield + Hyperspace (radial)
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Starfield_Hyperspace.pix frames=19282 commands=57854
+Rendering snake cels...
+Snake ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lissajous_Snake.pix frames=17988 commands=54308
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/fish_tank.pix frames=5449 commands=22006
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Psychedelic_Tunnel.pix frames=19827 commands=59484
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wormhole.pix frames=19657 commands=58975
+Coral Rim: Center Heart
+Coral Rim: Offset Heart
+Coral Rim: Twin Hearts
+Coral Rim: Center Heart
+Coral Rim: Offset Heart
+Coral Rim: Center Heart
+Coral Rim: Offset Heart
+Coral Rim: Twin Hearts
+Coral Rim: Offset Heart
+Coral Rim: Twin Hearts
+Coral Rim: Offset Heart
+Coral Rim: Offset Heart
+Coral Rim: Offset Heart
+Coral Rim: Center Heart
+Coral Rim: Center Heart
+Coral Rim: Offset Heart
+Coral Rim: Offset Heart
+Coral Rim: Offset Heart
+Coral Rim: Twin Hearts
+Coral Rim: Twin Hearts
+Coral Rim: Twin Hearts
+Coral Rim: Offset Heart
+Coral Rim: Offset Heart
+Coral Rim: Twin Hearts
+Coral Rim: Twin Hearts
+Coral Rim: Center Heart
+Coral Rim: Twin Hearts
+Coral Rim: Twin Hearts
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Coral_Rim.pix frames=10552 commands=31659
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Space_Invaders.pix frames=10986 commands=34554
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Parallax_Meadow.pix frames=4551 commands=58924
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fractured_Mirror.pix frames=9339 commands=37358
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Breakout.pix frames=11828 commands=36104
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Squares2.pix frames=0 commands=40211
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Particle_fountain.pix frames=19832 commands=59499
+Ink in Water - Starting
+Drop at (19, 43) - behavior=2
+Drop at (37, 36) - behavior=2
+Drop at (47, 30) - behavior=2
+Drop at (34, 24) - behavior=2
+Drop at (17, 21) - behavior=2
+Drop at (26, 47) - behavior=1
+Drop at (29, 44) - behavior=2
+Drop at (18, 33) - behavior=1
+Drop at (18, 37) - behavior=1
+Drop at (33, 37) - behavior=1
+Drop at (41, 33) - behavior=2
+Drop at (22, 35) - behavior=3
+Drop at (28, 25) - behavior=3
+Drop at (36, 23) - behavior=1
+Drop at (43, 36) - behavior=1
+Drop at (46, 31) - behavior=1
+Drop at (48, 42) - behavior=3
+Drop at (36, 47) - behavior=2
+Drop at (28, 19) - behavior=3
+Drop at (48, 25) - behavior=3
+Drop at (48, 16) - behavior=2
+Drop at (31, 27) - behavior=3
+Drop at (45, 27) - behavior=3
+Drop at (38, 17) - behavior=1
+Drop at (23, 21) - behavior=3
+Drop at (23, 38) - behavior=3
+Drop at (39, 26) - behavior=2
+Drop at (41, 34) - behavior=1
+Drop at (46, 45) - behavior=1
+Drop at (18, 28) - behavior=1
+Drop at (42, 40) - behavior=1
+Drop at (47, 29) - behavior=2
+Drop at (47, 34) - behavior=2
+Drop at (23, 26) - behavior=3
+Drop at (38, 29) - behavior=2
+Drop at (46, 38) - behavior=2
+Drop at (19, 26) - behavior=2
+Drop at (36, 25) - behavior=3
+Drop at (46, 38) - behavior=2
+Drop at (47, 40) - behavior=2
+Drop at (46, 39) - behavior=2
+Drop at (39, 44) - behavior=1
+Drop at (30, 28) - behavior=1
+Drop at (42, 47) - behavior=3
+Drop at (15, 27) - behavior=2
+Drop at (42, 43) - behavior=3
+Drop at (34, 40) - behavior=1
+Drop at (42, 23) - behavior=2
+Drop at (18, 38) - behavior=2
+Drop at (21, 26) - behavior=1
+Drop at (32, 18) - behavior=2
+Drop at (17, 45) - behavior=2
+Drop at (43, 34) - behavior=2
+Drop at (19, 35) - behavior=3
+Drop at (26, 15) - behavior=2
+Drop at (31, 23) - behavior=2
+Drop at (21, 30) - behavior=2
+Drop at (46, 40) - behavior=1
+Drop at (31, 43) - behavior=3
+Drop at (41, 38) - behavior=1
+Drop at (20, 32) - behavior=3
+Drop at (32, 29) - behavior=3
+Drop at (46, 37) - behavior=2
+Drop at (48, 28) - behavior=2
+Drop at (16, 41) - behavior=2
+Drop at (28, 44) - behavior=1
+Drop at (41, 36) - behavior=3
+Drop at (46, 33) - behavior=3
+Drop at (39, 37) - behavior=1
+Drop at (20, 38) - behavior=2
+Drop at (43, 33) - behavior=1
+Drop at (33, 35) - behavior=3
+Drop at (21, 27) - behavior=2
+Drop at (18, 40) - behavior=3
+Drop at (33, 26) - behavior=3
+Drop at (15, 36) - behavior=2
+Drop at (20, 26) - behavior=2
+Drop at (30, 34) - behavior=1
+Drop at (45, 44) - behavior=2
+Drop at (25, 47) - behavior=1
+Drop at (22, 35) - behavior=1
+Drop at (48, 23) - behavior=1
+Drop at (21, 43) - behavior=2
+Drop at (28, 37) - behavior=2
+Drop at (46, 39) - behavior=2
+Drop at (17, 36) - behavior=3
+Drop at (24, 26) - behavior=2
+Drop at (47, 24) - behavior=3
+Drop at (34, 31) - behavior=1
+Drop at (21, 22) - behavior=1
+Drop at (47, 31) - behavior=1
+Drop at (23, 32) - behavior=2
+Drop at (32, 36) - behavior=3
+Drop at (21, 23) - behavior=2
+Drop at (21, 26) - behavior=1
+Drop at (20, 20) - behavior=1
+Drop at (33, 16) - behavior=1
+Drop at (28, 29) - behavior=2
+Drop at (46, 25) - behavior=3
+Drop at (34, 25) - behavior=2
+Drop at (37, 43) - behavior=2
+Drop at (47, 30) - behavior=2
+Drop at (25, 32) - behavior=2
+Drop at (48, 29) - behavior=1
+Drop at (32, 17) - behavior=2
+Drop at (24, 45) - behavior=2
+Drop at (44, 27) - behavior=1
+Drop at (42, 37) - behavior=3
+Drop at (34, 46) - behavior=1
+Drop at (43, 44) - behavior=3
+Drop at (25, 23) - behavior=1
+Drop at (24, 45) - behavior=3
+Drop at (48, 23) - behavior=2
+Drop at (44, 45) - behavior=2
+Drop at (40, 25) - behavior=2
+Drop at (26, 40) - behavior=2
+Drop at (27, 19) - behavior=3
+Drop at (26, 43) - behavior=3
+Drop at (29, 32) - behavior=1
+Drop at (34, 38) - behavior=3
+Drop at (31, 41) - behavior=2
+Drop at (19, 16) - behavior=3
+Drop at (31, 43) - behavior=2
+Drop at (28, 19) - behavior=1
+Drop at (26, 22) - behavior=3
+Drop at (18, 37) - behavior=2
+Drop at (32, 29) - behavior=2
+Drop at (35, 36) - behavior=3
+Drop at (18, 16) - behavior=1
+Drop at (20, 18) - behavior=2
+Drop at (18, 47) - behavior=2
+Drop at (15, 44) - behavior=2
+Drop at (31, 33) - behavior=3
+Drop at (43, 46) - behavior=2
+Drop at (37, 44) - behavior=2
+Drop at (25, 41) - behavior=1
+Drop at (42, 33) - behavior=2
+Drop at (16, 29) - behavior=2
+Drop at (34, 22) - behavior=2
+Drop at (35, 43) - behavior=2
+Drop at (17, 31) - behavior=2
+Drop at (19, 20) - behavior=2
+Drop at (32, 34) - behavior=3
+Drop at (47, 45) - behavior=2
+Drop at (22, 42) - behavior=3
+Drop at (45, 32) - behavior=3
+Drop at (34, 29) - behavior=3
+Drop at (32, 40) - behavior=2
+Drop at (22, 37) - behavior=1
+Drop at (17, 37) - behavior=2
+Drop at (15, 17) - behavior=2
+Drop at (40, 26) - behavior=2
+Drop at (26, 47) - behavior=3
+Drop at (42, 18) - behavior=1
+Drop at (32, 20) - behavior=2
+Drop at (18, 26) - behavior=1
+Drop at (26, 37) - behavior=2
+Drop at (35, 43) - behavior=3
+Drop at (26, 30) - behavior=2
+Drop at (43, 27) - behavior=2
+Drop at (34, 24) - behavior=2
+Drop at (22, 33) - behavior=1
+Drop at (47, 36) - behavior=1
+Drop at (22, 44) - behavior=2
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ink_In_Water.pix frames=8161 commands=24336
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Ball.pix frames=16912 commands=53558
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lightning.pix frames=6422 commands=26170
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Tunnel.pix frames=4050 commands=12153
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Boid_Digits.pix frames=10250 commands=41002
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Morphing_Prism.pix frames=19731 commands=59196
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fractal_Trees.pix frames=19358 commands=58077
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Embers.pix frames=19739 commands=59220
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Solar_Bloom.pix frames=12408 commands=48306
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Crystal_Growth.pix frames=0 commands=24365
+Tide: Cross Tide
+Tide: Longshore
+Tide: Cross Tide
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+Tide: Oblique
+Tide: Oblique
+Tide: Oblique
+Tide: Oblique
+Tide: Oblique
+Tide: Longshore
+Tide: Oblique
+Tide: Cross Tide
+Tide: Longshore
+Tide: Longshore
+Tide: Oblique
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Tide.pix frames=8211 commands=24636
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Brians_Brain.pix frames=7304 commands=29218
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hyperspace_Jump.pix frames=6253 commands=47638
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/sprite_with_grid.pix frames=7217 commands=28916
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cracking.pix frames=0 commands=13576
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Radar_Sweep.pix frames=19622 commands=58870
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/etch-a-sketch.pix frames=0 commands=33786
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/icicle_drop.pix frames=0 commands=29762
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/RD_HighRes.pix frames=4117 commands=12354
+Rendering crystals...
+Building torus...
+Torus ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Torus_Bob_Fly.pix frames=18023 commands=54487
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Space_Shooter.pix frames=19392 commands=79472
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Geometric_Kaleidoscope.pix frames=15206 commands=46735
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Circles.pix frames=0 commands=41791
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Electric_Web.pix frames=19204 commands=57615
+Rendering nebula...
+Rendering star cels...
+Building galaxies...
+Starfield ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Morphing_Starfield.pix frames=17180 commands=86024
+Epicycles - Fourier Series Drawing
+Watch as rotating circles trace a complex pattern
+
+Pattern 2: Odd harmonics create angular shapes
+Pattern 3: Mixed positive/negative frequencies
+Pattern 4: Star-like pattern
+Pattern 5: Flower petals
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Epicycles.pix frames=7734 commands=38682
+Sequence order shuffled:
+  Position 0.0: Sequence 9.0
+  Position 1.0: Sequence 0.0
+  Position 2.0: Sequence 3.0
+  Position 3.0: Sequence 4.0
+  Position 4.0: Sequence 8.0
+  Position 5.0: Sequence 6.0
+  Position 6.0: Sequence 2.0
+  Position 7.0: Sequence 5.0
+  Position 8.0: Sequence 7.0
+  Position 9.0: Sequence 1.0
+=== SEQUENCE 9.0 (index 0 of 9) ===
+Field: Serpentine - S-curve flowing pattern
+Palette: Aurora
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 0.0 (index 1 of 9) ===
+Field: Turbulent - multi-layered sine noise
+Palette: Ocean
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 3.0 (index 2 of 9) ===
+Field: Horizontal - gentle side-to-side waves
+Palette: Forest
+Speed: 120
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 4.0 (index 3 of 9) ===
+Field: Radial Burst - spiraling outward from center
+Palette: Sunset
+Speed: 110
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 8.0 (index 4 of 9) ===
+Field: Chaos - turbulent flow with drift
+Palette: Lava
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 6.0 (index 5 of 9) ===
+Field: Converge - all particles flow to center
+Palette: Toxic
+Speed: 70
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 2.0 (index 6 of 9) ===
+Field: Dual Vortex - two counter-rotating centers
+Palette: Aurora
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 5.0 (index 7 of 9) ===
+Field: Diagonal Rain - 45 degree fall with ripples
+Palette: Ice
+Speed: 130
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 7.0 (index 8 of 9) ===
+Field: Wave - vertical sinusoidal motion
+Palette: Ocean
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 1.0 (index 9 of 9) ===
+Field: Spiral - outward rotating flow
+Palette: Fire
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+Sequence order shuffled:
+  Position 0.0: Sequence 8.0
+  Position 1.0: Sequence 4.0
+  Position 2.0: Sequence 9.0
+  Position 3.0: Sequence 0.0
+  Position 4.0: Sequence 7.0
+  Position 5.0: Sequence 3.0
+  Position 6.0: Sequence 6.0
+  Position 7.0: Sequence 5.0
+  Position 8.0: Sequence 2.0
+  Position 9.0: Sequence 1.0
+=== SEQUENCE 8.0 (index 0 of 9) ===
+Field: Chaos - turbulent flow with drift
+Palette: Lava
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 4.0 (index 1 of 9) ===
+Field: Radial Burst - spiraling outward from center
+Palette: Sunset
+Speed: 110
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 9.0 (index 2 of 9) ===
+Field: Serpentine - S-curve flowing pattern
+Palette: Aurora
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 0.0 (index 3 of 9) ===
+Field: Turbulent - multi-layered sine noise
+Palette: Ocean
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 7.0 (index 4 of 9) ===
+Field: Wave - vertical sinusoidal motion
+Palette: Ocean
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Perlin_Noise_Particle_System.pix frames=8901 commands=26707
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Swaying_Meadow_Grass.pix frames=7445 commands=26109
+Kaleidoscope Tumbler v2 starting...
+Sequence: sym=5 obj=5 wedge=72.0 drift=1 spin=1 speed=0.8 mode=1
+Sequence: sym=7 obj=5 wedge=51.42857142857143 drift=1 spin=1 speed=1.3 mode=2
+Sequence: sym=8 obj=6 wedge=45.0 drift=1 spin=0 speed=1.1 mode=0
+Sequence: sym=8 obj=2 wedge=45.0 drift=1 spin=0 speed=1.4 mode=2
+Sequence: sym=4 obj=3 wedge=90.0 drift=1 spin=0 speed=0.5 mode=1
+Sequence: sym=4 obj=5 wedge=90.0 drift=1 spin=1 speed=0.9 mode=2
+Sequence: sym=7 obj=6 wedge=51.42857142857143 drift=1 spin=1 speed=0.7 mode=2
+Sequence: sym=8 obj=4 wedge=45.0 drift=1 spin=0 speed=0.6 mode=1
+Sequence: sym=7 obj=4 wedge=51.42857142857143 drift=1 spin=1 speed=1.2 mode=0
+Sequence: sym=4 obj=2 wedge=90.0 drift=1 spin=0 speed=1.1 mode=0
+Sequence: sym=5 obj=6 wedge=72.0 drift=1 spin=1 speed=1.2 mode=2
+Sequence: sym=6 obj=4 wedge=60.0 drift=1 spin=1 speed=1.2 mode=1
+Sequence: sym=5 obj=5 wedge=72.0 drift=1 spin=1 speed=1.4 mode=0
+Sequence: sym=6 obj=3 wedge=60.0 drift=1 spin=1 speed=0.5 mode=2
+Sequence: sym=5 obj=6 wedge=72.0 drift=1 spin=1 speed=0.7 mode=1
+Sequence: sym=5 obj=3 wedge=72.0 drift=1 spin=0 speed=1.0 mode=1
+Sequence: sym=5 obj=4 wedge=72.0 drift=1 spin=1 speed=1.2 mode=0
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Kaleidoscope_Tumbler.pix frames=10399 commands=31711
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_perspective_scroll.pix frames=9985 commands=69916
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Tornado.pix frames=19626 commands=58881
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/bubble_pop.pix frames=19692 commands=66997
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rotating_Cube.pix frames=13341 commands=53366
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Aurora_Reactor.pix frames=9599 commands=38398
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Expanding_Rings.pix frames=10282 commands=39415
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ring_Gate.pix frames=19186 commands=57562
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Motion_Blindness.pix frames=5393 commands=21574
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/bouncing_ball.pix frames=18163 commands=72654
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/fireflies.pix frames=1039 commands=27491
+Starting Flappy Bird Demo
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Flappy_Bird.pix frames=4846 commands=31901
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/The_Matrix.pix frames=17398 commands=69595
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Shepherd_Moons.pix frames=19650 commands=58954
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rain.pix frames=9637 commands=38549
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Galton_Board.pix frames=19670 commands=59978
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Bouncing_Pixels.pix frames=19713 commands=59142
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Seaweed_Forest.pix frames=10681 commands=32046
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sine_Wave_Color_Flow.pix frames=20040 commands=60123
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Paint_Drops.pix frames=0 commands=27431
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Clock_Wave.pix frames=19500 commands=58503
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spiral2.pix frames=6 commands=24138
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Magnetic_Marbles.pix frames=10698 commands=32097
+Iron Filings: Dipole
+Iron Filings: Dipole + polarity flip
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stir
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Dipole
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + stir
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Dipole
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field + stir
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole + stir
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stir
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + stir
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stir
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Dipole
+Iron Filings: Dipole + polarity flip
+Iron Filings: Dipole + stir
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Iron_Filings.pix frames=8553 commands=25662
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sand_drop.pix frames=0 commands=32068
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Julia_Morph.pix frames=5728 commands=17187
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Double_Pendulum.pix frames=10682 commands=32050
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Boids_Flocking_Simulation.pix frames=15360 commands=44153
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spirograph_sequence.pix frames=0 commands=27942
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fifteen_Puzzle.pix frames=4521 commands=153691
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sheet_Music.pix frames=17168 commands=103083
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Single Nib
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Single Nib
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ink_Storm.pix frames=16634 commands=49905
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cosmic_Pulse.pix frames=7789 commands=38947
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pong.pix frames=31189 commands=93805
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Laser_show.pix frames=4127 commands=16510
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pinball_Magnet_Table.pix frames=10711 commands=32166
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/rainbow_sweep.pix frames=12801 commands=38406
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_perspective_scroll4_down3.pix frames=9989 commands=69944
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Magnetic_Pendulum.pix frames=17986 commands=71963
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Mandelbrot_Zoom.pix frames=8250 commands=24753
+Rendering sky...
+Rendering field stars...
+Constellation Map
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Constellation_Map.pix frames=17213 commands=103639
+Wireframe Polyhedra
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wireframe_Polyhedra.pix frames=19576 commands=58732
+Pre-calculating waveform tables...
+All tables ready!
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Oscilloscope_Display.pix frames=19586 commands=58763
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Bar_Graph_Equalizer.pix frames=10426 commands=37132
+Selection Sort complete:
+Comparisons: 2016
+Swaps: 61
+Cocktail Shaker Sort complete:
+Comparisons: 1551
+Swaps: 946
+Gnome Sort complete:
+Comparisons: 2241
+Swaps: 1091
+Comb Sort complete:
+Comparisons: 713
+Swaps: 141
+Radix Sort complete:
+Digit positions processed: 2
+Elements moved: 128
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sort_visualizer.pix frames=15963 commands=48911
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_perspective_scroll4.pix frames=9989 commands=69944
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Newtons_Cradle.pix frames=19260 commands=77042
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Langtons_Ant_Turmites.pix frames=19324 commands=77335
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Watching_Eyes_2.pix frames=2549 commands=11054
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spider_Web.pix frames=0 commands=8151
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Molecule_Viewer.pix frames=9660 commands=81001
+Rendering strand cels...
+Helix ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/DNA_Helix_Ribbon.pix frames=17954 commands=54396
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Orbital_Wispfield.pix frames=19684 commands=59056
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Floating_Geometry.pix frames=20076 commands=69363
+Slime mold highways...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Slime_Mold_Highways.pix frames=8050 commands=24154
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ripple_Chase.pix frames=19676 commands=59031
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Quantum_Particle_Collision.pix frames=12324 commands=49299
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cafe_Wall_Illusion.pix frames=1614 commands=6458
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Radioactive_Decay.pix frames=9624 commands=76991
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Reaction_Diffusion.pix frames=8057 commands=24174
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Expanding_Circles.pix frames=19731 commands=59187
+Sequence 1.0
+Ball 1 - Position: (11, 5.0) Velocities: dx=2.78, dy=2.53
+Ball 2 - Position: (18, 5.0) Velocities: dx=-0.04, dy=1.9
+Sequence 2.0
+Ball 1 - Position: (40, 5.0) Velocities: dx=2.31, dy=1.19
+Ball 2 - Position: (5, 5.0) Velocities: dx=2.69, dy=1.87
+Sequence 3.0
+Ball 1 - Position: (46, 5.0) Velocities: dx=-3.98, dy=1.89
+Ball 2 - Position: (44, 5.0) Velocities: dx=-2.17, dy=2.89
+Sequence 4.0
+Ball 1 - Position: (54, 5.0) Velocities: dx=-3.76, dy=1.05
+Ball 2 - Position: (34, 5.0) Velocities: dx=3.51, dy=1.76
+Sequence 5.0
+Ball 1 - Position: (15, 5.0) Velocities: dx=-0.62, dy=1.06
+Ball 2 - Position: (16, 5.0) Velocities: dx=-0.5, dy=1.99
+Sequence 6.0
+Ball 1 - Position: (16, 5.0) Velocities: dx=-2.15, dy=1.44
+Ball 2 - Position: (29, 5.0) Velocities: dx=-1.68, dy=1.04
+Sequence 7.0
+Ball 1 - Position: (51, 5.0) Velocities: dx=0.45, dy=2.28
+Ball 2 - Position: (14, 5.0) Velocities: dx=3.94, dy=2.72
+Sequence 8.0
+Ball 1 - Position: (10, 5.0) Velocities: dx=-1.34, dy=2.44
+Ball 2 - Position: (44, 5.0) Velocities: dx=3.49, dy=1.84
+Sequence 9.0
+Ball 1 - Position: (50, 5.0) Velocities: dx=1.36, dy=1.61
+Ball 2 - Position: (36, 5.0) Velocities: dx=3.06, dy=2.69
+Sequence 10.0
+Ball 1 - Position: (32, 5.0) Velocities: dx=0.71, dy=1.07
+Ball 2 - Position: (17, 5.0) Velocities: dx=2.38, dy=1.83
+Sequence 11.0
+Ball 1 - Position: (13, 5.0) Velocities: dx=0.39, dy=2.41
+Ball 2 - Position: (41, 5.0) Velocities: dx=-1.0, dy=1.88
+Sequence 12.0
+Ball 1 - Position: (32, 5.0) Velocities: dx=2.23, dy=2.04
+Ball 2 - Position: (25, 5.0) Velocities: dx=-0.08, dy=1.06
+Sequence 13.0
+Ball 1 - Position: (5, 5.0) Velocities: dx=1.63, dy=2.97
+Ball 2 - Position: (37, 5.0) Velocities: dx=-0.85, dy=1.34
+Sequence 14.0
+Ball 1 - Position: (32, 5.0) Velocities: dx=3.86, dy=2.54
+Ball 2 - Position: (34, 5.0) Velocities: dx=2.88, dy=1.46
+Sequence 15.0
+Ball 1 - Position: (32, 5.0) Velocities: dx=3.62, dy=2.16
+Ball 2 - Position: (29, 5.0) Velocities: dx=-1.85, dy=2.1
+Sequence 16.0
+Ball 1 - Position: (58, 5.0) Velocities: dx=-3.95, dy=2.57
+Ball 2 - Position: (50, 5.0) Velocities: dx=3.09, dy=2.48
+Sequence 17.0
+Ball 1 - Position: (49, 5.0) Velocities: dx=0.15, dy=2.12
+Ball 2 - Position: (27, 5.0) Velocities: dx=-3.55, dy=2.74
+Sequence 18.0
+Ball 1 - Position: (35, 5.0) Velocities: dx=-2.4, dy=2.01
+Ball 2 - Position: (31, 5.0) Velocities: dx=-1.15, dy=1.69
+Sequence 19.0
+Ball 1 - Position: (34, 5.0) Velocities: dx=0.99, dy=2.22
+Ball 2 - Position: (29, 5.0) Velocities: dx=-3.78, dy=1.46
+Sequence 20.0
+Ball 1 - Position: (13, 5.0) Velocities: dx=0.68, dy=2.72
+Ball 2 - Position: (49, 5.0) Velocities: dx=2.38, dy=2.63
+Sequence 21.0
+Ball 1 - Position: (18, 5.0) Velocities: dx=2.73, dy=2.35
+Ball 2 - Position: (8, 5.0) Velocities: dx=-3.87, dy=1.03
+Sequence 22.0
+Ball 1 - Position: (46, 5.0) Velocities: dx=-2.0, dy=1.22
+Ball 2 - Position: (39, 5.0) Velocities: dx=-1.24, dy=1.14
+Sequence 23.0
+Ball 1 - Position: (12, 5.0) Velocities: dx=0.22, dy=1.34
+Ball 2 - Position: (19, 5.0) Velocities: dx=1.69, dy=1.91
+Sequence 24.0
+Ball 1 - Position: (21, 5.0) Velocities: dx=-0.21, dy=1.05
+Ball 2 - Position: (25, 5.0) Velocities: dx=-0.63, dy=1.38
+Sequence 25.0
+Ball 1 - Position: (9, 5.0) Velocities: dx=3.2, dy=2.02
+Ball 2 - Position: (15, 5.0) Velocities: dx=0.85, dy=2.63
+Sequence 26.0
+Ball 1 - Position: (4, 5.0) Velocities: dx=-3.86, dy=1.29
+Ball 2 - Position: (44, 5.0) Velocities: dx=-2.72, dy=2.41
+Sequence 27.0
+Ball 1 - Position: (42, 5.0) Velocities: dx=0.36, dy=1.44
+Ball 2 - Position: (59, 5.0) Velocities: dx=2.38, dy=2.03
+Sequence 28.0
+Ball 1 - Position: (16, 5.0) Velocities: dx=1.19, dy=1.79
+Ball 2 - Position: (36, 5.0) Velocities: dx=-1.43, dy=2.26
+Sequence 29.0
+Ball 1 - Position: (6, 5.0) Velocities: dx=-1.61, dy=2.94
+Ball 2 - Position: (53, 5.0) Velocities: dx=-1.55, dy=2.72
+Sequence 30.0
+Ball 1 - Position: (21, 5.0) Velocities: dx=3.51, dy=2.49
+Ball 2 - Position: (27, 5.0) Velocities: dx=-1.98, dy=1.02
+Sequence 31.0
+Ball 1 - Position: (53, 5.0) Velocities: dx=-3.7, dy=2.64
+Ball 2 - Position: (58, 5.0) Velocities: dx=0.56, dy=1.34
+Sequence 32.0
+Ball 1 - Position: (52, 5.0) Velocities: dx=3.79, dy=2.41
+Ball 2 - Position: (32, 5.0) Velocities: dx=-0.98, dy=1.69
+Sequence 33.0
+Ball 1 - Position: (15, 5.0) Velocities: dx=1.39, dy=1.87
+Ball 2 - Position: (14, 5.0) Velocities: dx=-3.16, dy=2.33
+Sequence 34.0
+Ball 1 - Position: (20, 5.0) Velocities: dx=-0.0, dy=1.65
+Ball 2 - Position: (53, 5.0) Velocities: dx=3.2, dy=1.04
+Sequence 35.0
+Ball 1 - Position: (14, 5.0) Velocities: dx=-1.38, dy=2.97
+Ball 2 - Position: (48, 5.0) Velocities: dx=-1.29, dy=1.43
+Sequence 36.0
+Ball 1 - Position: (41, 5.0) Velocities: dx=2.7, dy=2.86
+Ball 2 - Position: (23, 5.0) Velocities: dx=3.06, dy=2.37
+Sequence 37.0
+Ball 1 - Position: (31, 5.0) Velocities: dx=3.88, dy=1.47
+Ball 2 - Position: (44, 5.0) Velocities: dx=-3.32, dy=1.34
+Sequence 38.0
+Ball 1 - Position: (55, 5.0) Velocities: dx=-2.3, dy=2.52
+Ball 2 - Position: (37, 5.0) Velocities: dx=2.73, dy=1.74
+Sequence 39.0
+Ball 1 - Position: (22, 5.0) Velocities: dx=-1.67, dy=2.73
+Ball 2 - Position: (37, 5.0) Velocities: dx=3.63, dy=2.77
+Sequence 40.0
+Ball 1 - Position: (11, 5.0) Velocities: dx=0.41, dy=1.21
+Ball 2 - Position: (5, 5.0) Velocities: dx=-3.41, dy=2.73
+Sequence 41.0
+Ball 1 - Position: (48, 5.0) Velocities: dx=2.63, dy=1.68
+Ball 2 - Position: (38, 5.0) Velocities: dx=2.26, dy=1.76
+Sequence 42.0
+Ball 1 - Position: (36, 5.0) Velocities: dx=-2.21, dy=1.16
+Ball 2 - Position: (18, 5.0) Velocities: dx=3.13, dy=2.13
+Sequence 43.0
+Ball 1 - Position: (56, 5.0) Velocities: dx=-0.34, dy=1.55
+Ball 2 - Position: (48, 5.0) Velocities: dx=2.62, dy=1.02
+Sequence 44.0
+Ball 1 - Position: (41, 5.0) Velocities: dx=-3.27, dy=1.23
+Ball 2 - Position: (53, 5.0) Velocities: dx=-3.68, dy=1.48
+Sequence 45.0
+Ball 1 - Position: (59, 5.0) Velocities: dx=-0.63, dy=1.23
+Ball 2 - Position: (13, 5.0) Velocities: dx=-2.07, dy=2.49
+Sequence 46.0
+Ball 1 - Position: (9, 5.0) Velocities: dx=3.29, dy=1.76
+Ball 2 - Position: (58, 5.0) Velocities: dx=3.27, dy=1.59
+Sequence 47.0
+Ball 1 - Position: (17, 5.0) Velocities: dx=-0.18, dy=1.2
+Ball 2 - Position: (40, 5.0) Velocities: dx=-3.68, dy=1.02
+Sequence 48.0
+Ball 1 - Position: (59, 5.0) Velocities: dx=-1.64, dy=2.19
+Ball 2 - Position: (29, 5.0) Velocities: dx=-1.49, dy=1.13
+Sequence 49.0
+Ball 1 - Position: (55, 5.0) Velocities: dx=3.76, dy=2.94
+Ball 2 - Position: (9, 5.0) Velocities: dx=-2.28, dy=2.24
+Sequence 50.0
+Ball 1 - Position: (59, 5.0) Velocities: dx=0.34, dy=2.38
+Ball 2 - Position: (41, 5.0) Velocities: dx=-1.93, dy=2.08
+Sequence 51.0
+Ball 1 - Position: (21, 5.0) Velocities: dx=-2.03, dy=1.16
+Ball 2 - Position: (19, 5.0) Velocities: dx=3.87, dy=1.9
+Sequence 52.0
+Ball 1 - Position: (40, 5.0) Velocities: dx=1.15, dy=2.88
+Ball 2 - Position: (25, 5.0) Velocities: dx=-1.55, dy=1.65
+Sequence 53.0
+Ball 1 - Position: (21, 5.0) Velocities: dx=2.78, dy=2.79
+Ball 2 - Position: (20, 5.0) Velocities: dx=-1.33, dy=2.09
+Sequence 54.0
+Ball 1 - Position: (36, 5.0) Velocities: dx=0.77, dy=1.49
+Ball 2 - Position: (4, 5.0) Velocities: dx=-2.05, dy=1.14
+Sequence 55.0
+Ball 1 - Position: (34, 5.0) Velocities: dx=-3.43, dy=1.15
+Ball 2 - Position: (39, 5.0) Velocities: dx=-1.67, dy=2.58
+Sequence 56.0
+Ball 1 - Position: (31, 5.0) Velocities: dx=2.9, dy=1.31
+Ball 2 - Position: (32, 5.0) Velocities: dx=2.36, dy=1.15
+Sequence 57.0
+Ball 1 - Position: (57, 5.0) Velocities: dx=-2.61, dy=2.55
+Ball 2 - Position: (59, 5.0) Velocities: dx=2.57, dy=1.64
+Sequence 58.0
+Ball 1 - Position: (9, 5.0) Velocities: dx=0.11, dy=2.84
+Ball 2 - Position: (20, 5.0) Velocities: dx=3.15, dy=1.28
+Sequence 59.0
+Ball 1 - Position: (55, 5.0) Velocities: dx=-3.75, dy=1.63
+Ball 2 - Position: (54, 5.0) Velocities: dx=2.43, dy=2.81
+Sequence 60.0
+Ball 1 - Position: (51, 5.0) Velocities: dx=1.97, dy=2.38
+Ball 2 - Position: (13, 5.0) Velocities: dx=-0.54, dy=1.32
+Sequence 61.0
+Ball 1 - Position: (44, 5.0) Velocities: dx=1.34, dy=1.51
+Ball 2 - Position: (7, 5.0) Velocities: dx=3.71, dy=2.62
+Sequence 62.0
+Ball 1 - Position: (34, 5.0) Velocities: dx=0.33, dy=2.7
+Ball 2 - Position: (29, 5.0) Velocities: dx=-0.83, dy=1.68
+Sequence 63.0
+Ball 1 - Position: (18, 5.0) Velocities: dx=-3.8, dy=2.29
+Ball 2 - Position: (27, 5.0) Velocities: dx=0.56, dy=1.12
+Sequence 64.0
+Ball 1 - Position: (23, 5.0) Velocities: dx=-2.89, dy=1.25
+Ball 2 - Position: (18, 5.0) Velocities: dx=2.63, dy=1.8
+Sequence 65.0
+Ball 1 - Position: (26, 5.0) Velocities: dx=0.9, dy=1.47
+Ball 2 - Position: (3, 5.0) Velocities: dx=0.23, dy=2.0
+Sequence 66.0
+Ball 1 - Position: (40, 5.0) Velocities: dx=-0.49, dy=2.37
+Ball 2 - Position: (45, 5.0) Velocities: dx=-2.09, dy=1.99
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Dropped_ball.pix frames=16457 commands=65929
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Asteroid_Miner.pix frames=10530 commands=35103
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Bridge_Building.pix frames=6741 commands=22388
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lava_Lamp.pix frames=9824 commands=29477
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Aurora_Borealis.pix frames=19577 commands=58734
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Raining_down.pix frames=19851 commands=59556
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Style: Fat Bursts
+Lightning Roots: Style: Fat Bursts — strike 1/3
+Lightning Roots: Style: Fat Bursts — strike 2/3
+Lightning Roots: Style: Fat Bursts — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Style: Sheet Flash
+Lightning Roots: Style: Sheet Flash — strike 1/3
+Lightning Roots: Style: Sheet Flash — strike 2/3
+Lightning Roots: Style: Sheet Flash — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Dual Seeds
+Lightning Roots: Dual Seeds — strike 1/3
+Lightning Roots: Dual Seeds — strike 2/3
+Lightning Roots: Dual Seeds — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Style: Long Tendrils
+Lightning Roots: Style: Long Tendrils — strike 1/3
+Lightning Roots: Style: Long Tendrils — strike 2/3
+Lightning Roots: Style: Long Tendrils — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Dual Seeds
+Lightning Roots: Dual Seeds — strike 1/3
+Lightning Roots: Dual Seeds — strike 2/3
+Lightning Roots: Dual Seeds — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Style: Fat Bursts
+Lightning Roots: Style: Fat Bursts — strike 1/3
+Lightning Roots: Style: Fat Bursts — strike 2/3
+Lightning Roots: Style: Fat Bursts — strike 3/3
+Lightning Roots: new mode → Style: Fat Bursts
+Lightning Roots: Style: Fat Bursts — strike 1/3
+Lightning Roots: Style: Fat Bursts — strike 2/3
+Lightning Roots: Style: Fat Bursts — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Fork Storm
+Lightning Roots: Fork Storm — strike 1/3
+Lightning Roots: Fork Storm — strike 2/3
+Lightning Roots: Fork Storm — strike 3/3
+Lightning Roots: new mode → Dual Seeds
+Lightning Roots: Dual Seeds — strike 1/3
+Lightning Roots: Dual Seeds — strike 2/3
+Lightning Roots: Dual Seeds — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Dual Seeds
+Lightning Roots: Dual Seeds — strike 1/3
+Lightning Roots: Dual Seeds — strike 2/3
+Lightning Roots: Dual Seeds — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Wandering Leader
+Lightning Roots: Wandering Leader — strike 1/3
+Lightning Roots: Wandering Leader — strike 2/3
+Lightning Roots: Wandering Leader — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Pulse Breathe
+Lightning Roots: Pulse Breathe — strike 1/3
+Lightning Roots: Pulse Breathe — strike 2/3
+Lightning Roots: Pulse Breathe — strike 3/3
+Lightning Roots: new mode → Classic
+Lightning Roots: Classic — strike 1/3
+Lightning Roots: Classic — strike 2/3
+Lightning Roots: Classic — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Afterglow
+Lightning Roots: Afterglow — strike 1/3
+Lightning Roots: Afterglow — strike 2/3
+Lightning Roots: Afterglow — strike 3/3
+Lightning Roots: new mode → Fork Storm
+Lightning Roots: Fork Storm — strike 1/3
+Lightning Roots: Fork Storm — strike 2/3
+Lightning Roots: Fork Storm — strike 3/3
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lightning_Roots.pix frames=15513 commands=46543
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Shape_Lock.pix frames=19649 commands=58950
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sine_Wave_Color_Flow.pix frames=20040 commands=60123
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Kinetic_Rainbow.pix frames=19626 commands=58881
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Double_Pendulum.pix frames=10682 commands=32050
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Molecule_Viewer.pix frames=9658 commands=80979
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Galton_Board.pix frames=19670 commands=59978
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Quantum_Particle_Collision.pix frames=12328 commands=49315
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Aurora_Borealis.pix frames=19578 commands=58737
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wave_grid.pix frames=243 commands=11749
+Starfield + Hyperspace (radial)
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Starfield_Hyperspace.pix frames=19288 commands=57872
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Rain.pix frames=9637 commands=38549
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Floating_Geometry.pix frames=20076 commands=69363
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Spider_Web.pix frames=0 commands=8151
+Rendering nebula...
+Rendering star cels...
+Building galaxies...
+Starfield ready
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Morphing_Starfield.pix frames=17162 commands=85936
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Orbital_Wispfield.pix frames=19684 commands=59056
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pendulum_Wave.pix frames=17629 commands=70518
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_asterisk.pix frames=19752 commands=59259
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Electric_arcs.pix frames=4055 commands=16222
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Motion_Blindness.pix frames=5393 commands=21574
+[pixil] Moire_Patterns.pix: line 381: procedure 'do_the_cyan_triangle_two_times' is not defined
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Moire_Patterns.pix frames=2016 commands=8068
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Atom_Viewer.pix frames=9730 commands=68109
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hex_Grid_Glow.pix frames=9600 commands=28803
+Starting Dynamic Pixel Spray
+Sequence duration: 6 seconds
+Total sequences: 16
+=== Playing sequence 3 of 16 ===
+Playing: Warm Embers
+  density=30 burnout=2771 rest=0.1
+=== Playing sequence 10 of 16 ===
+Playing: Galaxy Spiral
+  arms=5 tight=9 rot=5 burnout=1767
+v_start_color = 10
+=== Playing sequence 9 of 16 ===
+Playing: Rainfall
+  color_mode=2 drops=33 speed=4
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Burnout.pix frames=0 commands=23490
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lava_Lamp.pix frames=9851 commands=29558
+Tide: Cross Tide
+Tide: Longshore
+Tide: Cross Tide
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+Tide: Oblique
+Tide: Oblique
+Tide: Oblique
+Tide: Oblique
+Tide: Oblique
+Tide: Longshore
+Tide: Oblique
+Tide: Cross Tide
+Tide: Longshore
+Tide: Longshore
+Tide: Oblique
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+Tide: Longshore
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Tide.pix frames=8197 commands=24594
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Color_Mandala.pix frames=6769 commands=34974
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Julia_Morph.pix frames=5735 commands=17208
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Space_Shooter.pix frames=19392 commands=79472
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Twin_Star_Vortex.pix frames=10244 commands=41008
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Lightning.pix frames=6422 commands=26170
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Radar_Sweep.pix frames=19622 commands=58870
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Gravity_Wells.pix frames=9641 commands=38566
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Starburst.pix frames=322 commands=24389
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Orbiting_Ripples.pix frames=4091 commands=12276
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Hyperspace_Transition.pix frames=19622 commands=58869
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Polygon_Zoom.pix frames=0 commands=20829
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Wave_Interference.pix frames=4094 commands=12285
+Selection Sort complete:
+Comparisons: 2016
+Swaps: 61
+Cocktail Shaker Sort complete:
+Comparisons: 1551
+Swaps: 946
+Gnome Sort complete:
+Comparisons: 2241
+Swaps: 1091
+Comb Sort complete:
+Comparisons: 713
+Swaps: 141
+Radix Sort complete:
+Digit positions processed: 2
+Elements moved: 128
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sort_visualizer.pix frames=15963 commands=48911
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni patterns complete
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Chlandi_Patterns.pix frames=2400 commands=7205
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Helix_Drift.pix frames=16192 commands=47153
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fireworks.pix frames=13876 commands=38625
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Swaying_Meadow_Grass.pix frames=7446 commands=26112
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Space_Invaders.pix frames=10986 commands=34554
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Watching_Eyes.pix frames=2598 commands=10546
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Expanding_Circles.pix frames=19733 commands=59193
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Digital_Rain.pix frames=501 commands=63288
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Drone_Show.pix frames=5299 commands=21198
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Brians_Brain.pix frames=7304 commands=29218
+Pre-calculating animation frames...
+Pre-calculating... 0.0% complete
+Pre-calculating... 12.5% complete
+Pre-calculating... 25.0% complete
+Pre-calculating... 37.5% complete
+Pre-calculating... 50.0% complete
+Pre-calculating... 62.5% complete
+Pre-calculating... 75.0% complete
+Pre-calculating... 87.5% complete
+Calculation complete. Starting animation...
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/RGB_Color_Cube.pix frames=19702 commands=59120
+Selected: Hail Mary
+Selected: Grace Before Meals
+Selected: Glory Be
+Selected: Fatima Prayer
+Selected: Nicene Creed
+Selected: Our Father
+Selected: Nicene Creed
+Selected: Angel of God
+Selected: Nicene Creed
+Selected: Gloria
+Selected: Divine Mercy Chaplet
+Selected: Fatima Prayer
+Selected: Gloria
+Selected: Confiteor
+Selected: Our Father
+Selected: Hail Mary
+Selected: Act of Contrition
+Selected: Grace Before Meals
+Selected: Glory Be
+Selected: Angel of God
+Selected: St. Michael Prayer
+Selected: Nicene Creed
+Selected: Act of Contrition
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Prayers.pix frames=1845 commands=11116
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Nuclear_Fission.pix frames=9569 commands=73260
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Sheet_Music.pix frames=17168 commands=103083
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Single Nib
+Ink Storm: Two Nibs
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Single Nib
+Ink Storm: Single Nib
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Two Nibs
+Ink Storm: Scribble
+Ink Storm: Scribble
+Ink Storm: Single Nib
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ink_Storm.pix frames=16633 commands=49902
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Particle_Eruption.pix frames=19668 commands=59007
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fractured_Mirror.pix frames=9339 commands=37358
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Shape_Lock.pix frames=19650 commands=58953
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Pulse_Matrix.pix frames=2745 commands=10983
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Tunnel.pix frames=4069 commands=12210
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Expanding_Rings.pix frames=10282 commands=39415
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Space_Flight.pix frames=11803 commands=94665
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+Drawing Cherry Tree for 30 seconds
+Drawing Maple Tree for 30 seconds
+Drawing Fractal Tree for 30 seconds
+Drawing Weeping Willow for 30 seconds
+Drawing Pine Tree for 30 seconds
+Drawing Palm Tree for 30 seconds
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fractal_Trees.pix frames=19358 commands=58077
+Iron Filings: Dipole
+Iron Filings: Dipole + polarity flip
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stir
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Dipole
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + stir
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Dipole
+Iron Filings: Dipole + fine lines
+Iron Filings: Dipole + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field + stir
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stretch poles
+Iron Filings: Quadrupole + stir
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stretch poles
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + fine lines
+Iron Filings: Mixed Field + polarity flip
+Iron Filings: Mixed Field + stir
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + stir
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + stir
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Quadrupole + polarity flip
+Iron Filings: Dipole
+Iron Filings: Dipole + polarity flip
+Iron Filings: Dipole + stir
+Iron Filings: Quadrupole
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Quadrupole + fine lines
+Iron Filings: Mixed Field
+Iron Filings: Mixed Field + polarity flip
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Iron_Filings.pix frames=8639 commands=25920
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Morse_Code.pix frames=2303 commands=12151
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_perspective_scroll.pix frames=9985 commands=69916
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Fifteen_Puzzle.pix frames=4522 commands=153727
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Bridge_Building.pix frames=6741 commands=22388
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Raining_down.pix frames=19851 commands=59556
+Color scheme: Blue Galaxy
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cosmic_Nebula.pix frames=0 commands=22969
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/3D_perspective_scroll4.pix frames=9989 commands=69944
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/bouncing_ball.pix frames=18190 commands=72762
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Particle_Tumbler.pix frames=12364 commands=41223
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/KITT_Scanner.pix frames=18591 commands=55773
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Comet_Buzzer.pix frames=19963 commands=59886
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Bouncing_Pixels.pix frames=19713 commands=59142
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Ember_Moths.pix frames=16634 commands=49905
+Color scheme: Cosmic Ripples
+Pattern: Radial Pulse
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Blob.pix frames=4113 commands=12342
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cloth_of_Stars.pix frames=19627 commands=58884
+Sequence order shuffled:
+  Position 0.0: Sequence 9.0
+  Position 1.0: Sequence 0.0
+  Position 2.0: Sequence 3.0
+  Position 3.0: Sequence 4.0
+  Position 4.0: Sequence 8.0
+  Position 5.0: Sequence 6.0
+  Position 6.0: Sequence 2.0
+  Position 7.0: Sequence 5.0
+  Position 8.0: Sequence 7.0
+  Position 9.0: Sequence 1.0
+=== SEQUENCE 9.0 (index 0 of 9) ===
+Field: Serpentine - S-curve flowing pattern
+Palette: Aurora
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 0.0 (index 1 of 9) ===
+Field: Turbulent - multi-layered sine noise
+Palette: Ocean
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 3.0 (index 2 of 9) ===
+Field: Horizontal - gentle side-to-side waves
+Palette: Forest
+Speed: 120
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 4.0 (index 3 of 9) ===
+Field: Radial Burst - spiraling outward from center
+Palette: Sunset
+Speed: 110
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 8.0 (index 4 of 9) ===
+Field: Chaos - turbulent flow with drift
+Palette: Lava
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 6.0 (index 5 of 9) ===
+Field: Converge - all particles flow to center
+Palette: Toxic
+Speed: 70
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 2.0 (index 6 of 9) ===
+Field: Dual Vortex - two counter-rotating centers
+Palette: Aurora
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 5.0 (index 7 of 9) ===
+Field: Diagonal Rain - 45 degree fall with ripples
+Palette: Ice
+Speed: 130
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 7.0 (index 8 of 9) ===
+Field: Wave - vertical sinusoidal motion
+Palette: Ocean
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 1.0 (index 9 of 9) ===
+Field: Spiral - outward rotating flow
+Palette: Fire
+Speed: 90
+Particles: 45
+Burnout: 1200ms
+
+Sequence order shuffled:
+  Position 0.0: Sequence 8.0
+  Position 1.0: Sequence 4.0
+  Position 2.0: Sequence 9.0
+  Position 3.0: Sequence 0.0
+  Position 4.0: Sequence 7.0
+  Position 5.0: Sequence 3.0
+  Position 6.0: Sequence 6.0
+  Position 7.0: Sequence 5.0
+  Position 8.0: Sequence 2.0
+  Position 9.0: Sequence 1.0
+=== SEQUENCE 8.0 (index 0 of 9) ===
+Field: Chaos - turbulent flow with drift
+Palette: Lava
+Speed: 100
+Particles: 45
+Burnout: 1200ms
+
+=== SEQUENCE 4.0 (index 1 of 9) ===
+Field: Radial Burst - spiraling outward from center
+Palette: Sunset
+Speed: 110
+Particles: 45
+Burnout: 1200ms
+
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+=== pixil start 2026-11-16 18:30:57 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1064643, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Cloth_simulation.pix frames=3492 commands=10479
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 18:32:59 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1064746, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Mandelbrot_Zoom.pix frames=2308 commands=6927
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 19:42:25 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1069253, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+Chladni mode (1.0, 2.0)
+Chladni mode (2.0, 3.0)
+Chladni mode (3.0, 4.0)
+Chladni mode (2.0, 5.0)
+Chladni mode (4.0, 5.0)
+Chladni mode (3.0, 7.0)
+Chladni mode (5.0, 6.0)
+Chladni mode (4.0, 7.0)
+Chladni mode (6.0, 7.0)
+Chladni mode (5.0, 8.0)
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Chladni_Patterns.pix frames=3476 commands=10431
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 19:43:54 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1069335, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+Color scheme: Cosmic Ripples
+Pattern: Radial Pulse
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Blob.pix frames=952 commands=2859
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 19:52:07 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1069698, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/rainbow_sweep.pix frames=2875 commands=8628
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 19:53:05 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1069747, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Ball.pix frames=3177 commands=10064
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 19:53:48 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1069770, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Tunnel.pix frames=1568 commands=4707
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 19:57:26 ===
+[pixil] consumer ready: {"pid": 1069917, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+=== pixil start 2026-11-16 19:57:42 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1069943, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Tunnel.pix frames=1567 commands=4705
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 20:00:16 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1070059, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Tunnel.pix frames=1597 commands=4793
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 20:01:37 ===
+[pixil] consumer ready: {"pid": 1070106, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+=== pixil start 2026-11-16 20:01:50 ===
+[pixil] consumer ready: {"pid": 1070137, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+=== pixil start 2026-11-16 20:02:06 ===
+[pixil] consumer ready: {"pid": 1070197, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] interrupted; blacking out
+[pixil] running emergency blackout
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+=== pixil start 2026-11-16 20:02:26 ===
+
+Starting RGB_Api instance cleanup...
+RGB_Api cleanup: blacking out display
+RGB_Api cleanup: blackout complete
+RGB_Api instance cleanup complete
+[pixil] consumer ready: {"pid": 1070224, "legacy_root": "/home/pi/Lightshow/git", "headless": false, "width": 64, "height": 64}
+[pixil] /home/pi/Lightshow/pixil-led-matrix-cpp/scripts/main/Plasma_Tunnel.pix frames=1566 commands=4701
+[pixil] done; panel blacked out by consumer
+=== pixil start 2026-11-16 20:12:08 ===

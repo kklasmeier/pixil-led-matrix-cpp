@@ -1,0 +1,38 @@
+# Points library. Arrays passed in are the caller's, so writes show up
+# after the call. Pass "none" for an omitted depth array. Count is the
+# number of leading points to process. The near-plane clamp is 1.
+
+def lerp(v_a, v_b, v_out, v_t, v_count) {
+    v_one = 1 - v_t
+    for v_i in (0, v_count - 1, 1)
+        v_out[v_i] = v_a[v_i] * v_one + v_b[v_i] * v_t
+    endfor v_i
+}
+
+def project3d(v_x, v_y, v_z, v_sx, v_sy, v_ax, v_ay, v_az, v_scale, v_camera, v_cx, v_cy, v_depth, v_count) {
+    v_sxr = sin(v_ax)
+    v_cxr = cos(v_ax)
+    v_syr = sin(v_ay)
+    v_cyr = cos(v_ay)
+    v_szr = sin(v_az)
+    v_czr = cos(v_az)
+    for v_i in (0, v_count - 1, 1)
+        v_x0 = v_x[v_i]
+        v_y0 = v_y[v_i]
+        v_z0 = v_z[v_i]
+        v_y1 = v_y0 * v_cxr - v_z0 * v_sxr
+        v_z1 = v_y0 * v_sxr + v_z0 * v_cxr
+        v_x2 = v_x0 * v_cyr + v_z1 * v_syr
+        v_z2 = 0 - v_x0 * v_syr + v_z1 * v_cyr
+        v_x3 = v_x2 * v_czr - v_y1 * v_szr
+        v_y3 = v_x2 * v_szr + v_y1 * v_czr
+        v_z3 = v_z2
+        if v_depth != "none" then
+            v_depth[v_i] = v_z3
+        endif
+        v_denom = max(v_camera - v_z3, 1)
+        v_ps = v_scale * v_camera / v_denom
+        v_sx[v_i] = v_cx + v_x3 * v_ps
+        v_sy[v_i] = v_cy + v_y3 * v_ps
+    endfor v_i
+}

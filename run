@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+# Show launcher for the native producer. The LED consumer is still the legacy
+# Python library, started by the pixil binary. See docs/OPS.md.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+PIXIL="build/release/pixil"
+STATUS="/dev/shm/pixil_native_status.json"
+CONTROL="/dev/shm/pixil_native_control.json"
+LOG="pixil.log"
+PIDFILE="pixil.pid"
+
+usage() {
+  cat <<'EOF'
+run - native Pixil show launcher
+
+USAGE:
+  ./run                          Show this help
+  ./run interactive -- [args]    Play in the foreground
+  ./run start -- [args]          Play in the background (log: pixil.log)
+  ./run status                   Show the running script and its timing
+  ./run next                     Advance a running playlist to the next script
+  ./run jump SCRIPT              Play SCRIPT next, then resume the playlist
+  ./run stop                     Stop the show and black out the panel
+
+With no script arguments, interactive and start play main/* for 60:00 each.
+
+ARGUMENTS (passed to the pixil binary):
+  main/*             every script in scripts/main (keeps cycling)
+  main/name[.pix]    one script, path relative to scripts/
+  -t mm:ss           duration of each script
+  -d DEBUG_LEVEL     DEBUG_OFF, DEBUG_CONCISE, DEBUG_SUMMARY, DEBUG_VERBOSE
+  -q                 print a status line every second
+  --headless         run the consumer without GPIO
+  --dry-run          do not start the consumer; a wildcard plays one sorted pass
+
+EXAMPLES:
+  ./run interactive -- main/Cloth_simulation.pix -t 0:20
+  ./run start -- main/* -t 5:00
+  ./run status
+  ./run next
+  ./run jump main/Bouncing_Pixels.pix
+  ./run stop
+  tail -f pixil.log
+EOF
+}
+
+if [[ ! -x "$PIXIL" ]]; then
+  echo "run: $PIXIL is not built. On the Pi 4: nice -n 19 make -j2" >&2
+  exit 1
+fi
+
+needs_root() {
+  local arg
+  for arg in "$@"; do
+    if [[ "$arg" == "--dry-run" || "$arg" == "--headless" ]]; then
+      return 1
+    fi
+  done
+  [[ "$(id -u)" -ne 0 ]]
+}
+
+launch() {
+  if needs_root "$@"; then
+    exec sudo -n "$PIXIL" "$@"
+  fi
+  exec "$PIXIL" "$@"
+}
+
+status_pid() {
+  python3 - "$STATUS" <<'PY'
+import json, sys
+try:
+    print(json.load(open(sys.argv[1], encoding="utf-8"))["pid"])
+except (OSError, ValueError, KeyError):
+    raise SystemExit(1)
+PY
+}
+
+# Prints "unknown" when the status file is missing or predates the next field,
+# "none" when nothing is queued after the current script, or the script name.
+upcoming_script() {
+  python3 - "$STATUS" <<'PY'
+import json, sys
+try:
+    status = json.load(open(sys.argv[1], encoding="utf-8"))
+except (OSError, ValueError):
+    print("unknown")
+    raise SystemExit(0)
+if "next" not in status:
+    print("unknown")
+elif status["next"] is None:
+    print("none")
+else:
+    print(status["next"])
+PY
+}
+
+# /proc works for processes owned by root, unlike kill -0 from the pi user.
+pixil_alive() {
+  [[ -d "/proc/$1" ]]
+}
+
+# Signal the producer. A root-owned show needs sudo, so fall back to it.
+signal_pixil() {
+  local sig="$1" pid="$2"
+  if kill "-$sig" "$pid" 2>/dev/null; then
+    return 0
+  fi
+  if pixil_alive "$pid"; then
+    sudo -n kill "-$sig" "$pid" 2>/dev/null || true
+  fi
+}
+
+# Only the most recent start (marked in the log) is considered, so an old
+# error from an earlier run is never reported for the current one.
+show_stopped() {
+  echo "Pixil is not running."
+  [[ -f "$LOG" ]] || return 0
+  python3 - "$LOG" <<'PY'
+from pathlib import Path
+import sys
+lines = Path(sys.argv[1]).read_text(errors="replace").splitlines()
+start = max((i for i, ln in enumerate(lines) if ln.startswith("=== pixil start ")), default=0)
+run = lines[start:]
+last_script = next((ln for ln in reversed(run) if ln.startswith("[pixil] /") or ln.startswith("[pixil] playing ")), None)
+reason = next((ln for ln in reversed(run)
+               if ln.startswith("[pixil] error:") or ln.startswith("[pixil] interrupted")
+               or ln.startswith("[pixil] done")), None)
+if last_script:
+    print("Last script: " + last_script.replace("[pixil] ", "", 1))
+if reason:
+    print("Stop reason: " + reason)
+else:
+    print("Stop reason: not recorded (the process may have been killed)")
+PY
+}
+
+show_status() {
+  python3 - "$STATUS" <<'PY'
+import json, os, sys, time
+path = sys.argv[1]
+try:
+    status = json.load(open(path, encoding="utf-8"))
+except (OSError, ValueError):
+    raise SystemExit(1)
+pid = status.get("pid")
+if not isinstance(pid, int) or not os.path.isdir(f"/proc/{pid}"):
+    raise SystemExit(1)
+now = time.time()
+started = status.get("started") or now
+elapsed = max(0, int(now - started))
+script = status.get("script") or "(starting)"
+frames = status.get("frames", 0)
+commands = status.get("commands", 0)
+line = f"pid {pid}  {script}  elapsed {elapsed // 60}:{elapsed % 60:02d}"
+ends = status.get("ends")
+if isinstance(ends, (int, float)):
+    left = max(0, int(ends - now))
+    line += f"  remaining {left // 60}:{left % 60:02d}"
+line += f"  frames {frames}  commands {commands}"
+print(line)
+PY
+}
+
+write_control() {
+  local action="$1"
+  local target="${2:-}"
+  local pid
+  pid="$(status_pid)" || { echo "Pixil is not running." >&2; exit 1; }
+  python3 - "$CONTROL" "$pid" "$action" "$target" <<'PY'
+import json, sys
+path, pid, action, target = sys.argv[1:]
+body = {"pid": int(pid), "action": action}
+if target:
+    body["target"] = target
+with open(path, "w", encoding="utf-8") as out:
+    json.dump(body, out)
+    out.write("\n")
+PY
+}
+
+cmd="${1:-help}"
+if [[ "$cmd" != "help" && "$cmd" != "--help" && "$cmd" != "-h" ]]; then
+  shift || true
+fi
+
+case "$cmd" in
+  help|--help|-h)
+    usage
+    ;;
+  interactive)
+    if [[ "${1:-}" == "--" ]]; then shift; fi
+    if [[ $# -eq 0 ]]; then set -- main/* -t 60:00; fi
+    launch "$@"
+    ;;
+  start|bg)
+    if [[ "${1:-}" == "--" ]]; then shift; fi
+    if [[ $# -eq 0 ]]; then set -- main/* -t 60:00; fi
+    if [[ -f "$STATUS" ]] && status_pid >/dev/null 2>&1 && pixil_alive "$(status_pid)"; then
+      echo "Pixil is already running. ./run status" >&2
+      exit 1
+    fi
+    echo "=== pixil start $(date '+%F %T') ===" >>"$LOG"
+    if needs_root "$@"; then
+      sudo -n "$PIXIL" "$@" >>"$LOG" 2>&1 &
+    else
+      "$PIXIL" "$@" >>"$LOG" 2>&1 &
+    fi
+    echo $! >"$PIDFILE"
+    echo "Pixil started. Log: $LOG"
+    ;;
+  status|info|--status)
+    show_status || { show_stopped; exit 1; }
+    ;;
+  next)
+    upcoming="$(upcoming_script)"
+    write_control next
+    case "$upcoming" in
+      unknown) echo "Advancing to the next script." ;;
+      none) echo "Advancing. Nothing is queued after this script, so the show ends." ;;
+      *) echo "Advancing. Next up: $upcoming" ;;
+    esac
+    ;;
+  jump)
+    if [[ $# -lt 1 ]]; then
+      echo "usage: ./run jump main/script.pix" >&2
+      exit 2
+    fi
+    write_control jump "$1"
+    echo "Jumping to $1."
+    ;;
+  stop)
+    pid=""
+    if [[ -f "$STATUS" ]]; then pid="$(status_pid 2>/dev/null || true)"; fi
+    if [[ -z "$pid" && -f "$PIDFILE" ]]; then pid="$(cat "$PIDFILE")"; fi
+    if [[ -z "$pid" ]]; then
+      echo "Pixil is not running."
+      exit 0
+    fi
+    signal_pixil TERM "$pid"
+    if [[ -f "$PIDFILE" ]]; then
+      launcher="$(cat "$PIDFILE")"
+      if [[ "$launcher" != "$pid" ]]; then signal_pixil TERM "$launcher"; fi
+    fi
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      if ! pixil_alive "$pid"; then
+        rm -f "$PIDFILE"
+        echo "Pixil stopped."
+        exit 0
+      fi
+      sleep 0.5
+    done
+    echo "Pixil did not exit; sending KILL." >&2
+    signal_pixil KILL "$pid"
+    rm -f "$PIDFILE"
+    ;;
+  *)
+    echo "run: unknown command $cmd" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

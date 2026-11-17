@@ -1,0 +1,517 @@
+# ==============================================================================
+# STRING ART  (64x64 matrix)
+#
+# Organized nail-and-thread figures: star polygons, cardioids, square-frame
+# weaves, and corner fans. Gallery holds each pattern, then crossfades.
+# Uses draw_lines.
+# ==============================================================================
+
+clear()
+fps(60)
+throttle(0)
+
+v_max_pins = 20
+v_max_lines = 40
+v_cx = 32.0
+v_cy = 32.0
+
+v_nshapes = 12
+v_shape = 0
+v_phase = 0
+v_hold = 0
+v_hold_max = 150
+v_morph = 0
+v_morph_max = 48
+v_blend = 0.0
+v_fade_a = 1.0
+v_fade_b = 0.0
+
+v_npins = 16
+v_nlines = 0
+v_npins_a = 16
+v_nlines_a = 0
+v_npins_b = 16
+v_nlines_b = 0
+v_npins_last = 15
+v_nlines_last = 0
+
+v_t = 0.0
+v_rot = 0.0
+v_i = 0
+v_j = 0
+v_k = 0
+v_a = 0.0
+v_b = 0.0
+v_u = 0.0
+v_bright = 0
+v_hue = 58
+v_hue_a = 58
+v_hue_b = 58
+v_r = 28.0
+v_tw = 1.0
+v_skip = 2
+v_mult = 2
+v_kind = 0
+
+create_array(v_px, v_max_pins, numeric)
+create_array(v_py, v_max_pins, numeric)
+create_array(v_ax, v_max_pins, numeric)
+create_array(v_ay, v_max_pins, numeric)
+create_array(v_bx, v_max_pins, numeric)
+create_array(v_by, v_max_pins, numeric)
+
+create_array(v_x0, v_max_lines, numeric)
+create_array(v_y0, v_max_lines, numeric)
+create_array(v_x1, v_max_lines, numeric)
+create_array(v_y1, v_max_lines, numeric)
+create_array(v_inten, v_max_lines, numeric)
+create_array(v_ea0, v_max_lines, numeric)
+create_array(v_ea1, v_max_lines, numeric)
+create_array(v_eb0, v_max_lines, numeric)
+create_array(v_eb1, v_max_lines, numeric)
+create_array(v_ia, v_max_lines, numeric)
+create_array(v_ib, v_max_lines, numeric)
+
+create_array(v_pal, v_nshapes, numeric)
+v_pal[0] = 58
+v_pal[1] = 72
+v_pal[2] = 42
+v_pal[3] = 88
+v_pal[4] = 18
+v_pal[5] = 64
+v_pal[6] = 78
+v_pal[7] = 34
+v_pal[8] = 50
+v_pal[9] = 92
+v_pal[10] = 26
+v_pal[11] = 60
+
+def add_line {
+    if v_nlines < v_max_lines then
+        v_x0[v_nlines] = v_px[v_i]
+        v_y0[v_nlines] = v_py[v_i]
+        v_x1[v_nlines] = v_px[v_j]
+        v_y1[v_nlines] = v_py[v_j]
+        v_inten[v_nlines] = v_bright
+        v_nlines = v_nlines + 1
+    endif
+}
+
+def place_ring {
+    # v_npins pins on a circle, integer-snapped
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_a = v_rot + v_k * tau / v_npins - tau / 4
+        v_px[v_k] = round(v_cx + v_r * cos(v_a))
+        v_py[v_k] = round(v_cy + v_r * sin(v_a))
+    endfor v_k
+}
+
+def place_square {
+    # v_npins must be multiple of 4. Walk perimeter clockwise from top-left.
+    v_npins_last = v_npins - 1
+    v_u = v_npins / 4
+    for v_k in (0, v_npins_last, 1)
+        v_a = fmod(v_k, v_u) / (v_u - 1)
+        v_b = floor(v_k / v_u)
+        if v_b == 0 then
+            v_px[v_k] = round(4 + v_a * 55)
+            v_py[v_k] = 4
+        endif
+        if v_b == 1 then
+            v_px[v_k] = 59
+            v_py[v_k] = round(4 + v_a * 55)
+        endif
+        if v_b == 2 then
+            v_px[v_k] = round(59 - v_a * 55)
+            v_py[v_k] = 59
+        endif
+        if v_b == 3 then
+            v_px[v_k] = 4
+            v_py[v_k] = round(59 - v_a * 55)
+        endif
+    endfor v_k
+}
+
+def place_corner {
+    # Two rails meeting at bottom-left: vertical + horizontal (organized fan)
+    v_npins = 18
+    v_npins_last = 17
+    for v_k in (0, 8, 1)
+        v_px[v_k] = 6
+        v_py[v_k] = round(6 + v_k * 6)
+    endfor v_k
+    for v_k in (0, 8, 1)
+        v_px[9 + v_k] = round(6 + v_k * 6)
+        v_py[9 + v_k] = 58
+    endfor v_k
+}
+
+def build_star {
+    # Regular star polygon {n/skip}: full closed path of n edges
+    v_nlines = 0
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_i = v_k
+        v_j = v_k + v_skip
+        v_j = v_j - floor(v_j / v_npins) * v_npins
+        v_bright = 58
+        call add_line
+    endfor v_k
+}
+
+def build_multiply {
+    # i → (i*mult) mod n — cardioid / nephroid envelopes
+    v_nlines = 0
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_i = v_k
+        v_j = v_k * v_mult
+        v_j = v_j - floor(v_j / v_npins) * v_npins
+        if v_j > v_i then
+            v_a = v_j - v_i
+            if v_a > v_npins / 2 then
+                v_a = v_npins - v_a
+            endif
+            v_bright = int(38 + (1 - v_a / (v_npins / 2)) * 36)
+            if v_bright > 75 then
+                v_bright = 75
+            endif
+            call add_line
+        endif
+    endfor v_k
+}
+
+def build_frame_cross {
+    # Square pins: connect opposite sides → nested diamond / X weave
+    v_nlines = 0
+    v_u = v_npins / 4
+    v_npins_last = v_u - 1
+    for v_k in (0, v_npins_last, 1)
+        # top[k] → bottom[k] (bottom runs opposite direction on perimeter)
+        v_i = v_k
+        v_j = 2 * v_u + (v_u - 1 - v_k)
+        v_bright = 48 + int(v_k * 2)
+        call add_line
+        # left[k] → right[k]
+        v_i = 3 * v_u + (v_u - 1 - v_k)
+        v_j = v_u + v_k
+        v_bright = 48 + int(v_k * 2)
+        call add_line
+    endfor v_k
+}
+
+def build_frame_slide {
+    # top[k] → bottom[k] shifted — classic parabolic string art
+    v_nlines = 0
+    v_u = v_npins / 4
+    v_npins_last = v_u - 1
+    for v_k in (0, v_npins_last, 1)
+        v_i = v_k
+        v_j = 2 * v_u + v_k
+        v_bright = 50
+        call add_line
+        v_i = v_u + v_k
+        v_j = 3 * v_u + v_k
+        v_bright = 50
+        call add_line
+    endfor v_k
+}
+
+def build_corner_fan {
+    # Each nail on the vertical rail ties to one on the horizontal rail
+    v_nlines = 0
+    for v_k in (0, 8, 1)
+        v_i = v_k
+        v_j = 9 + (8 - v_k)
+        v_bright = 42 + v_k * 3
+        call add_line
+    endfor v_k
+}
+
+def build_diameter {
+    # Every pin to the pin across the circle — nested diameters (mandala)
+    v_nlines = 0
+    v_npins_last = v_npins / 2 - 1
+    for v_k in (0, v_npins_last, 1)
+        v_i = v_k
+        v_j = v_k + v_npins / 2
+        v_bright = 45 + int(abs(v_k - v_npins / 4) * 3)
+        if v_bright > 72 then
+            v_bright = 72
+        endif
+        call add_line
+    endfor v_k
+}
+
+def build_chord_ladder {
+    # Parallel chords of fixed skip — clean concentric arcs of strings
+    v_nlines = 0
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_i = v_k
+        v_j = v_k + v_skip
+        v_j = v_j - floor(v_j / v_npins) * v_npins
+        if v_i < v_j then
+            v_bright = 52
+            call add_line
+        endif
+    endfor v_k
+}
+
+def build_shape {
+    # kind: 0 star, 1 multiply, 2 frame_cross, 3 frame_slide, 4 corner, 5 diameter, 6 ladder
+    v_hue = v_pal[v_shape]
+    v_r = 28.0
+
+    if v_shape == 0 then
+        v_kind = 0
+        v_npins = 16
+        v_skip = 5
+        call place_ring
+        call build_star
+    endif
+    if v_shape == 1 then
+        v_kind = 0
+        v_npins = 16
+        v_skip = 3
+        call place_ring
+        call build_star
+    endif
+    if v_shape == 2 then
+        v_kind = 0
+        v_npins = 18
+        v_skip = 7
+        call place_ring
+        call build_star
+    endif
+    if v_shape == 3 then
+        v_kind = 1
+        v_npins = 18
+        v_mult = 2
+        call place_ring
+        call build_multiply
+    endif
+    if v_shape == 4 then
+        v_kind = 1
+        v_npins = 18
+        v_mult = 3
+        call place_ring
+        call build_multiply
+    endif
+    if v_shape == 5 then
+        v_kind = 5
+        v_npins = 16
+        call place_ring
+        call build_diameter
+    endif
+    if v_shape == 6 then
+        v_kind = 6
+        v_npins = 16
+        v_skip = 4
+        call place_ring
+        call build_chord_ladder
+    endif
+    if v_shape == 7 then
+        v_kind = 6
+        v_npins = 16
+        v_skip = 6
+        call place_ring
+        call build_chord_ladder
+    endif
+    if v_shape == 8 then
+        v_kind = 2
+        v_npins = 20
+        call place_square
+        call build_frame_cross
+    endif
+    if v_shape == 9 then
+        v_kind = 3
+        v_npins = 20
+        call place_square
+        call build_frame_slide
+    endif
+    if v_shape == 10 then
+        v_kind = 4
+        call place_corner
+        call build_corner_fan
+    endif
+    if v_shape == 11 then
+        v_kind = 0
+        v_npins = 16
+        v_skip = 2
+        call place_ring
+        call build_star
+    endif
+}
+
+def snapshot_a {
+    v_npins_a = v_npins
+    v_nlines_a = v_nlines
+    v_hue_a = v_hue
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_ax[v_k] = v_px[v_k]
+        v_ay[v_k] = v_py[v_k]
+    endfor v_k
+    if v_nlines > 0 then
+        v_nlines_last = v_nlines - 1
+        for v_k in (0, v_nlines_last, 1)
+            v_ea0[v_k] = v_x0[v_k]
+            v_ea1[v_k] = v_y0[v_k]
+            v_eb0[v_k] = v_x1[v_k]
+            v_eb1[v_k] = v_y1[v_k]
+            v_ia[v_k] = v_inten[v_k]
+        endfor v_k
+    endif
+}
+
+# B endpoints stored here during morph
+create_array(v_fx0, v_max_lines, numeric)
+create_array(v_fy0, v_max_lines, numeric)
+create_array(v_fx1, v_max_lines, numeric)
+create_array(v_fy1, v_max_lines, numeric)
+
+def snapshot_b_full {
+    v_npins_b = v_npins
+    v_nlines_b = v_nlines
+    v_hue_b = v_hue
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_bx[v_k] = v_px[v_k]
+        v_by[v_k] = v_py[v_k]
+    endfor v_k
+    if v_nlines > 0 then
+        v_nlines_last = v_nlines - 1
+        for v_k in (0, v_nlines_last, 1)
+            v_fx0[v_k] = v_x0[v_k]
+            v_fy0[v_k] = v_y0[v_k]
+            v_fx1[v_k] = v_x1[v_k]
+            v_fy1[v_k] = v_y1[v_k]
+            v_ib[v_k] = v_inten[v_k]
+        endfor v_k
+    endif
+}
+
+def begin_morph {
+    call snapshot_a
+    v_shape = v_shape + 1
+    if v_shape >= v_nshapes then
+        v_shape = 0
+    endif
+    call build_shape
+    call snapshot_b_full
+    v_phase = 1
+    v_morph = 0
+    v_fade_a = 1
+    v_fade_b = 0
+}
+
+def finish_morph {
+    # Live geometry already in B from last build_shape; restore into working buffers
+    v_npins = v_npins_b
+    v_nlines = v_nlines_b
+    v_hue = v_hue_b
+    v_npins_last = v_npins - 1
+    for v_k in (0, v_npins_last, 1)
+        v_px[v_k] = v_bx[v_k]
+        v_py[v_k] = v_by[v_k]
+    endfor v_k
+    if v_nlines > 0 then
+        v_nlines_last = v_nlines - 1
+        for v_k in (0, v_nlines_last, 1)
+            v_x0[v_k] = v_fx0[v_k]
+            v_y0[v_k] = v_fy0[v_k]
+            v_x1[v_k] = v_fx1[v_k]
+            v_y1[v_k] = v_fy1[v_k]
+            v_inten[v_k] = v_ib[v_k]
+        endfor v_k
+    endif
+    v_phase = 0
+    v_hold = 0
+    v_morph = 0
+}
+
+print("String Art")
+call build_shape
+
+while true then
+    v_t = v_t + 0.012
+    if v_t > tau * 64 then
+        v_t = v_t - tau * 64
+    endif
+
+    # Slow spin for ring-based figures only (rebuilt each frame while holding)
+    v_rot = v_rot + 0.0028
+    if v_rot > tau then
+        v_rot = v_rot - tau
+    endif
+
+    if v_phase == 0 then
+        v_hold = v_hold + 1
+        # Rebuild so ring patterns keep turning; square/corner stay fixed
+        call build_shape
+        if v_hold >= v_hold_max then
+            call begin_morph
+        endif
+    else
+        v_morph = v_morph + 1
+        v_blend = v_morph / v_morph_max
+        if v_blend > 1 then
+            v_blend = 1
+        endif
+        v_blend = v_blend * v_blend * (3 - 2 * v_blend)
+        v_fade_a = 1 - v_blend
+        v_fade_b = v_blend
+        if v_morph >= v_morph_max then
+            call finish_morph
+        endif
+    endif
+
+    begin_frame
+        if v_phase == 0 then
+            if v_nlines > 0 then
+                draw_lines(v_x0, v_y0, v_x1, v_y1, v_hue, v_inten, v_nlines)
+            endif
+            v_npins_last = v_npins - 1
+            for v_k in (0, v_npins_last, 1)
+                plot(v_px[v_k], v_py[v_k], white, 68)
+            endfor v_k
+        else
+            if v_fade_a > 0.05 then
+                if v_nlines_a > 0 then
+                    v_nlines_last = v_nlines_a - 1
+                    for v_k in (0, v_nlines_last, 1)
+                        v_x0[v_k] = v_ea0[v_k]
+                        v_y0[v_k] = v_ea1[v_k]
+                        v_x1[v_k] = v_eb0[v_k]
+                        v_y1[v_k] = v_eb1[v_k]
+                        v_inten[v_k] = int(v_ia[v_k] * v_fade_a)
+                    endfor v_k
+                    draw_lines(v_x0, v_y0, v_x1, v_y1, v_hue_a, v_inten, v_nlines_a)
+                endif
+                v_npins_last = v_npins_a - 1
+                for v_k in (0, v_npins_last, 1)
+                    plot(v_ax[v_k], v_ay[v_k], white, int(68 * v_fade_a))
+                endfor v_k
+            endif
+            if v_fade_b > 0.05 then
+                if v_nlines_b > 0 then
+                    v_nlines_last = v_nlines_b - 1
+                    for v_k in (0, v_nlines_last, 1)
+                        v_x0[v_k] = v_fx0[v_k]
+                        v_y0[v_k] = v_fy0[v_k]
+                        v_x1[v_k] = v_fx1[v_k]
+                        v_y1[v_k] = v_fy1[v_k]
+                        v_inten[v_k] = int(v_ib[v_k] * v_fade_b)
+                    endfor v_k
+                    draw_lines(v_x0, v_y0, v_x1, v_y1, v_hue_b, v_inten, v_nlines_b)
+                endif
+                v_npins_last = v_npins_b - 1
+                for v_k in (0, v_npins_last, 1)
+                    plot(v_bx[v_k], v_by[v_k], white, int(68 * v_fade_b))
+                endfor v_k
+            endif
+        endif
+    end_frame
+endwhile

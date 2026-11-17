@@ -1,0 +1,126 @@
+throttle(.1)
+
+# Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
+fps(60)
+
+# Procedure to draw a rainbow sweep from upper right to lower left
+def draw_rainbow_sweep_down_right_to_left {
+    begin_frame(true)  # Preserve mode to layer over previous content
+    # Subtle static background
+    draw_rectangle(0, 0, 64, 64, dark_gray, 10, true)
+    
+    # Draw diagonal rainbow lines from upper right to lower left
+    for v_i in (0, 128, 4)  # 128 covers full sweep across grid
+        v_x_start = v_i - v_t + 128  # Increased offset to ensure lines start fully off-screen
+        v_color = (v_t + v_i) % 100  # Smooth color cycle
+        # Only draw lines within or entering the visible area
+        if v_x_start <= 64 and v_x_start + 64 >= 0 then
+            v_x1 = max(0, v_x_start)
+            v_y1 = max(0, 64 - (v_x_start + 64))
+            v_x2 = min(64, v_x_start + 64)
+            v_y2 = min(64, 64 - v_x_start)
+            draw_line(v_x1, v_y1, v_x2, v_y2, v_color, 100)
+        endif
+    endfor v_i
+    end_frame
+}
+
+# Procedure to draw a rainbow sweep from lower right to upper left
+def draw_rainbow_sweep_up_right_to_left {
+    begin_frame(true)  # Preserve mode to layer over previous content
+    # Subtle static background
+    draw_rectangle(0, 0, 64, 64, dark_gray, 10, true)
+    
+    # Draw diagonal rainbow lines from lower right to upper left
+    for v_i in (0, 128, 4)  # 128 covers full sweep across grid
+        v_x_start = v_i - v_t + 128  # Offset to start from lower right
+        v_color = (v_t + v_i) % 100  # Smooth color cycle
+        # Only draw lines within or entering the visible area
+        if v_x_start <= 64 and v_x_start + 64 >= 0 then
+            # Reverse the y-coordinates to go from bottom to top
+            v_x1 = max(0, v_x_start)
+            v_y1 = min(64, v_x_start + 64)  # Reversed y calculation
+            v_x2 = min(64, v_x_start + 64)
+            v_y2 = max(0, v_x_start)        # Reversed y calculation
+            draw_line(v_x1, v_y1, v_x2, v_y2, v_color, 100)
+        endif
+    endfor v_i
+    end_frame
+}
+
+# Procedure to draw a rainbow sweep from lower left to upper right
+def draw_rainbow_sweep_up_left_to_right {
+    begin_frame(true)  # Preserve mode to layer over previous content
+    # Subtle static background
+    draw_rectangle(0, 0, 64, 64, dark_gray, 10, true)
+    
+    # Draw diagonal rainbow lines from upper right to lower left
+    for v_i in (0, 128, 4)  # 128 covers full sweep across grid
+        v_x_start = v_i - v_t + 128  # Increased offset to ensure lines start fully off-screen
+        v_color = (v_t + v_i) % 100  # Smooth color cycle
+        # Only draw lines within or entering the visible area
+        if v_x_start <= 64 and v_x_start + 64 >= 0 then
+            v_x1 = max(0, 64 - (v_x_start + 64))
+            v_y1 = max(0, v_x_start)
+            v_x2 = min(64, 64 - v_x_start)
+            v_y2 = min(64, v_x_start + 64)
+            draw_line(v_x1, v_y1, v_x2, v_y2, v_color, 100)
+        endif
+    endfor v_i
+    end_frame
+}
+
+# Procedure to draw a rainbow sweep from upper left to lower right
+def draw_rainbow_sweep_down_left_to_right {
+    begin_frame(true)  # Preserve mode to layer over previous content
+    # Subtle static background
+    draw_rectangle(0, 0, 64, 64, dark_gray, 10, true)
+    
+    # Draw diagonal rainbow lines from upper left to lower right
+    for v_i in (0, 128, 4)  # 128 covers full sweep across grid
+        v_x_start = v_i + v_t - 128  # Using -128 to match other procedures
+        v_color = (v_t + v_i) % 100  # Smooth color cycle
+        # Only draw lines within or entering the visible area
+        if v_x_start <= 128 and v_x_start >= -64 then
+            v_x1 = min(63, max(0, v_x_start))
+            v_y1 = max(0, v_x_start - 63)
+            v_x2 = max(0, v_x_start - 63)
+            v_y2 = min(63, max(0, v_x_start))
+            draw_line(v_x1, v_y1, v_x2, v_y2, v_color, 100)
+        endif
+    endfor v_i
+    end_frame
+}
+
+
+# Main script
+while true then
+    v_x = 1
+    # Fourth animation: Upper right to lower left
+    v_t = 0
+    while v_t < 384 then  # Ensures full sweep from off-screen to off-screen
+        call draw_rainbow_sweep_down_left_to_right
+        v_t = v_t + 1
+    endwhile
+
+    # First animation: upper right to lower left
+    v_t = 0
+    while v_t < 384 then  # Ensures full sweep from off-screen to off-screen
+        call draw_rainbow_sweep_down_right_to_left
+        v_t = v_t + 1  # Slower increment for smoother motion
+    endwhile
+
+    # Second animation: lower right to upper left
+    v_t = 0
+    while v_t < 384 then  # Ensures full sweep from off-screen to off-screen
+        call draw_rainbow_sweep_up_right_to_left
+        v_t = v_t + 1
+    endwhile
+
+    # Third animation: lower left to upper right
+    v_t = 0
+    while v_t < 384 then  # Ensures full sweep from off-screen to off-screen
+        call draw_rainbow_sweep_up_left_to_right
+        v_t = v_t + 1
+    endwhile
+endwhile
