@@ -1,4 +1,6 @@
 // pixil — native Pixil producer (Phase 1). Drives the legacy Python consumer per ADR-001.
+#include <poll.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -44,9 +46,51 @@ std::string g_next_name;  // script that starts after the current one; empty if 
 std::chrono::steady_clock::time_point g_last_poll{};
 
 std::atomic<bool> g_stop{false};
+std::atomic<bool> g_key_next{false};
 std::string g_current_script;
 
 void on_signal(int) { g_stop.store(true); }
+
+// Space skips to the next script, matching the legacy terminal handler.
+// Active only when stdin is a terminal (./run interactive). ./run start is not.
+class SpaceSkip {
+public:
+    SpaceSkip() {
+        if (!isatty(STDIN_FILENO)) return;
+        if (tcgetattr(STDIN_FILENO, &saved_) != 0) return;
+        termios raw = saved_;
+        raw.c_lflag &= static_cast<unsigned>(~(ICANON | ECHO));
+        raw.c_cc[VMIN] = 1;
+        raw.c_cc[VTIME] = 0;
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) return;
+        active_ = true;
+        reader_ = std::thread([this] { read_keys(); });
+        std::cerr << "[pixil] space skips to the next script\n";
+    }
+    ~SpaceSkip() {
+        stop_.store(true);
+        if (reader_.joinable()) reader_.join();
+        if (active_) tcsetattr(STDIN_FILENO, TCSANOW, &saved_);
+    }
+    SpaceSkip(const SpaceSkip&) = delete;
+    SpaceSkip& operator=(const SpaceSkip&) = delete;
+
+private:
+    void read_keys() {
+        while (!stop_.load()) {
+            pollfd pfd{STDIN_FILENO, POLLIN, 0};
+            const int ready = poll(&pfd, 1, 200);
+            if (ready <= 0) continue;
+            char key = 0;
+            if (read(STDIN_FILENO, &key, 1) == 1 && key == ' ') g_key_next.store(true);
+        }
+    }
+
+    termios saved_{};
+    bool active_ = false;
+    std::atomic<bool> stop_{false};
+    std::thread reader_;
+};
 
 void usage(std::ostream& os) {
     os << "usage: pixil [options] [script.pix ...]\n"
@@ -60,7 +104,8 @@ void usage(std::ostream& os) {
           "  -t, --time mm:ss     play each script for this long (60:00 is one hour)\n"
           "  -d, --debug LEVEL    DEBUG_OFF (default), DEBUG_CONCISE, DEBUG_SUMMARY,\n"
           "                       or DEBUG_VERBOSE\n"
-          "  -q, --queue-monitor  print script, elapsed time, frames, and commands\n"
+          "  -q, --queue-monitor  once a second: script, elapsed, frames, commands,\n"
+          "                       and inbox fill as waiting/5000 and a percent\n"
           "  --seconds N          hello animation length in seconds (default 10)\n"
           "  --max-commands N     stop each script after N consumer commands (includes preamble)\n"
           "  --max-frames N       stop each script after N frames\n"
@@ -379,6 +424,15 @@ Advance run_script(const Options& opt, const fs::path& repo, const fs::path& scr
         const double elapsed = std::chrono::duration<double>(now - wall_start).count();
         std::cout << "[pixil] " << script_path.filename().string() << " elapsed=" << elapsed
                   << "s frames=" << machine.frames << " commands=" << emitted;
+        if (!opt.dry_run) {
+            const ConsumerLink::QueueSample q = link.sample_queue();
+            if (q.known && q.capacity > 0) {
+                const unsigned pct = static_cast<unsigned>(q.depth * 100ull / q.capacity);
+                std::cout << " inbox=" << q.depth << "/" << q.capacity << " " << pct << "%";
+            } else {
+                std::cout << " inbox=?";
+            }
+        }
         if (!cmd.empty() && static_cast<int>(opt.debug) >= static_cast<int>(DebugLevel::Summary)) {
             std::cout << " last=" << cmd.substr(0, 40);
         }
@@ -405,6 +459,11 @@ Advance run_script(const Options& opt, const fs::path& repo, const fs::path& scr
     run.max_frames = opt.max_frames;
     run.stop_requested = [&] {
         if (g_stop.load()) return true;
+        if (g_key_next.exchange(false) && g_advance == Advance::None) {
+            g_advance = Advance::Next;
+            std::cerr << "[pixil] space: next up "
+                      << (g_next_name.empty() ? std::string("(end of playlist)") : g_next_name) << "\n";
+        }
         if (Clock::now() >= deadline) return true;
         if (opt.max_commands >= 0 && emitted >= opt.max_commands) return true;
         poll_control();
@@ -475,6 +534,8 @@ int main(int argc, char** argv) {
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
+
+    SpaceSkip space_skip;
 
     LinkOptions lo;
     lo.python = opt.python;

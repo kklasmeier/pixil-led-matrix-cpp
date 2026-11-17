@@ -9,6 +9,9 @@ Build on the Pi 4, from this repo:
 nice -n 19 make -j2
 ```
 
+In the foreground, space skips to the next script. `./run start` is not a
+terminal, so space does nothing there; use `./run next`.
+
 Play one script for 20 seconds:
 
 ```text
@@ -37,8 +40,10 @@ GPIO. `--dry-run` does not start the consumer, and a wildcard plays one pass
 in sorted order.
 
 Debug output follows the legacy names: `DEBUG_OFF` (the default),
-`DEBUG_CONCISE`, `DEBUG_SUMMARY`, and `DEBUG_VERBOSE`. `-q` prints the script
-name, elapsed time, frame count, and command count about once a second.
+`DEBUG_CONCISE`, `DEBUG_SUMMARY`, and `DEBUG_VERBOSE`. `-q` prints, about once
+a second, the script name, elapsed time, frame count, command count, and how
+full the bridge inbox is: `inbox=120/5000 2%`. That inbox holds commands
+waiting to be drawn. 5000 is full, which means the consumer is the limit.
 
 While a show is running, its status is `/dev/shm/pixil_native_status.json`.
 `./run next` and `./run jump` write `/dev/shm/pixil_native_control.json` for

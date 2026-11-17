@@ -1,0 +1,231 @@
+# Gravity Plexus - native interpreter showcase
+#
+# A swarm of particles under full pairwise (N-body) gravity, orbiting a
+# wandering core. Nearby particles are joined by "plexus" lines, every particle
+# drags a comet trail kept in Pixil arrays, speed sets each particle's color,
+# and a shockwave blasts the swarm apart every few seconds.
+#
+# Everything here is plain Pixil: no grid_program, no field_program, no
+# particle library. The interpreter does all the work, every frame:
+#   - N*(N-1)/2 pair interactions (v_n = 60 -> 1,770 pairs per frame)
+#   - a sqrt per pair, 4 array read-modify-writes per pair
+#   - N trail histories of v_trail points each
+# The legacy Python producer manages a few frames per second here.
+#
+# Tuning: raise v_n to push harder. Work grows with v_n squared.
+# The FPS readout in the corner shows what the producer sustains.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_n = 60                 # particles (work grows with v_n * v_n)
+v_trail = 7              # trail length per particle (frames of history)
+v_g_pair = 0.05          # mutual attraction between particles
+v_g_core = 30            # attraction toward the core
+v_soft = 6               # gravity softening (stops infinite forces)
+v_repel_d2 = 40          # closer than ~6 px -> particles push apart
+v_repel = 0.35           # strength of the close-range push
+v_link_d2 = 100          # link particles closer than 10 px
+v_max_links = 140        # cap plexus lines per frame
+v_damp = 0.999           # velocity damping per frame
+v_max_speed = 2.6       # speed limit (px per frame)
+v_shock_every = 420      # frames between shockwaves (~7 s at 60 fps)
+v_shock_power = 2.6     # outward kick from a shockwave
+
+# ---------------- State ----------------
+create_array(v_px, v_n, numeric)
+create_array(v_py, v_n, numeric)
+create_array(v_vx, v_n, numeric)
+create_array(v_vy, v_n, numeric)
+create_array(v_ax, v_n, numeric)
+create_array(v_ay, v_n, numeric)
+create_array(v_col, v_n, numeric)
+create_array(v_hx, v_n * v_trail, numeric)
+create_array(v_hy, v_n * v_trail, numeric)
+
+v_frame = 0
+v_head = 0
+v_cx = 32
+v_cy = 32
+v_shock_age = 999
+v_shock_x = 32
+v_shock_y = 32
+v_fps = 0
+v_fps_mark = get_system("runtime")
+v_links = 0
+
+# Spawn particles on a ring with sideways velocity so the swarm starts in orbit
+for v_i in (0, v_n - 1, 1)
+    v_ang = random(0, 628, 0) / 100
+    v_rad = random(8, 24, 1)
+    v_px[v_i] = 32 + cos(v_ang) * v_rad
+    v_py[v_i] = 32 + sin(v_ang) * v_rad
+    v_orbit = sqrt(v_g_core / (v_rad + 4)) * 0.55
+    v_vx[v_i] = -sin(v_ang) * v_orbit
+    v_vy[v_i] = cos(v_ang) * v_orbit
+    v_col[v_i] = 60
+    for v_k in (0, v_trail - 1, 1)
+        v_hx[v_i * v_trail + v_k] = v_px[v_i]
+        v_hy[v_i * v_trail + v_k] = v_py[v_i]
+    endfor v_k
+endfor v_i
+
+# ---------------- Procedures ----------------
+
+# Wandering core on a slow Lissajous path, plus core attraction for every particle
+def move_core {
+    v_cx = 32 + cos(v_frame * 0.0110) * 13
+    v_cy = 32 + sin(v_frame * 0.0170) * 9
+    for v_i in (0, v_n - 1, 1)
+        v_dx = v_cx - v_px[v_i]
+        v_dy = v_cy - v_py[v_i]
+        v_d2 = v_dx * v_dx + v_dy * v_dy + v_soft * 4
+        v_f = v_g_core / (v_d2 * sqrt(v_d2))
+        v_ax[v_i] = v_dx * v_f
+        v_ay[v_i] = v_dy * v_f
+    endfor v_i
+}
+
+# Full N-body pass: every pair attracts, very close pairs repel,
+# and near pairs get a plexus line (drawn in the current frame)
+def pair_forces {
+    v_links = 0
+    for v_i in (0, v_n - 2, 1)
+        v_xi = v_px[v_i]
+        v_yi = v_py[v_i]
+        for v_j in (v_i + 1, v_n - 1, 1)
+            v_dx = v_px[v_j] - v_xi
+            v_dy = v_py[v_j] - v_yi
+            v_d2 = v_dx * v_dx + v_dy * v_dy
+            v_ds = v_d2 + v_soft
+            v_f = v_g_pair / (v_ds * sqrt(v_ds))
+            if v_d2 < v_repel_d2 then
+                v_f = v_f - v_repel * (v_repel_d2 - v_d2) / (v_repel_d2 * (v_d2 + 1))
+            endif
+            v_ax[v_i] = v_ax[v_i] + v_dx * v_f
+            v_ay[v_i] = v_ay[v_i] + v_dy * v_f
+            v_ax[v_j] = v_ax[v_j] - v_dx * v_f
+            v_ay[v_j] = v_ay[v_j] - v_dy * v_f
+            if v_d2 < v_link_d2 and v_links < v_max_links then
+                v_lc = int((v_col[v_i] + v_col[v_j]) / 2)
+                v_li = int(60 - v_d2 * 0.5)
+                draw_line(v_xi, v_yi, v_px[v_j], v_py[v_j], v_lc, v_li)
+                v_links = v_links + 1
+            endif
+        endfor v_j
+    endfor v_i
+}
+
+# Shockwave: radial kick away from the core, then an expanding ring
+def shockwave {
+    if v_frame % v_shock_every == 0 and v_frame > 0 then
+        v_shock_age = 0
+        v_shock_x = v_cx
+        v_shock_y = v_cy
+        for v_i in (0, v_n - 1, 1)
+            v_dx = v_px[v_i] - v_cx
+            v_dy = v_py[v_i] - v_cy
+            v_d = sqrt(v_dx * v_dx + v_dy * v_dy) + 0.5
+            v_kick = v_shock_power * (0.6 + random(0, 80, 0) / 100)
+            v_vx[v_i] = v_vx[v_i] + v_dx / v_d * v_kick
+            v_vy[v_i] = v_vy[v_i] + v_dy / v_d * v_kick
+        endfor v_i
+    endif
+    if v_shock_age < 36 then
+        v_r = 2 + v_shock_age * 1.3
+        v_ri = int(90 - v_shock_age * 2.4)
+        draw_circle(v_shock_x, v_shock_y, v_r, white, v_ri, false)
+        if v_shock_age > 4 then
+            draw_circle(v_shock_x, v_shock_y, v_r - 4, 50, int(v_ri * 0.6), false)
+        endif
+        v_shock_age = v_shock_age + 1
+    endif
+}
+
+# Integrate, bounce off the edges, color by speed, record trail history
+def integrate {
+    for v_i in (0, v_n - 1, 1)
+        v_vxi = (v_vx[v_i] + v_ax[v_i]) * v_damp
+        v_vyi = (v_vy[v_i] + v_ay[v_i]) * v_damp
+        v_sp = sqrt(v_vxi * v_vxi + v_vyi * v_vyi)
+        if v_sp > v_max_speed then
+            v_vxi = v_vxi * v_max_speed / v_sp
+            v_vyi = v_vyi * v_max_speed / v_sp
+            v_sp = v_max_speed
+        endif
+        v_x = v_px[v_i] + v_vxi
+        v_y = v_py[v_i] + v_vyi
+        if v_x < 0.5 then
+            v_x = 0.5
+            v_vxi = -v_vxi * 0.7
+        elseif v_x > 62.5 then
+            v_x = 62.5
+            v_vxi = -v_vxi * 0.7
+        endif
+        if v_y < 0.5 then
+            v_y = 0.5
+            v_vyi = -v_vyi * 0.7
+        elseif v_y > 62.5 then
+            v_y = 62.5
+            v_vyi = -v_vyi * 0.7
+        endif
+        v_px[v_i] = v_x
+        v_py[v_i] = v_y
+        v_vx[v_i] = v_vxi
+        v_vy[v_i] = v_vyi
+        # Slow = blue (66), fast = red/orange (2). Spectral colors 0-99.
+        v_col[v_i] = int(66 - min(v_sp * 34, 64))
+        v_hx[v_i * v_trail + v_head] = v_x
+        v_hy[v_i * v_trail + v_head] = v_y
+    endfor v_i
+}
+
+# Comet trails from the history ring, then bright heads on top
+def draw_swarm {
+    for v_i in (0, v_n - 1, 1)
+        v_base = v_i * v_trail
+        v_c = v_col[v_i]
+        for v_k in (1, v_trail - 1, 1)
+            v_idx = v_base + (v_head - v_k) % v_trail
+            mplot(v_hx[v_idx], v_hy[v_idx], v_c, int(70 - v_k * 9))
+        endfor v_k
+        mplot(v_px[v_i], v_py[v_i], v_c, 100)
+        mplot(v_px[v_i] + 1, v_py[v_i], white, 35)
+    endfor v_i
+}
+
+# Pulsing core
+def draw_core {
+    v_pulse = 2 + sin(v_frame * 0.15) * 0.8
+    draw_circle(v_cx, v_cy, v_pulse + 1.5, 10, 35, true)
+    draw_circle(v_cx, v_cy, v_pulse, yellow, 90, true)
+}
+
+# FPS readout, refreshed every 30 frames
+def hud {
+    if v_frame % 30 == 0 and v_frame > 0 then
+        v_now = get_system("runtime")
+        if v_now > v_fps_mark then
+            v_fps = round(30000 / (v_now - v_fps_mark))
+        endif
+        v_fps_mark = v_now
+    endif
+    draw_text(1, 1, "FPS " & v_fps, tiny64_font, 5, white, 45)
+    draw_text(1, 58, "N " & v_n, tiny64_font, 5, white, 30)
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call move_core
+    begin_frame
+        call pair_forces
+        call shockwave
+        call integrate
+        call draw_core
+        call draw_swarm
+        call hud
+    end_frame
+    v_head = (v_head + 1) % v_trail
+    v_frame = v_frame + 1
+endwhile

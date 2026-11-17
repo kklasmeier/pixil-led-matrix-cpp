@@ -22,9 +22,9 @@ The operator surface is:
 - `/dev/shm/pixil_native_status.json` for the current script, its deadline, frame count, command count, and the next script
 - `./run status`, `./run next`, `./run jump`, and `./run stop`
 - `-d DEBUG_OFF`, `DEBUG_CONCISE`, `DEBUG_SUMMARY`, or `DEBUG_VERBOSE`. Verbose prints each consumer command. It does not trace every interpreter line.
-- `-q` prints the script, elapsed time, frames, and commands about once a second
+- `-q` prints the script, elapsed time, frames, commands, and bridge inbox fill (`waiting/5000` and a percent) about once a second
 
-`-q` is a producer progress line. The pipe bridge does not report how many commands are waiting in the consumer, so Phase 1 does not recreate the legacy queue-depth overlay. `throttle(n)` is accepted and the consumer is driven as `throttle(0)` (D-007). Pacing is `fps` and `rest`.
+The inbox is the 5000-command queue in the bridge. It counts commands, not bytes. A full inbox means the consumer is still drawing earlier commands and the producer is waiting to send. `-q` does not draw the legacy corner overlay. `throttle(n)` is accepted and the consumer is driven as `throttle(0)` (D-007). Pacing is `fps` and `rest`.
 
 ## Producer timing
 

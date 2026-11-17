@@ -48,6 +48,15 @@ public:
     // Blocks under backpressure when the consumer is behind.
     void send(std::string_view command);
 
+    // Ask the bridge how full its command inbox is. The answer is commands
+    // waiting, out of the inbox capacity. known is false until a sample arrives.
+    struct QueueSample {
+        uint32_t depth = 0;
+        uint32_t capacity = 0;
+        bool known = false;
+    };
+    QueueSample sample_queue();
+
     // Waits until every previously sent command has been executed.
     void sync(int timeout_ms = 30000);
     // Fast drain: discard everything queued before this call. Returns count swallowed.
@@ -88,6 +97,7 @@ private:
     std::deque<Reply> replies_;
     std::string error_;
     uint32_t next_fence_ = 1;
+    QueueSample queue_;
 };
 
 }  // namespace pixil

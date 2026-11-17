@@ -158,6 +158,10 @@ void ConsumerLink::read_replies(int timeout_ms) {
         if (rep.kind == 'E') {
             error_ = rep.payload;
             std::cerr << "[pixil] consumer error: " << rep.payload << "\n";
+        } else if (rep.kind == 'Q' && rep.payload.size() >= 8) {
+            std::memcpy(&queue_.depth, rep.payload.data(), 4);
+            std::memcpy(&queue_.capacity, rep.payload.data() + 4, 4);
+            queue_.known = true;
         } else {
             replies_.push_back(std::move(rep));
         }
@@ -217,6 +221,13 @@ void ConsumerLink::write_control(char byte) {
     do {
         n = write(control_fd_, &byte, 1);
     } while (n < 0 && errno == EINTR);
+}
+
+ConsumerLink::QueueSample ConsumerLink::sample_queue() {
+    if (!running()) return queue_;
+    write_control('Q');
+    read_replies(30);
+    return queue_;
 }
 
 void ConsumerLink::send(std::string_view command) {

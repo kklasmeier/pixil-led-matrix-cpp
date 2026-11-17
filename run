@@ -16,7 +16,7 @@ run - native Pixil show launcher
 
 USAGE:
   ./run                          Show this help
-  ./run interactive -- [args]    Play in the foreground
+  ./run interactive -- [args]    Play in the foreground (space skips to the next script)
   ./run start -- [args]          Play in the background (log: pixil.log)
   ./run status                   Show the running script and its timing
   ./run next                     Advance a running playlist to the next script
@@ -30,7 +30,7 @@ ARGUMENTS (passed to the pixil binary):
   main/name[.pix]    one script, path relative to scripts/
   -t mm:ss           duration of each script
   -d DEBUG_LEVEL     DEBUG_OFF, DEBUG_CONCISE, DEBUG_SUMMARY, DEBUG_VERBOSE
-  -q                 print a status line every second
+  -q                 once a second, print progress and inbox fill (waiting/5000)
   --headless         run the consumer without GPIO
   --dry-run          do not start the consumer; a wildcard plays one sorted pass
 

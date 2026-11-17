@@ -18,3 +18,7 @@ out/
 *.profraw
 *.profdata
 compile_commands.json
+
+# Others
+pixil.log
+pixil.pid

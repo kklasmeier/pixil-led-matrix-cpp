@@ -30,17 +30,7 @@ v_colors[6] = "purple"
 v_running = 1
 v_frame = 0
 
-# Create trail effect with partial clearing
-def clear_with_fade {
-    begin_frame(true)
-    draw_rectangle(0, 0, 64, 64, black, 20, true)
-    end_frame
-}
-
 while v_running == 1 then
-    # Apply trail effect
-    clear_with_fade
-    
     # Calculate polygon parameters
     v_current_radius = abs(sin(v_frame * 0.02) * v_max_radius)
     v_sides = v_num_sides + floor(sin(v_frame * 0.01) * 2)
@@ -91,7 +81,7 @@ while v_running == 1 then
     v_frame = v_frame + 1
     
     # Speed control
-    rest(0.05)
+    # rest(0.05)
 endwhile
 
 clear()

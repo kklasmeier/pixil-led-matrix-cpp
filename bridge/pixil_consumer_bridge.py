@@ -156,6 +156,12 @@ class Bridge:
                     return
                 if b == b"D":
                     self.drain_requested.set()
+                elif b == b"Q":
+                    # Depth of commands waiting to be drawn. Answered here, not
+                    # through the inbox, so the sample is not stuck behind them.
+                    depth = self.inbox.qsize()
+                    cap = self.inbox.maxsize or 0
+                    self.replies.send(b"Q", struct.pack("<II", int(depth), int(cap)))
                 elif b == b"X":
                     self.force_shutdown.set()
         except OSError:
