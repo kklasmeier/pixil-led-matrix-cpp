@@ -12,7 +12,7 @@
 # Each tile is 192 long along its scroll axis: 64 blank pixels + 128 rows of automaton.
 # (192 is the largest tile length that worked reliably; do not go bigger.)
 # Down/up scenes use a 64x192 tile, left/right scenes use a 192x64 tile.
-fps(30)
+fps(90)
 
 # ---- Settings ----
 v_speed = 1           # pixels per frame (one full pass is 192 px, ~6.4 s at 1)

@@ -5,9 +5,9 @@ import particle
 # Physics stays in particle_* kernels; Pixil only owns spawn, flips, and draw.
 
 throttle(0)
-fps(33)
+fps(60)
 
-v_count = 100
+v_count = 120
 v_radius = 0.55
 v_gravity = 0.16
 v_air = 0.998

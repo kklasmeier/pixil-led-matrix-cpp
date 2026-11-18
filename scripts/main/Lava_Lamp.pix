@@ -42,7 +42,7 @@ field_program lava {
     opacity min(45 + v_sum * 22, 100)
 }
 
-fps(30)
+fps(40)
 clear()
 
 while true then

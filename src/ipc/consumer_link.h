@@ -23,12 +23,19 @@ public:
     LinkInterrupted() : std::runtime_error("interrupted") {}
 };
 
+enum class ConsumerKind {
+    Python,  // temporary default: bridge/pixil_consumer_bridge.py → rgb_matrix_lib
+    Native,  // Phase 2: pixil-consumer (ADR-002); becomes the only path after cutover
+};
+
 struct LinkOptions {
+    ConsumerKind consumer = ConsumerKind::Python;
     std::string python = "python3";
-    std::string bridge_script;  // bridge/pixil_consumer_bridge.py
-    std::string legacy_root;    // legacy tree containing rgb_matrix_lib/
+    std::string bridge_script;   // bridge/pixil_consumer_bridge.py (python consumer)
+    std::string native_binary;   // path to pixil-consumer (native consumer)
+    std::string legacy_root;     // legacy tree containing rgb_matrix_lib/ (python only)
     bool headless = false;
-    std::string record_path;    // optional bridge-side JSONL recorder
+    std::string record_path;  // optional consumer-side JSONL recorder
     int ready_timeout_ms = 20000;
     std::function<bool()> stop_requested;  // polled while blocked
 };
@@ -49,11 +56,18 @@ public:
     void send(std::string_view command);
 
     // Ask the bridge how full its command inbox is. The answer is commands
-    // waiting, out of the inbox capacity. known is false until a sample arrives.
+    // waiting, out of the inbox capacity, plus a monotonic present counter
+    // (end_frame + immediate swaps; excludes fade pumps). known is false until
+    // a sample arrives; presents_known is false for 8-byte (legacy) Q replies.
     struct QueueSample {
         uint32_t depth = 0;
         uint32_t capacity = 0;
+        uint32_t presents = 0;
         bool known = false;
+        bool presents_known = false;
+        // True only when this sample_queue() call received its Q reply.
+        // Stale leftovers must not advance the cfps baseline (else 0 / 2× cfps).
+        bool fresh = false;
     };
     QueueSample sample_queue();
 
@@ -98,6 +112,7 @@ private:
     std::string error_;
     uint32_t next_fence_ = 1;
     QueueSample queue_;
+    uint32_t queue_ack_ = 0;  // incremented on each Q reply (freshness vs baseline)
 };
 
 }  // namespace pixil

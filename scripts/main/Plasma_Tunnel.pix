@@ -1,7 +1,7 @@
 # Plasma Tunnel — field_program formula / NumPy path
 # Concentric ring tunnel; no 1/r term (avoids center spike)
 
-fps(120)
+fps(60)
 throttle(0)
 
 v_time = 0

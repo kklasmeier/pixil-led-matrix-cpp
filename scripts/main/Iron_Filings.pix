@@ -4,7 +4,7 @@ import agent
 # Dots are filings: they climb onto a line and ride it as the magnet turns.
 
 throttle(0)
-fps(50)
+fps(75)
 
 v_size = 32
 v_cells = 1024

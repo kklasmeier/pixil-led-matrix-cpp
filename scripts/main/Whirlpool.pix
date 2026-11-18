@@ -21,14 +21,19 @@ v_cx = 15.5
 v_cy = 15.5
 v_cx_base = 15.5
 v_cy_base = 15.5
+v_cx_tgt = 15.5
+v_cy_tgt = 15.5
 v_rad = 11
 v_rad_base = 11
+v_rad_tgt = 11
 v_tight = 0.28
 v_arms = 2
 v_phase = 0
 v_spin = 0.09
 v_spin_base = 0.09
 v_gain = 1.2
+# How quickly center/radius chase their targets (snap → glide home)
+v_ease = 0.07
 
 v_event = 0
 v_event_life = 0
@@ -103,6 +108,19 @@ def spawn_on_ring {
     v_py[v_i] = v_y[v_i] * v_cell
 }
 
+def ease_well {
+    # Glide center/radius toward targets — no teleport home after events
+    v_cx = v_cx + (v_cx_tgt - v_cx) * v_ease
+    v_cy = v_cy + (v_cy_tgt - v_cy) * v_ease
+    v_rad = v_rad + (v_rad_tgt - v_rad) * v_ease
+}
+
+def home_targets {
+    v_cx_tgt = v_cx_base
+    v_cy_tgt = v_cy_base
+    v_rad_tgt = v_rad_base
+}
+
 def pick_mode {
     v_pick = int(random(0, 2, 0))
     if v_pick == 0 then
@@ -135,9 +153,8 @@ def pick_mode {
         v_spin = 0 - v_spin
         v_spin_base = v_spin
     endif
-    v_rad = v_rad_base
-    v_cx = v_cx_base
-    v_cy = v_cy_base
+    # Aim home; ease_well carries the well there (no snap)
+    call home_targets
     v_event = 0
     v_event_life = 0
     v_event_wait = int(random(70, 130, 0))
@@ -166,9 +183,8 @@ def start_event {
 
 def end_event {
     v_event = 0
-    v_rad = v_rad_base
-    v_cx = v_cx_base
-    v_cy = v_cy_base
+    # Retarget center — current pose eases back instead of jumping
+    call home_targets
     v_event_wait = int(random(55, 110, 0))
 }
 
@@ -176,24 +192,24 @@ def tick_events {
     if v_event_life > 0 then
         v_event_life = v_event_life - 1
         if v_event == 1 then
-            v_rad = v_rad_base + sin(v_frame * 0.11) * 3.2
-            if v_rad < 6.5 then
-                v_rad = 6.5
-            elseif v_rad > 14 then
-                v_rad = 14
+            v_rad_tgt = v_rad_base + sin(v_frame * 0.11) * 3.2
+            if v_rad_tgt < 6.5 then
+                v_rad_tgt = 6.5
+            elseif v_rad_tgt > 14 then
+                v_rad_tgt = 14
             endif
         elseif v_event == 3 then
-            v_cx = v_cx_base + sin(v_frame * 0.07) * 3.2
-            v_cy = v_cy_base + cos(v_frame * 0.055) * 2.6
-            if v_cx < 12 then
-                v_cx = 12
-            elseif v_cx > 19 then
-                v_cx = 19
+            v_cx_tgt = v_cx_base + sin(v_frame * 0.07) * 3.2
+            v_cy_tgt = v_cy_base + cos(v_frame * 0.055) * 2.6
+            if v_cx_tgt < 12 then
+                v_cx_tgt = 12
+            elseif v_cx_tgt > 19 then
+                v_cx_tgt = 19
             endif
-            if v_cy < 12 then
-                v_cy = 12
-            elseif v_cy > 19 then
-                v_cy = 19
+            if v_cy_tgt < 12 then
+                v_cy_tgt = 12
+            elseif v_cy_tgt > 19 then
+                v_cy_tgt = 19
             endif
         endif
         if v_event_life <= 0 then
@@ -210,6 +226,10 @@ def tick_events {
 def init_world {
     grid_fill(v_field, 0)
     call pick_mode
+    # Cold-start: sit on the home pose so the first frame isn't mid-ease
+    v_cx = v_cx_tgt
+    v_cy = v_cy_tgt
+    v_rad = v_rad_tgt
     for v_i in (0, v_n - 1, 1)
         call spawn_on_ring
     endfor v_i
@@ -219,9 +239,13 @@ def init_world {
 def update_drain {
     call tick_events
     v_phase = v_phase + v_spin
+    # Gentle idle pulse on radius only when not flaring / returning from flare
     if v_event != 1 then
-        v_rad = v_rad_base + sin(v_frame * 0.035) * 1.1
+        if v_event == 0 then
+            v_rad_tgt = v_rad_base + sin(v_frame * 0.035) * 1.1
+        endif
     endif
+    call ease_well
 
     v_hold = v_hold - 1
     if v_hold <= 0 then

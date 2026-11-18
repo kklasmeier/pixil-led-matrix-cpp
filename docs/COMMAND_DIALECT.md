@@ -67,9 +67,9 @@ default), `burnout:uint32` (`0xFFFFFFFF` = none), `mode:uint8` (`0` instant,
 | Op | Name | Payload (`struct`) | Size incl. op |
 |---|---|---|---|
 | 1 | plot | `<HHhBIB8x` x, y, color, intensity, burnout, mode | 21 |
-| 2 | line | `<4HhBIB3x` x0, y0, x1, y1, tail | 21 |
-| 3 | rect | `<4HhBIBB2x` x, y, w, h, tail, fill | 21 |
-| 4 | circle | `<3HhBIBB3x` x, y, r, tail, fill | 21 |
+| 2 | line | `<4HhBIB3x` x0, y0, x1, y1, tail | 20 |
+| 3 | rect | `<4HhBIBB2x` x, y, w, h, tail, fill | 20 |
+| 4 | circle | `<3HhBIBB3x` x, y, r, tail, fill | 19 |
 | 5 | polygon | `<4HfhBIBB3x` x, y, r, sides, rotation:f32, tail, fill | 25 |
 | 6 | ellipse | `<4HfhBIBB3x` x, y, rx, ry, rotation:f32, tail, fill | 25 |
 | 7 | arc | `<4HfhBIBB3x` x0, y0, x1, y1, bulge:f32, tail, fill | 25 |

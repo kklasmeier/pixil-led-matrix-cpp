@@ -20,6 +20,13 @@ behaviour chosen, awaiting owner review), **Open** (owner decision required).
 | D-007 | `throttle(n>0)` replay pacing | Accepted (charter §6.5) | Scripts with `throttle > 0` may look snappier |
 | D-008 | `if` conditions evaluated more than once | **Accepted** | `Circles.pix` picks different random effects after its first effect change |
 | D-009 | Bare procedure name ignored in some procedures | **Accepted** | `Fifteen_Puzzle.pix` title screen now draws its border |
+| D-010 | Consumer burnout pump is executor-only | **Accepted** (Phase 2 C4) | Fade timing may differ slightly vs Python thread |
+| D-011 | `throttle` removed from native consumer | **Accepted** (Phase 2 charter) | Same as D-007 for the panel; consumer ignores the verb |
+| D-012 | Fingerprint is drawing-buffer only | **Accepted** (parity tool) | Sprites/backgrounds not in `PIXIL_BUFFER_HASH` |
+| D-013 | Fancy text effects → NORMAL on native | **Proposed** (C3) | Only `tiny64` NORMAL path ported |
+| D-014 | Emergency blackout helper stays Python | **Accepted** (while switch exists) | Headless skips; hardware fallback uses legacy module |
+| D-015 | `draw_batch` intensity byte `0` → 100 | **Accepted** (Phase 2 C5) | Mirrors Python `intensity or 100`; `plot_batch` keeps byte 0 as 0 |
+| D-016 | Burnout point lists are unique pixels | **Accepted** (Phase 2 C5) | Same as Python `set()`; required for fade clear correctness |
 
 ---
 
@@ -140,3 +147,63 @@ back to the line interpreter, the line matches nothing and is skipped silently.
 `draw_board` (compiled: the border was drawn) and from `show_title` (not
 compiled: the border was skipped). Native draws the border on the title screen
 too. `Geometric_Kaleidoscope.pix` uses the same form for `clear_with_fade`.
+
+## D-010 — Consumer burnout pump is executor-only (Accepted, Phase 2 C4)
+
+**Legacy:** `ThreadedBurnoutManager` mutates `drawing_buffer` from a background
+thread (~60 Hz). **Native:** all burnout bookkeeping and buffer writes run on the
+executor via `pump_fade` (idle inbox pop timeout + `rest` at ~16 ms, with a
+forced tick when `rest` ends). Short rests such as Qix `rest(0.05)` still clear
+trails. Visual instant/fade semantics match; mid-fade samples can differ by a
+few frames under load.
+
+**Fingerprint impact:** scripts with short fade burnouts (e.g. `Abstract_Geometry.pix`
+at 80ms) yield **non-deterministic** Python hashes under `--fingerprint` because the
+background thread can expire mid-batch / before `T`. Native is stable (no pump
+during `draw_batch`). Stripping burnout from the same batch MATCHES. Keep such
+scripts out of the hard `consumer-parity` gate; compare geometry via
+`Hex_Grid_Glow` and dedicated fade smokes with `rest`.
+
+**Test:** unit `consumer_burnout_*`; headless `tools/consumer_parity_compare.sh`
+on non-race scripts; burnout smoke via short `.pix` + `rest`.
+
+## D-011 — `throttle` removed from native consumer (Accepted)
+
+Phase 2 consumer treats `throttle(...)` as a no-op. Producer still emits
+`throttle(0)` for stream compatibility. Same panel pacing story as D-007.
+
+## D-012 — Fingerprint is drawing-buffer only (Accepted)
+
+`PIXIL_BUFFER_HASH` / ADR-001 `T` hashes opaque pixels in the drawing buffer
+(transparent sentinel skipped), matching `rgb_matrix_lib.test_inspect`. Sprites
+and background layers are composited at present and are **not** in the hash.
+C5 compare scripts should exercise buffer draws (frames/shapes), not sprite-only
+scenes, when using this fingerprint.
+
+## D-013 — Fancy text effects → NORMAL (Proposed)
+
+Native C3 ports `tiny64_font` NORMAL bitmap blit (plus center/right modifiers).
+Named fancy effects (`SCROLL`, etc.) fall through to NORMAL. Document further if
+a main-library script depends on a non-NORMAL effect for cutover.
+
+## D-014 — Emergency blackout helper stays Python (Accepted while switch exists)
+
+When the consumer dies without acknowledging shutdown, `ConsumerLink` still runs
+the legacy `rgb_matrix_lib.emergency_blackout` helper (skipped under `--headless`).
+After C6 removes the Python spawn path, keep this fallback until the owner
+retires the legacy tree, or replace it with a native one-shot blackout binary.
+
+## D-015 — `draw_batch` intensity byte `0` → 100 (Accepted, Phase 2 C5)
+
+**Legacy:** `unpack_draw_batch` uses `intensity or 100`, so a packed intensity
+byte of `0` is treated as full brightness (100). Scripts such as
+`Hex_Grid_Glow.pix` emit intensity `0` for some filled polys and rely on this.
+**Native:** `draw_batch_intensity_of` mirrors that. `plot_batch` / mplot still
+treat byte `0` as intensity 0 (Python mplot unpack does not use `or 100`).
+
+## D-016 — Burnout point lists are unique pixels (Accepted, Phase 2 C5)
+
+**Legacy:** shape APIs register burnout via a `set` of pixels. **Native:**
+`BurnoutManager::add` deduplicates points (first color wins). Without this,
+outline duplicates break fade `last_pixel_colors` vs `point_indexes` last-wins
+and expired fades leave residual opaque pixels (e.g. `Abstract_Geometry.pix`).

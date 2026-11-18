@@ -19,7 +19,7 @@ That plays every script in `scripts/main` for 60:00 each, then reshuffles and co
 
 `./run status` shows the current script. `./run next` ends it, clears its sprites, and names the script that follows. `./run stop` blacks the panel out.
 
-The playlist is the 73 scripts in this repo's `scripts/main`. It is not the full legacy library. A show that was never forked here still runs only from the legacy tree.
+The playlist is every script in this repo's `scripts/main`: the legacy main library plus `Gravity_Plexus.pix` (219 files as of the cutover). The legacy producer stays in its own tree and its own GitHub repository.
 
 ## Fallback
 

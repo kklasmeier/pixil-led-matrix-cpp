@@ -157,11 +157,15 @@ class Bridge:
                 if b == b"D":
                     self.drain_requested.set()
                 elif b == b"Q":
-                    # Depth of commands waiting to be drawn. Answered here, not
-                    # through the inbox, so the sample is not stuck behind them.
+                    # Depth of commands waiting to be drawn, plus present count.
+                    # Answered here, not through the inbox, so the sample is not
+                    # stuck behind them. presents = end_frame + immediate swaps.
                     depth = self.inbox.qsize()
                     cap = self.inbox.maxsize or 0
-                    self.replies.send(b"Q", struct.pack("<II", int(depth), int(cap)))
+                    presents = int(getattr(self.api, "present_count", 0) or 0)
+                    self.replies.send(
+                        b"Q", struct.pack("<III", int(depth), int(cap), presents)
+                    )
                 elif b == b"X":
                     self.force_shutdown.set()
         except OSError:

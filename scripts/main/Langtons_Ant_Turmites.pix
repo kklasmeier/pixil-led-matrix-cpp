@@ -2,7 +2,7 @@
 # Six turmite variations, shuffled each cycle; random spawns, timing, and palette
 
 throttle(0)
-fps(60)
+fps(500)
 
 v_size = 64
 v_cells = 4096

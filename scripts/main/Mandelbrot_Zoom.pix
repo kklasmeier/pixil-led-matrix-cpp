@@ -1,117 +1,260 @@
-# Mandelbrot tour — hop between mini-fractal landmarks, zoom into each, then discover the next
-# Each stop: wide view of a new structure → zoom in for detail → advance to next waypoint
+# Mandelbrot Odyssey - an endless zoom that never repeats the same dive
+#
+# The Mandelbrot set is full of tiny copies of itself ("mini-brots"). Each leg
+# of this zoom starts on the full set, spirals down through a different
+# region (seahorse valley, elephant valley, the antenna, the northern
+# filaments, the western bulbs...) and lands on a mini-brot. By the end of the
+# leg that mini-brot fills the screen exactly as the full set did at the start,
+# so the zoom dissolves back into the real full set and dives somewhere new.
+#
+# 18 hand-picked mini-brots, each randomly mirrored, give 36 different dives,
+# picked in random order and never the same one twice in a row.
+#
+# The math, per leg: the mini-brot with nucleus c0 is the full set scaled
+# and rotated by a complex factor lambda (c = c0 + lambda * m). The camera follows
+# view(t) = P + lambda^t * (start_view - P), with P = c0 / (1 - lambda),
+# a log-spiral that turns the start view into the mini-brot view at t = 1.
+# Escape counts near a mini-brot of period p are about alpha*n + beta
+# (alpha close to p), so colors are normalized by alpha^t and beta*t to stay
+# continuous. The target table below was computed offline (Newton's method for
+# the nucleus, the standard size estimate for lambda, a fit for alpha and beta).
 
-fps(30)
+fps(60)
 throttle(0)
 
 v_field_size = 64
 v_half = 32
-v_max_iter = 96
+v_main_iter = 64          # iterations for the full-set view
+v_zoom_in = 1.022         # zoom per frame
+v_fade_frames = 28        # length of the dissolve back to the full set
+
+# Start view: the full set
+v_c0_re = -0.6
+v_c0_im = 0.0
+v_w0 = 0.0453125          # complex-plane units per pixel (2.9 / 64)
+
 v_hue_phase = 0
-v_hue_drift = 0.16
+v_hue_drift = 0.09
 
-v_num_stops = 6
-v_stop_idx = 0
-v_frames_on_stop = 0
-v_frames_max = 420
-
-v_anchor_re = -0.75
-v_anchor_im = 0.0
-v_base_re = -0.75
-v_base_im = 0.0
-
-v_scale = 58.0
-v_depth = 0
-v_zoom_in = 1.022
-
-create_array(v_stop_re, v_num_stops)
-create_array(v_stop_im, v_num_stops)
 create_array(v_dummy_x, 1)
 create_array(v_dummy_y, 1)
-
-v_stop_re[0] = -0.75
-v_stop_im[0] = 0.0
-v_stop_re[1] = -0.743643887
-v_stop_im[1] = 0.131825904
-v_stop_re[2] = -0.743212
-v_stop_im[2] = 0.132789
-v_stop_re[3] = -0.74284
-v_stop_im[3] = 0.13341
-v_stop_re[4] = -0.761574
-v_stop_im[4] = 0.0847595
-v_stop_re[5] = -1.25066
-v_stop_im[5] = 0.02012
-
 v_dummy_x[0] = v_half
 v_dummy_y[0] = v_half
 
-def begin_stop {
-    v_anchor_re = v_stop_re[v_stop_idx]
-    v_anchor_im = v_stop_im[v_stop_idx]
-    v_base_re = v_anchor_re
-    v_base_im = v_anchor_im
-    v_scale = 58.0
-    v_depth = 0
-    v_wobble = 0
-    v_frames_on_stop = 0
-    v_hue_phase = v_hue_phase + 5.5
-    v_max_iter = 96
+# ---------------- Target mini-brots ----------------
+# nucleus c0 (re, im), size/rotation lambda (re, im), color fit alpha, beta
+v_num_targets = 18
+create_array(v_t_cre, v_num_targets)
+create_array(v_t_cim, v_num_targets)
+create_array(v_t_lre, v_num_targets)
+create_array(v_t_lim, v_num_targets)
+create_array(v_t_alpha, v_num_targets)
+create_array(v_t_beta, v_num_targets)
+
+v_t_cre[0] = -0.010411444150721118
+v_t_cim[0] = 0.8403678459959718
+v_t_lre[0] = 3.8458109940880596e-08
+v_t_lim[0] = 8.17723075552256e-07
+v_t_alpha[0] = 15.103945
+v_t_beta[0] = 51.195424
+
+v_t_cre[1] = -0.5194088209211685
+v_t_cim[1] = 0.6950187417174549
+v_t_lre[1] = 1.3031823583380714e-06
+v_t_lim[1] = -4.3189756773347496e-07
+v_t_alpha[1] = 13.965068
+v_t_beta[1] = 46.484425
+
+v_t_cre[2] = -0.30358154983592384
+v_t_cim[2] = 0.8440854994406066
+v_t_lre[2] = -7.450158700347853e-06
+v_t_lim[2] = 7.066165497440818e-06
+v_t_alpha[2] = 9.559606
+v_t_beta[2] = 27.223815
+
+v_t_cre[3] = -1.2640780628496204
+v_t_cim[3] = 0.31835826064032563
+v_t_lre[3] = 3.5350328438975224e-07
+v_t_lim[3] = 7.190987902982311e-07
+v_t_alpha[3] = 10.801816
+v_t_beta[3] = 38.048162
+
+v_t_cre[4] = -1.2915231610877178
+v_t_cim[4] = 0.3523797265649276
+v_t_lre[4] = 3.8338822078833187e-07
+v_t_lim[4] = 8.7058822279549e-07
+v_t_alpha[4] = 10.712292
+v_t_beta[4] = 37.057661
+
+v_t_cre[5] = -1.2565174746810241
+v_t_cim[5] = 0.402982530672759
+v_t_lre[5] = 5.5508290735279245e-06
+v_t_lim[5] = -3.6292995053021747e-06
+v_t_alpha[5] = 12.750624
+v_t_beta[5] = 39.983780
+
+v_t_cre[6] = -1.9449852110535573
+v_t_cim[6] = 0.0
+v_t_lre[6] = 3.626372350085649e-07
+v_t_lim[6] = 0.0
+v_t_alpha[6] = 10.640210
+v_t_beta[6] = 36.891726
+
+v_t_cre[7] = -1.8162948552383957
+v_t_cim[7] = 0.0
+v_t_lre[7] = 3.372088149535341e-06
+v_t_lim[7] = 0.0
+v_t_alpha[7] = 9.787315
+v_t_beta[7] = 31.805095
+
+v_t_cre[8] = -1.9196354893185632
+v_t_cim[8] = 0.0
+v_t_lre[8] = 5.227776067995997e-07
+v_t_lim[8] = 0.0
+v_t_alpha[8] = 10.232386
+v_t_beta[8] = 31.349372
+
+v_t_cre[9] = 0.3761794087898908
+v_t_cim[9] = 0.6751755240393001
+v_t_lre[9] = -4.778768843316214e-07
+v_t_lim[9] = 6.957684561988767e-07
+v_t_alpha[9] = 12.808717
+v_t_beta[9] = 42.989854
+
+v_t_cre[10] = 0.35978338286527445
+v_t_cim[10] = 0.7016533637957632
+v_t_lre[10] = 1.6448697676122683e-06
+v_t_lim[10] = -2.3685288002293376e-07
+v_t_alpha[10] = 8.978931
+v_t_beta[10] = 29.860841
+
+v_t_cre[11] = 0.3547452091817535
+v_t_cim[11] = 0.6895783959508278
+v_t_lre[11] = -1.7197573543293632e-06
+v_t_lim[11] = -1.526427020584048e-07
+v_t_alpha[11] = 12.483663
+v_t_beta[11] = 37.166634
+
+v_t_cre[12] = -0.6303071882367189
+v_t_cim[12] = 0.6820271878499198
+v_t_lre[12] = -9.604775474812536e-06
+v_t_lim[12] = 2.3655561156767717e-06
+v_t_alpha[12] = 10.545132
+v_t_beta[12] = 29.111376
+
+v_t_cre[13] = -0.6249689289017563
+v_t_cim[13] = 0.664575992981287
+v_t_lre[13] = -5.889592275657051e-07
+v_t_lim[13] = 1.4413430105182306e-07
+v_t_alpha[13] = 11.044064
+v_t_beta[13] = 37.661143
+
+v_t_cre[14] = -0.5645862574225553
+v_t_cim[14] = 0.678270166977844
+v_t_lre[14] = -4.441424896409576e-06
+v_t_lim[14] = -1.4166232828694498e-06
+v_t_alpha[14] = 13.037755
+v_t_beta[14] = 42.431373
+
+v_t_cre[15] = -0.016631789938903473
+v_t_cim[15] = 1.0136133390444517
+v_t_lre[15] = -1.642804135115191e-07
+v_t_lim[15] = 5.542005439214528e-07
+v_t_alpha[15] = 13.098003
+v_t_beta[15] = 42.189427
+
+v_t_cre[16] = -0.22733132304700396
+v_t_cim[16] = 1.1158835985940232
+v_t_lre[16] = -5.649370524477885e-07
+v_t_lim[16] = 4.204752549230694e-07
+v_t_alpha[16] = 8.038780
+v_t_beta[16] = 26.128739
+
+v_t_cre[17] = -0.17397737658192242
+v_t_cim[17] = 1.0873479381896616
+v_t_lre[17] = -3.3581539945386508e-06
+v_t_lim[17] = 3.5375015476149648e-06
+v_t_alpha[17] = 11.721650
+v_t_beta[17] = 37.125227
+
+# ---------------- Leg state ----------------
+v_target = -1
+v_t = 0
+v_dt = 0.01
+
+def start_leg {
+    # Pick a different target than last time, mirrored at random
+    v_prev = v_target
+    v_target = random(0, v_num_targets - 1, 0)
+    if v_target == v_prev then
+        v_target = (v_target + 1 + random(0, v_num_targets - 2, 0)) % v_num_targets
+    endif
+    v_flip = 1
+    if random(0, 1, 0) == 1 then
+        v_flip = -1
+    endif
+    v_cre = v_t_cre[v_target]
+    v_cim = v_t_cim[v_target] * v_flip
+    v_lre = v_t_lre[v_target]
+    v_lim = v_t_lim[v_target] * v_flip
+    v_alpha = v_t_alpha[v_target]
+    v_beta = v_t_beta[v_target]
+
+    # lambda in polar form
+    v_lmag_log = log(sqrt(v_lre * v_lre + v_lim * v_lim))
+    v_larg = atan2(v_lim, v_lre)
+
+    # Spiral center P = c0 / (1 - lambda), and P - c0 (kept separately for precision)
+    v_den_re = 1 - v_lre
+    v_den_im = -v_lim
+    v_den2 = v_den_re * v_den_re + v_den_im * v_den_im
+    v_p_re = (v_cre * v_den_re + v_cim * v_den_im) / v_den2
+    v_p_im = (v_cim * v_den_re - v_cre * v_den_im) / v_den2
+    # P - c0 = lambda * P
+    v_pc_re = v_lre * v_p_re - v_lim * v_p_im
+    v_pc_im = v_lre * v_p_im + v_lim * v_p_re
+
+    # Same zoom speed on every leg, whatever the mini-brot's size
+    v_dt = log(v_zoom_in) / -v_lmag_log
+    v_fade_t = v_fade_frames * v_dt
+    v_t = 0
 }
 
-def advance_stop {
-    v_stop_idx = v_stop_idx + 1
-    if v_stop_idx >= v_num_stops then
-        v_stop_idx = 0
-    endif
-    call begin_stop
+# Per-frame camera for the current leg
+def update_camera {
+    # lambda^t
+    v_m = exp(v_t * v_lmag_log)
+    v_a = v_t * v_larg
+    v_lt_re = v_m * cos(v_a)
+    v_lt_im = v_m * sin(v_a)
+    # offset from the nucleus: (P - c0) + lambda^t * (start - P)
+    v_sp_re = v_c0_re - v_p_re
+    v_sp_im = v_c0_im - v_p_im
+    v_off_re = v_pc_re + v_lt_re * v_sp_re - v_lt_im * v_sp_im
+    v_off_im = v_pc_im + v_lt_re * v_sp_im + v_lt_im * v_sp_re
+    v_s_re = v_lt_re * v_w0
+    v_s_im = v_lt_im * v_w0
+
+    # The same screen seen in full-set coordinates: P + lambda^(t-1) * (start - P)
+    v_m2 = exp((v_t - 1) * v_lmag_log)
+    v_a2 = (v_t - 1) * v_larg
+    v_l2_re = v_m2 * cos(v_a2)
+    v_l2_im = v_m2 * sin(v_a2)
+    v_q_re = v_p_re + v_l2_re * v_sp_re - v_l2_im * v_sp_im
+    v_q_im = v_p_im + v_l2_re * v_sp_im + v_l2_im * v_sp_re
+    v_s2_re = v_l2_re * v_w0
+    v_s2_im = v_l2_im * v_w0
+
+    # Iteration budget and color normalization follow the zoom
+    v_alpha_t = exp(v_t * log(v_alpha))
+    v_beta_t = v_beta * v_t
+    v_deep_iter = int(v_alpha_t * v_main_iter + v_beta_t) + 2
+
+    # Dissolve into the full set over the last v_fade_frames frames
+    v_fade = min(max((v_t - (1 - v_fade_t)) / (v_fade_t * 0.85), 0), 1)
 }
 
-def tune_iter_depth {
-    v_max_iter = 88 + v_depth * 18
-    if v_scale > 800 then
-        v_max_iter = v_max_iter + 20
-    endif
-    if v_scale > 2000 then
-        v_max_iter = v_max_iter + 20
-    endif
-    if v_max_iter > 200 then
-        v_max_iter = 200
-    endif
-    v_hue_drift = 0.12 + v_stop_idx * 0.04
-}
-
-def renormalize_scale {
-    if v_scale > 4000 then
-        v_depth = v_depth + 3
-        v_scale = v_scale / 1000
-        v_hue_phase = v_hue_phase + 1.8
-    endif
-}
-
-def creep_anchor {
-    v_wobble = v_wobble + 0.09
-    v_eff = v_scale * pow(10, v_depth)
-    v_anchor_re = v_base_re + cos(v_wobble) * 1.5 / v_eff
-    v_anchor_im = v_base_im + sin(v_wobble * 1.21) * 1.5 / v_eff
-}
-
-def maybe_advance_stop {
-    v_ready = 0
-    if v_stop_idx == 0 and v_scale > 520 then
-        v_ready = 1
-    endif
-    if v_stop_idx > 0 and v_scale > 2800 then
-        v_ready = 1
-    endif
-    if v_frames_on_stop > v_frames_max then
-        v_ready = 1
-    endif
-    if v_ready == 1 then
-        call advance_stop
-    endif
-}
-
-field_program mandelbrot {
+field_program odyssey {
     size v_field_size
     sites v_dummy_x, v_dummy_y
     mode formula
@@ -119,29 +262,41 @@ field_program mandelbrot {
     value {
         v_dx = grid_x - v_half
         v_dy = grid_y - v_half
-        v_eff = v_scale * pow(10, v_depth)
-        v_dc_re = v_dx / v_eff
-        v_dc_im = v_dy / v_eff
-        v_iter = escape_zoom(v_anchor_re, v_anchor_im, v_dc_re, v_dc_im, v_max_iter)
+        # Deep view around the target mini-brot. These zooms (down to about
+        # 1e-8 per pixel) are well within double precision, so plain
+        # escape_iter is exact here.
+        v_cr = v_cre + v_off_re + v_s_re * v_dx - v_s_im * v_dy
+        v_ci = v_cim + v_off_im + v_s_im * v_dx + v_s_re * v_dy
+        v_it1 = escape_iter(v_cr, v_ci, v_deep_iter)
+        v_x1 = ((v_it1 - v_beta_t) / v_alpha_t) * (v_it1 < v_deep_iter - 1) - 1000 * (v_it1 >= v_deep_iter - 1)
+        # Same screen in full-set coordinates (used for the dissolve)
+        v_mr = v_q_re + v_s2_re * v_dx - v_s2_im * v_dy
+        v_mi = v_q_im + v_s2_im * v_dx + v_s2_re * v_dy
+        v_it2 = escape_iter(v_mr, v_mi, v_main_iter)
+        v_x2 = v_it2 * (v_it2 < v_main_iter - 1) - 1000 * (v_it2 >= v_main_iter - 1)
+        # Per-pixel dither threshold for the dissolve
+        v_h = sin(grid_x * 12.9898 + grid_y * 78.233) * 43758.5453
+        v_pick = (v_h - floor(v_h)) < v_fade
+        # Result: normalized escape count (can dip below 0), or -1000 for the black interior
+        v_iter = v_x2 * v_pick + v_x1 * (1 - v_pick)
     }
 
-    plot_if v_iter < v_max_iter - 1
-    color clamp(sin(v_iter * 0.68 + v_stop_idx * 1.7 + v_hue_phase + grid_x * 0.1 + grid_y * 0.07) * 47 + 52, 1, 99)
-    opacity clamp(sin(v_iter * 0.28 + v_hue_phase * 0.55) * 24 + 70, 38, 99)
+    plot_if v_iter > -500
+    color clamp(sin(v_iter * 0.55 + v_hue_phase) * 47 + 52, 1, 99)
+    opacity clamp(sin(v_iter * 0.23 + v_hue_phase * 0.5) * 22 + 76, 45, 99)
 }
 
-call begin_stop
+# ---------------- Main loop ----------------
+call start_leg
 
 while true then
+    call update_camera
     begin_frame
-        field_render(mandelbrot)
+        field_render(odyssey)
     end_frame
-
-    v_scale = v_scale * v_zoom_in
     v_hue_phase = v_hue_phase + v_hue_drift
-    v_frames_on_stop = v_frames_on_stop + 1
-    call creep_anchor
-    call renormalize_scale
-    call tune_iter_depth
-    call maybe_advance_stop
+    v_t = v_t + v_dt
+    if v_t >= 1 then
+        call start_leg
+    endif
 endwhile

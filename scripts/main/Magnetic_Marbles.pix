@@ -5,7 +5,7 @@ import particle
 # core shove, sparks, and drawing.
 
 throttle(0)
-fps(30)
+fps(60)
 
 v_count = 14
 v_magnet_count = 3

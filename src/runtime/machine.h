@@ -1,6 +1,7 @@
 // Executes a resolved script, emitting consumer commands (docs/COMMAND_DIALECT.md).
 #pragma once
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
@@ -20,6 +21,10 @@ namespace pixil {
 struct RunOptions {
     int max_commands = -1;  // stop after this many emitted commands, -1 = no limit
     int max_frames = -1;    // stop after this many end_frame calls, -1 = no limit
+    // When true, honor fps()/rest() on the producer so get_datetime and other
+    // wall-clock reads advance with script time (legacy in-process semantics).
+    // Dry-run and unit tests leave this false so they stay instant.
+    bool pace = false;
     std::function<bool()> stop_requested;
     std::function<void(std::string_view)> emit;
     std::string lib_dir;  // directory searched by `import path` (path.pix)
@@ -45,6 +50,8 @@ private:
     void import_module(const Stmt& stmt);
     void emit(std::string cmd);
     void finish_frame();
+    void pace_after_frame();
+    void pace_rest(double seconds);
     Value eval_arg(const Expr& expr);
     bool should_stop() const;
 
@@ -61,6 +68,8 @@ private:
     bool in_sprite_ = false;
     std::string sprite_name_;
     std::unique_ptr<GridState> grids_;
+    double target_fps_ = 0;
+    std::chrono::steady_clock::time_point next_frame_at_{};
 };
 
 }  // namespace pixil

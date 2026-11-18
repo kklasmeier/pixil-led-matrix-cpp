@@ -9,8 +9,9 @@ Build on the Pi 4, from this repo:
 nice -n 19 make -j2
 ```
 
-In the foreground, space skips to the next script. `./run start` is not a
-terminal, so space does nothing there; use `./run next`.
+In the foreground, **space** skips to the next script and **r** reloads the
+current script from disk (re-parse, same playlist position). `./run start` is
+not a terminal, so those keys do nothing there; use `./run next`.
 
 Play one script for 20 seconds:
 
@@ -41,9 +42,28 @@ in sorted order.
 
 Debug output follows the legacy names: `DEBUG_OFF` (the default),
 `DEBUG_CONCISE`, `DEBUG_SUMMARY`, and `DEBUG_VERBOSE`. `-q` prints, about once
-a second, the script name, elapsed time, frame count, command count, and how
-full the bridge inbox is: `inbox=120/5000 2%`. That inbox holds commands
+a second, the script name, elapsed time, producer frame/command counts,
+`cfps=` (consumer presents per second: `end_frame` plus immediate swaps), and
+how full the bridge inbox is: `inbox=120/5000 2%`. That inbox holds commands
 waiting to be drawn. 5000 is full, which means the consumer is the limit.
+The producer also paces on `fps` / `rest` (unless `--dry-run`) so wall-clock
+reads like `get_datetime` stay in step with the script — otherwise a fast
+producer can stamp hundreds of frames with the same second before the inbox
+drains (frozen clocks such as `Boid_Digits`). The native consumer pumps
+burnouts on a timer while commands flow (not only when the inbox is idle),
+matching Python’s background burnout thread — needed for preserve-frame
+trails like `Sine_Wave_Color_Flow`.
+
+Phase 2 A/B (still default `--consumer python`):
+
+```text
+./build/release/pixil --consumer native --headless --fingerprint --max-commands 800 main/bouncing_ball.pix
+make consumer-parity   # Python vs native PIXIL_BUFFER_HASH on the C5 set
+make c5-ops            # -q inbox sample + emergency-blackout path smoke
+```
+
+`--fingerprint` prints `PIXIL_BUFFER_HASH=` after each script (drawing buffer only;
+see `DEVIATIONS.md` D-012). Temporary `--consumer python|native` is removed in C6.
 
 While a show is running, its status is `/dev/shm/pixil_native_status.json`.
 `./run next` and `./run jump` write `/dev/shm/pixil_native_control.json` for

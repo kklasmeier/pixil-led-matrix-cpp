@@ -3,10 +3,10 @@
 # Cap display refresh at 60 FPS (rgb_matrix_lib; fps(0) = unlimited)
 fps(60)
 
-v_num_photons = 4           # Single photon
+v_num_photons = 8           # Single photon
 v_base_speed = 2           # Base speed for photons
-v_speed_variance = 1.5     # How much speed can vary
-v_trail_length = 20        # Length of trail in segments
+v_speed_variance = 2.5     # How much speed can vary
+v_trail_length = 15        # Length of trail in segments
 
 # Helper value to avoid division by zero
 v_min_length = 0.0001      # Small non-zero value

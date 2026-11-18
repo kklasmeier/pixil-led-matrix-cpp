@@ -7,7 +7,7 @@ import particle
 # wrap-around or edge-bounce for the whole sequence.
 
 throttle(0)
-fps(30)
+fps(60)
 
 v_slots = 16
 v_start_rocks = 6

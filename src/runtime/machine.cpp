@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -43,7 +44,7 @@ enum class Arg { Int, Float, Color, Intensity, Burnout, Str, Text, Font, Bool };
 const std::unordered_map<std::string, std::vector<Arg>> kArgTypes = {
     {"plot", {Arg::Int, Arg::Int, Arg::Color, Arg::Intensity, Arg::Burnout, Arg::Str}},
     {"mplot", {Arg::Int, Arg::Int, Arg::Color, Arg::Intensity, Arg::Burnout, Arg::Str}},
-    {"draw_line", {Arg::Int, Arg::Int, Arg::Int, Arg::Int, Arg::Color, Arg::Intensity, Arg::Float, Arg::Str}},
+    {"draw_line", {Arg::Int, Arg::Int, Arg::Int, Arg::Int, Arg::Color, Arg::Intensity, Arg::Burnout, Arg::Str}},
     {"draw_rectangle",
      {Arg::Int, Arg::Int, Arg::Int, Arg::Int, Arg::Color, Arg::Intensity, Arg::Bool, Arg::Float, Arg::Str}},
     {"draw_circle", {Arg::Int, Arg::Int, Arg::Int, Arg::Color, Arg::Intensity, Arg::Bool, Arg::Float, Arg::Str}},
@@ -359,6 +360,45 @@ void Machine::emit(std::string cmd) {
 
 Value Machine::eval_arg(const Expr& expr) { return eval(expr, env); }
 
+void Machine::pace_after_frame() {
+    if (!opt_.pace || target_fps_ <= 0) return;
+    using clock = std::chrono::steady_clock;
+    const auto interval = std::chrono::duration_cast<clock::duration>(
+        std::chrono::duration<double>(1.0 / target_fps_));
+    const auto now = clock::now();
+    if (next_frame_at_.time_since_epoch().count() != 0 && now < next_frame_at_) {
+        while (!should_stop()) {
+            const auto left = next_frame_at_ - clock::now();
+            if (left <= clock::duration::zero()) break;
+            auto slice = left;
+            if (slice > std::chrono::milliseconds(5)) slice = std::chrono::milliseconds(5);
+            std::this_thread::sleep_for(slice);
+        }
+        if (should_stop()) {
+            stopped = true;
+            return;
+        }
+    }
+    next_frame_at_ = clock::now() + interval;
+}
+
+void Machine::pace_rest(double seconds) {
+    if (!opt_.pace || seconds <= 0) return;
+    using clock = std::chrono::steady_clock;
+    const auto deadline =
+        clock::now() + std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(seconds));
+    while (!should_stop() && clock::now() < deadline) {
+        const auto left = deadline - clock::now();
+        if (left <= clock::duration::zero()) break;
+        auto slice = left;
+        if (slice > std::chrono::milliseconds(10)) slice = std::chrono::milliseconds(10);
+        std::this_thread::sleep_for(slice);
+    }
+    if (should_stop()) stopped = true;
+    // A rest breaks the fps cadence — next end_frame starts a fresh interval.
+    next_frame_at_ = {};
+}
+
 void Machine::finish_frame() {
     if (in_frame_) {
         emit(preserve_ ? "begin_frame(true)" : "begin_frame(false)");
@@ -374,6 +414,7 @@ void Machine::finish_frame() {
     frame_extra_.clear();
     ++frames;
     if (opt_.max_frames >= 0 && frames >= opt_.max_frames) stopped = true;
+    pace_after_frame();
 }
 
 void Machine::run(const Script& script, const RunOptions& options) {
@@ -657,17 +698,25 @@ void Machine::run_command(const Stmt& stmt) {
 
     if (stmt.name == "fps") {
         double rate = args.empty() ? 0.0 : args[0].to_double();
+        target_fps_ = rate > 0 ? rate : 0;
+        next_frame_at_ = {};
         emit("fps(" + py_str(Value::real(rate)) + ")");
         return;
     }
     // rest(1) keeps the literal spelling. rest(v) with v holding 0 is rest(0.0).
     if (stmt.name == "rest" && stmt.args.size() == 1 && args.size() == 1) {
         const Expr& src = *stmt.args[0];
+        const double seconds = args[0].to_double();
         std::string text = (src.kind == ExprKind::Literal && src.literal.is_int())
                                ? "rest(" + std::to_string(src.literal.as_int()) + ")"
-                               : "rest(" + py_float_repr(args[0].to_double()) + ")";
+                               : "rest(" + py_float_repr(seconds) + ")";
         if (in_frame_) frame_extra_.push_back(std::move(text));
-        else emit(std::move(text));
+        else {
+            emit(std::move(text));
+            // Sleep here too so get_datetime after rest sees wall time advance
+            // (consumer rest alone lets the producer race ahead into the inbox).
+            pace_rest(seconds);
+        }
         return;
     }
     if (stmt.name == "draw_lines" || stmt.name == "move_sprites") {

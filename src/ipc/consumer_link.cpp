@@ -69,11 +69,22 @@ std::string ConsumerLink::start(const LinkOptions& opts) {
         throw LinkError(sys_error("pipe2"));
     }
 
-    std::vector<std::string> argv_s = {opts.python, "-u", opts.bridge_script, "--legacy-root", opts.legacy_root};
-    if (opts.headless) argv_s.push_back("--headless");
-    if (!opts.record_path.empty()) {
-        argv_s.push_back("--record");
-        argv_s.push_back(opts.record_path);
+    std::vector<std::string> argv_s;
+    if (opts.consumer == ConsumerKind::Native) {
+        if (opts.native_binary.empty()) throw LinkError("native consumer binary path is empty");
+        argv_s = {opts.native_binary};
+        if (opts.headless) argv_s.push_back("--headless");
+        if (!opts.record_path.empty()) {
+            argv_s.push_back("--record");
+            argv_s.push_back(opts.record_path);
+        }
+    } else {
+        argv_s = {opts.python, "-u", opts.bridge_script, "--legacy-root", opts.legacy_root};
+        if (opts.headless) argv_s.push_back("--headless");
+        if (!opts.record_path.empty()) {
+            argv_s.push_back("--record");
+            argv_s.push_back(opts.record_path);
+        }
     }
     std::vector<char*> argv;
     for (auto& s : argv_s) argv.push_back(s.data());
@@ -162,6 +173,13 @@ void ConsumerLink::read_replies(int timeout_ms) {
             std::memcpy(&queue_.depth, rep.payload.data(), 4);
             std::memcpy(&queue_.capacity, rep.payload.data() + 4, 4);
             queue_.known = true;
+            if (rep.payload.size() >= 12) {
+                std::memcpy(&queue_.presents, rep.payload.data() + 8, 4);
+                queue_.presents_known = true;
+            } else {
+                queue_.presents_known = false;
+            }
+            ++queue_ack_;
         } else {
             replies_.push_back(std::move(rep));
         }
@@ -224,10 +242,25 @@ void ConsumerLink::write_control(char byte) {
 }
 
 ConsumerLink::QueueSample ConsumerLink::sample_queue() {
-    if (!running()) return queue_;
+    if (!running()) {
+        QueueSample s = queue_;
+        s.fresh = false;
+        return s;
+    }
+    // Wait for a Q reply that arrives after this request. A single short
+    // read_replies(30) often timed out under backpressure and returned the
+    // previous presents → cfps alternated 0 / ~2×.
+    const uint32_t baseline = queue_ack_;
     write_control('Q');
-    read_replies(30);
-    return queue_;
+    auto deadline = Clock::now() + std::chrono::milliseconds(200);
+    while (queue_ack_ == baseline && Clock::now() < deadline) {
+        check_stop();
+        read_replies(std::min(ms_left(deadline), 50));
+    }
+    QueueSample s = queue_;
+    s.fresh = queue_ack_ > baseline;
+    if (!s.fresh) s.presents_known = false;
+    return s;
 }
 
 void ConsumerLink::send(std::string_view command) {

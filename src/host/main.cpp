@@ -38,7 +38,7 @@ constexpr const char* kVersion = "pixil 0.4.0 (Phase 1 / M4 host)";
 constexpr const char* kStatusPath = "/dev/shm/pixil_native_status.json";
 constexpr const char* kControlPath = "/dev/shm/pixil_native_control.json";
 
-enum class Advance { None, Next, Jump };
+enum class Advance { None, Next, Jump, Reload };
 
 Advance g_advance = Advance::None;
 std::string g_jump_target;
@@ -47,12 +47,13 @@ std::chrono::steady_clock::time_point g_last_poll{};
 
 std::atomic<bool> g_stop{false};
 std::atomic<bool> g_key_next{false};
+std::atomic<bool> g_key_reload{false};
 std::string g_current_script;
 
 void on_signal(int) { g_stop.store(true); }
 
-// Space skips to the next script, matching the legacy terminal handler.
-// Active only when stdin is a terminal (./run interactive). ./run start is not.
+// Interactive keys when stdin is a TTY (./run interactive). ./run start is not.
+// Space → next script; r/R → reload the current script from disk.
 class SpaceSkip {
 public:
     SpaceSkip() {
@@ -65,7 +66,7 @@ public:
         if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) return;
         active_ = true;
         reader_ = std::thread([this] { read_keys(); });
-        std::cerr << "[pixil] space skips to the next script\n";
+        std::cerr << "[pixil] space=next script, r=reload current\n";
     }
     ~SpaceSkip() {
         stop_.store(true);
@@ -82,7 +83,9 @@ private:
             const int ready = poll(&pfd, 1, 200);
             if (ready <= 0) continue;
             char key = 0;
-            if (read(STDIN_FILENO, &key, 1) == 1 && key == ' ') g_key_next.store(true);
+            if (read(STDIN_FILENO, &key, 1) != 1) continue;
+            if (key == ' ') g_key_next.store(true);
+            else if (key == 'r' || key == 'R') g_key_reload.store(true);
         }
     }
 
@@ -95,8 +98,9 @@ private:
 void usage(std::ostream& os) {
     os << "usage: pixil [options] [script.pix ...]\n"
           "\n"
-          "Native Pixil producer. The LED consumer is the legacy Python rgb_matrix_lib,\n"
-          "driven through bridge/pixil_consumer_bridge.py (docs/ADR-001-ipc.md).\n"
+          "Native Pixil producer. By default the LED consumer is still the legacy Python\n"
+          "rgb_matrix_lib via bridge/pixil_consumer_bridge.py (ADR-001). Phase 2 adds a\n"
+          "temporary --consumer switch for the C++ pixil-consumer (ADR-002).\n"
           "\n"
           "options:\n"
           "  --hello              run the M2 hello-matrix demo (no .pix language needed)\n"
@@ -105,19 +109,23 @@ void usage(std::ostream& os) {
           "  -d, --debug LEVEL    DEBUG_OFF (default), DEBUG_CONCISE, DEBUG_SUMMARY,\n"
           "                       or DEBUG_VERBOSE\n"
           "  -q, --queue-monitor  once a second: script, elapsed, frames, commands,\n"
-          "                       and inbox fill as waiting/5000 and a percent\n"
+          "                       cfps (consumer presents/sec), inbox waiting/5000\n"
           "  --seconds N          hello animation length in seconds (default 10)\n"
           "  --max-commands N     stop each script after N consumer commands (includes preamble)\n"
           "  --max-frames N       stop each script after N frames\n"
           "  --seed N             random seed, applied at the start of every script (default 1)\n"
+          "  --fingerprint        after each script (before reset), print PIXIL_BUFFER_HASH=\n"
+          "                       (drawing-buffer opaque-pixel SHA-256 prefix; ADR-001 T)\n"
           "  --trace FILE         write every consumer command, one per line\n"
           "  --dry-run            parse and trace only; a wildcard plays one sorted pass\n"
-          "  --headless           stub rgbmatrix in the consumer (no GPIO; real RGB_Api)\n"
+          "  --headless           consumer without GPIO\n"
           "  --record FILE        consumer-side JSONL log of every command it executed\n"
-          "  --legacy-root DIR    legacy tree with rgb_matrix_lib/ (default $PIXIL_LEGACY_ROOT\n"
-          "                       or <repo>/../git)\n"
-          "  --bridge FILE        consumer bridge script (default <repo>/bridge/pixil_consumer_bridge.py)\n"
-          "  --python EXE         Python interpreter for the consumer (default python3)\n"
+          "  --consumer KIND      python (default) or native — temporary Phase 2 switch\n"
+          "  --consumer-bin FILE  pixil-consumer binary (default: alongside this pixil)\n"
+          "  --legacy-root DIR    legacy tree with rgb_matrix_lib/ (python consumer;\n"
+          "                       default $PIXIL_LEGACY_ROOT or <repo>/../git)\n"
+          "  --bridge FILE        python consumer bridge (default <repo>/bridge/...)\n"
+          "  --python EXE         Python interpreter for the python consumer (default python3)\n"
           "  --version            print version and exit\n"
           "  --help               this help\n"
           "\n"
@@ -135,11 +143,14 @@ struct Options {
     int duration_seconds = -1;
     DebugLevel debug = DebugLevel::Off;
     bool queue_monitor = false;
+    bool fingerprint = false;
     int max_commands = -1;
     int max_frames = -1;
     int64_t seed = 1;
     std::string trace;
     std::string record;
+    ConsumerKind consumer = ConsumerKind::Python;
+    std::string consumer_bin;
     std::string legacy_root;
     std::string bridge;
     std::string python = "python3";
@@ -272,6 +283,8 @@ int parse_args(int argc, char** argv, Options& o) {
             o.debug = parse_debug_level(value("-d"));
         } else if (a == "-q" || a == "--queue-monitor") {
             o.queue_monitor = true;
+        } else if (a == "--fingerprint") {
+            o.fingerprint = true;
         } else if (a == "--max-commands") {
             o.max_commands = std::atoi(value("--max-commands").c_str());
         } else if (a == "--max-frames") {
@@ -284,6 +297,16 @@ int parse_args(int argc, char** argv, Options& o) {
             o.dry_run = true;
         } else if (a == "--record") {
             o.record = value("--record");
+        } else if (a == "--consumer") {
+            std::string kind = value("--consumer");
+            if (kind == "python") o.consumer = ConsumerKind::Python;
+            else if (kind == "native") o.consumer = ConsumerKind::Native;
+            else {
+                std::cerr << "pixil: --consumer must be python or native\n";
+                std::exit(2);
+            }
+        } else if (a == "--consumer-bin") {
+            o.consumer_bin = value("--consumer-bin");
         } else if (a == "--legacy-root") {
             o.legacy_root = value("--legacy-root");
         } else if (a == "--bridge") {
@@ -415,6 +438,9 @@ Advance run_script(const Options& opt, const fs::path& repo, const fs::path& scr
 
     int emitted = 0;
     auto last_note = wall_start;
+    bool have_prev_presents = false;
+    uint32_t prev_presents = 0;
+    auto prev_presents_at = wall_start;
     auto note = [&](std::string_view cmd) {
         const auto now = Clock::now();
         if (now - last_note < std::chrono::seconds(1)) return;
@@ -426,6 +452,28 @@ Advance run_script(const Options& opt, const fs::path& repo, const fs::path& scr
                   << "s frames=" << machine.frames << " commands=" << emitted;
         if (!opt.dry_run) {
             const ConsumerLink::QueueSample q = link.sample_queue();
+            // Only advance the cfps baseline on a fresh Q reply. A timed-out
+            // sample_queue used to return a stale presents count → cfps=0 then
+            // the next hit counted ~2s of presents (cfps≈2×).
+            if (q.fresh && q.presents_known) {
+                if (have_prev_presents) {
+                    const double dt = std::chrono::duration<double>(now - prev_presents_at).count();
+                    if (dt > 0.0) {
+                        const double cfps =
+                            static_cast<double>(q.presents - prev_presents) / dt;
+                        std::cout << " cfps=" << static_cast<unsigned>(cfps + 0.5);
+                    } else {
+                        std::cout << " cfps=?";
+                    }
+                } else {
+                    std::cout << " cfps=?";
+                }
+                prev_presents = q.presents;
+                prev_presents_at = now;
+                have_prev_presents = true;
+            } else if (opt.queue_monitor) {
+                std::cout << " cfps=?";
+            }
             if (q.known && q.capacity > 0) {
                 const unsigned pct = static_cast<unsigned>(q.depth * 100ull / q.capacity);
                 std::cout << " inbox=" << q.depth << "/" << q.capacity << " " << pct << "%";
@@ -457,12 +505,21 @@ Advance run_script(const Options& opt, const fs::path& repo, const fs::path& scr
     RunOptions run;
     run.lib_dir = (repo / "scripts" / "lib").string();
     run.max_frames = opt.max_frames;
+    // Match legacy in-process pacing: fps/rest advance producer wall time so
+    // get_datetime clocks (Boid_Digits, etc.) do not freeze while the inbox drains.
+    run.pace = !opt.dry_run;
     run.stop_requested = [&] {
         if (g_stop.load()) return true;
-        if (g_key_next.exchange(false) && g_advance == Advance::None) {
-            g_advance = Advance::Next;
-            std::cerr << "[pixil] space: next up "
-                      << (g_next_name.empty() ? std::string("(end of playlist)") : g_next_name) << "\n";
+        if (g_advance == Advance::None) {
+            if (g_key_reload.exchange(false)) {
+                g_advance = Advance::Reload;
+                std::cerr << "[pixil] r: reload " << script_path.filename().string() << "\n";
+            } else if (g_key_next.exchange(false)) {
+                g_advance = Advance::Next;
+                std::cerr << "[pixil] space: next up "
+                          << (g_next_name.empty() ? std::string("(end of playlist)") : g_next_name)
+                          << "\n";
+            }
         }
         if (Clock::now() >= deadline) return true;
         if (opt.max_commands >= 0 && emitted >= opt.max_commands) return true;
@@ -486,8 +543,19 @@ Advance run_script(const Options& opt, const fs::path& repo, const fs::path& scr
     if (!opt.dry_run) {
         // drain discards the old script's backlog but leaves its sprites on the
         // panel. clear does not remove sprites; script_reset does.
-        if (early) link.drain();
+        // Fingerprint needs every emitted command applied (ADR-001 T is drawing-
+        // buffer only). Drain before T races mid-frame clears → empty hashes.
+        if (early && !opt.fingerprint) link.drain();
         else link.sync();
+        // Snapshot before script_reset clears the drawing buffer (C5 parity).
+        if (opt.fingerprint && !g_stop.load()) {
+            try {
+                std::string fp = link.test_snapshot();
+                std::cout << "PIXIL_BUFFER_HASH=" << fp << "\n";
+            } catch (const std::exception& e) {
+                std::cerr << "[pixil] fingerprint failed: " << e.what() << "\n";
+            }
+        }
         if (!g_stop.load()) link.script_reset();
     }
     std::cout << "[pixil] " << script_path.string() << " frames=" << machine.frames << " commands=" << emitted
@@ -520,8 +588,18 @@ int main(int argc, char** argv) {
     if (opt.bridge.empty()) opt.bridge = (repo / "bridge" / "pixil_consumer_bridge.py").string();
     std::error_code ec;
     opt.legacy_root = fs::weakly_canonical(opt.legacy_root, ec).string();
-    if (!opt.dry_run && !fs::exists(fs::path(opt.legacy_root) / "rgb_matrix_lib")) {
+    if (opt.consumer_bin.empty()) {
+        fs::path exe = fs::read_symlink("/proc/self/exe", ec);
+        if (!ec) opt.consumer_bin = (exe.parent_path() / "pixil-consumer").string();
+        else opt.consumer_bin = (repo / "build" / "release" / "pixil-consumer").string();
+    }
+    if (!opt.dry_run && opt.consumer == ConsumerKind::Python &&
+        !fs::exists(fs::path(opt.legacy_root) / "rgb_matrix_lib")) {
         std::cerr << "pixil: no rgb_matrix_lib/ under legacy root " << opt.legacy_root << "\n";
+        return 2;
+    }
+    if (!opt.dry_run && opt.consumer == ConsumerKind::Native && !fs::exists(opt.consumer_bin)) {
+        std::cerr << "pixil: native consumer not found: " << opt.consumer_bin << "\n";
         return 2;
     }
     if (!opt.dry_run && !opt.headless && geteuid() != 0) {
@@ -538,8 +616,10 @@ int main(int argc, char** argv) {
     SpaceSkip space_skip;
 
     LinkOptions lo;
+    lo.consumer = opt.consumer;
     lo.python = opt.python;
     lo.bridge_script = opt.bridge;
+    lo.native_binary = opt.consumer_bin;
     lo.legacy_root = opt.legacy_root;
     lo.headless = opt.headless;
     lo.record_path = opt.record;
@@ -594,6 +674,11 @@ int main(int argc, char** argv) {
                     continue;
                 }
                 if (g_stop.load()) break;
+                if (why == Advance::Reload) {
+                    // Re-parse the same path from disk; keep playlist order.
+                    upcoming.push_front(current);
+                    continue;
+                }
                 if (why == Advance::Jump) {
                     try {
                         const Playlist target = collect_scripts({g_jump_target}, repo / "scripts");

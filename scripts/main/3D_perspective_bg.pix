@@ -1,7 +1,7 @@
 # 3D Dot Matrix - Five layers, full-screen depth grid (background layers)
 # Each depth layer is a tiny one-dot tile that the engine repeats across the
 # whole panel. Parallax is just set_background_offset() once per layer per frame.
-fps(30)
+fps(60)
 
 # Movement control
 v_angle = 0

@@ -1,6 +1,6 @@
 # Native Pixil Runtime — Phase 1 Plan (Handoff)
 
-**Status:** Design / planning only. Not started.  
+**Status:** Phase 1 complete. Daily show cut over to this producer on 17 Nov 2026. The Python consumer still draws the panel.  
 **Date:** 2026-11-14 (updated same day with independent review inputs)  
 **Source project (legacy):** `piMatrix/Lightshow/git` (Python Pixil producer + `rgb_matrix_lib` consumer)  
 **Target:** New GitHub repository + separate directory on the Raspberry Pi  
@@ -393,67 +393,72 @@ Each milestone leaves the LED matrix demonstrably better or the contract stronge
 
 ### M0 — Repo bootstrap
 
-- [ ] Create GitHub repo; clone to `~/Lightshow/pixil-native` on Pi
-- [ ] Copy this plan into `docs/`
-- [ ] README: purpose, non-goals, how to point at legacy consumer
-- [ ] ADR-001: IPC choice (pacing/language/freeze already locked in §0)
-- [ ] Tooling: build on Pi 4 + desktop; smoke binary `--help`
+- [x] Create GitHub repo; clone to `~/Lightshow/pixil-led-matrix-cpp` on the Pi
+- [x] Copy this plan into `docs/`
+- [x] README: purpose, non-goals, how to point at legacy consumer
+- [x] ADR-001: IPC choice (pacing/language/freeze already locked in §0)
+- [x] Tooling: build on Pi 4 + desktop; smoke binary `--help`
 - [ ] CI skeleton with sanitizers (§8.4)
 
 ### M1 — Contracts + parity tooling (before big runtime)
 
-- [ ] `LANGUAGE.md` + EBNF grammar draft; corpus parse attempt list
-- [ ] `COMMAND_DIALECT.md` from `PARAMETER_TYPES` + batch protocols
-- [ ] Legacy hooks (prefer small legacy-side env flags, keep oracle runnable):
-  - [ ] `PIXIL_SEED` (or equivalent) for determinism
-  - [ ] Command-stream recorder (text + decoded batches + frame markers)
-  - [ ] Optional: headless consumer path for desktop stream capture
-- [ ] Capture streams for 5–10 scripts (light + heavy + `throttle>0` sample)
-- [ ] Expression oracle harness scaffold
-- [ ] `DEVIATIONS.md` started
+- [x] `LANGUAGE.md` + EBNF grammar draft; corpus parse attempt list
+- [x] `COMMAND_DIALECT.md` from `PARAMETER_TYPES` + batch protocols
+- [x] Legacy hooks (prefer small legacy-side env flags, keep oracle runnable):
+  - [x] `PIXIL_SEED` (or equivalent) for determinism
+  - [x] Command-stream recorder (text + decoded batches + frame markers)
+  - [x] Optional: headless consumer path for desktop stream capture
+- [x] Capture streams for 5–10 scripts (light + heavy + `throttle>0` sample)
+- [x] Expression oracle harness scaffold
+- [x] `DEVIATIONS.md` started
 
 ### M2 — Hello matrix (native → legacy consumer)
 
-- [ ] IPC works; `clear` + `sync_queue` + simple `draw_rectangle` + `rest`
-- [ ] Manual: one hardcoded demo without full language
+- [x] IPC works; `clear` + `sync_queue` + simple `draw_rectangle` + `rest`
+- [x] Manual: one hardcoded demo without full language
 
 **Gate:** panel shows something driven by native process, consumer still Python from legacy tree.
 
 ### M3 — Language core
 
-- [ ] Variables, arithmetic, `plot`/`draw_*`, `for`/`while`/`if`, `rest`/`fps`/`throttle`
-- [ ] `begin_frame`/`end_frame` + `draw_batch` packing
-- [ ] Run `bouncing_ball.pix`, `KITT_Scanner.pix` (or trimmed cousins) unchanged
+- [x] Variables, arithmetic, `plot`/`draw_*`, `for`/`while`/`if`, `rest`/`fps`/`throttle`
+- [x] `begin_frame`/`end_frame` + `draw_batch` packing
+- [x] Run `bouncing_ball.pix`, `KITT_Scanner.pix` (or trimmed cousins) unchanged
 
 **Gate:** pure-Pixil demos run; queue depth / timing shows producer improvement vs legacy on the same scripts.
 
 ### M4 — Host parity
 
-- [ ] CLI flags; duration; debug levels; wildcard playlist
-- [ ] Status/logging good enough for `./run`-style operation
-- [ ] Clean shutdown / blackout
+- [x] CLI flags; duration; debug levels; wildcard playlist
+- [x] Status/logging good enough for `./run`-style operation
+- [x] Clean shutdown / blackout
 
 **Gate:** operate a short `main/*` playlist from the native tree without using legacy Pixil.py.
 
 ### M5 — Compat engines
 
-- [ ] Port or relink primitives required by inventory of `main/*` usage
-- [ ] Metaballs / RD / particle scripts run without script edits
-- [ ] Still no new verbs
+- [x] Particle, points, agent, ink, and chladni are Pixil libraries under `scripts/lib`. Grid and field stay in the language
+- [x] Scripts that used those primitives import the libraries. No new verbs
 
 **Gate:** “show library boots”; list any scripts deferred with reasons.
 
 ### M6 — Hardening
 
-- [ ] Conformance suite green on Pi
-- [ ] Metrics/logging parity decision documented
-- [ ] Performance report: legacy vs native on agreed script set (producer-bound + engine)
-- [ ] Cutover doc: how to run native day-to-day; legacy remains fallback
+- [x] Conformance suite green on Pi
+- [x] Metrics/logging parity decision documented
+- [x] Performance report: legacy vs native on agreed script set (producer-bound + engine)
+- [x] Cutover doc: how to run native day-to-day; legacy remains fallback
 
 ### M7 — Phase 1 done criteria
 
-- [ ] Owner can deprecate *daily use* of legacy producer (legacy tree still installed)
-- [ ] Phase 2 briefly re-estimated (consumer native / binary IPC) — not started unless requested
+- [x] Owner can deprecate *daily use* of legacy producer (legacy tree still installed)
+- [x] Phase 2 briefly re-estimated (consumer native / binary IPC) — not started unless requested
+
+The daily show runs from this tree. The legacy producer stays in its own checkout and its own GitHub repository. `scripts/main` here is the legacy main library plus `Gravity_Plexus.pix`.
+
+**Phase 2 charter:** `docs/Native_Pixil_Runtime_Phase2_Plan.md` (not started). Once the bridge inbox is full, the panel runs at the Python draw rate. The inbox holds 5000 commands. Gravity Plexus, with `fps(60)` and `throttle(0)` and no `rest`, fills it and then holds near 36 fps. A native consumer replaces `rgb_matrix_lib` and keeps this producer's commands: `draw_batch`, `begin_frame(false)` for a fresh frame, `begin_frame(true)` to keep the panel, sprites, text, `fps`, and `rest`. A filled black rectangle still replaces pixels. Black at any intensity is still black. Leave the Python consumer as the fallback until the panel is switched on purpose.
+
+The C++ consumer stays a separate process, spawned the way `bridge/pixil_consumer_bridge.py` is spawned today, and it keeps the ADR-001 pipes. Inside that process a reader thread fills the 5000-command inbox and an executor thread draws. The matrix swap stays on the executor thread. The library's own refresh thread is separate. Do not have several threads write the same canvas. The Pi 4 has 4 cores. The producer process already uses one. The Python draw loop holds the GIL on another, which is why the extra cores sit idle. Temporary cutover uses `--consumer python|native`; that switch is removed after the panel cutover.
 
 ---
 

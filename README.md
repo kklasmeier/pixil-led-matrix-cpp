@@ -8,12 +8,14 @@ Pixil scripts (`.pix`) stay the product. This repo replaces the Python producer
 (`Pixil.py`) with a compile-once C++ runtime that feeds the **existing Python**
 `rgb_matrix_lib` consumer from the legacy tree (see [ADR-001](docs/ADR-001-ipc.md)).
 
-Phase 2 (native consumer) is later and out of scope until Phase 1 is solid.
+Phase 1 is the daily show. Phase 2 (native consumer replacing `rgb_matrix_lib`) has its own charter and has not been started. The Python consumer still draws the panel.
 
 ## Charter and contracts
 
-* [docs/Native_Pixil_Runtime_Phase1_Plan.md](docs/Native_Pixil_Runtime_Phase1_Plan.md): charter. Read it first.
+* [docs/Native_Pixil_Runtime_Phase1_Plan.md](docs/Native_Pixil_Runtime_Phase1_Plan.md): Phase 1 producer charter.
+* [docs/Native_Pixil_Runtime_Phase2_Plan.md](docs/Native_Pixil_Runtime_Phase2_Plan.md): Phase 2 consumer charter (C++ replacement of `rgb_matrix_lib`).
 * [docs/ADR-001-ipc.md](docs/ADR-001-ipc.md): producer ↔ consumer IPC (pipes + a thin Python bridge).
+* [docs/ADR-002-native-consumer.md](docs/ADR-002-native-consumer.md): Phase 2 native consumer + temporary `--consumer` switch.
 * [docs/LANGUAGE.md](docs/LANGUAGE.md): language reference and EBNF draft.
 * [docs/COMMAND_DIALECT.md](docs/COMMAND_DIALECT.md): what the producer sends to the consumer.
 * [DEVIATIONS.md](DEVIATIONS.md): every known difference from legacy behaviour.
@@ -44,10 +46,11 @@ dependencies is needed for the bridge, the oracles and the capture tools.
 | `src/runtime/` | Values and Python-exact operators, float repr, CPython-compatible MT19937, evaluator |
 | `src/syntax/` | Lexer, Pratt parser, AST (compile-once) |
 | `src/emit/` | `draw_batch` packer (byte-exact with the legacy protocol), color ids, base64 |
-| `src/ipc/` | `ConsumerLink`: spawns and drives the consumer bridge |
+| `src/ipc/` | `ConsumerLink`: spawns and drives the consumer (python or native) |
 | `src/host/` | `pixil` CLI |
+| `src/consumer/` | Phase 2 `pixil-consumer` (C++ replacement of `rgb_matrix_lib`; C0/C1) |
 | `src/tools/` | `pixil-expr` (Tier 0 expression runner) |
-| `bridge/` | `pixil_consumer_bridge.py`: thin server around legacy `rgb_matrix_lib` |
+| `bridge/` | `pixil_consumer_bridge.py`: thin server around legacy `rgb_matrix_lib` (default) |
 | `tools/` | Legacy oracles, cross-check, golden generators, stream capture |
 | `tests/unit/` | Unit tests (no external framework) |
 | `tests/expr/` | Tier 0 expression cases plus expected deviations |

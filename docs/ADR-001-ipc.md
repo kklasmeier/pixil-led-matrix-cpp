@@ -51,7 +51,14 @@ Frame = `type:u8` + `length:u32 LE` + payload.
 | Control byte | Meaning |
 |---|---|
 | `D` | drain requested: swallow `C` frames until the `K` marker; interrupts `rest` |
+| `Q` | queue sample (answered on the control path, not through the inbox) |
 | `X` | force shutdown: blackout immediately (interrupts `rest` and backlog) |
+
+`Q` reply payload (little-endian): `uint32 depth | uint32 capacity | uint32 presents`.
+`presents` is a monotonic count of consumer presents (`end_frame` plus immediate
+swaps; fade pumps are excluded). Producers that only understand the older 8-byte
+`depth|capacity` form may ignore the third word. `-q` diffs `presents` over ~1s
+to print `cfps=`.
 
 Bridge-initiated replies: `H` (ready, JSON: pid, size, headless) once
 `RGB_Api` is up; `E` (command failed; text) — the bridge then blacks out and exits.
