@@ -1,0 +1,375 @@
+# Morphing Knot - a complete 3D renderer written in Pixil
+#
+# A glowing, flat-shaded tube spins in space and morphs between shapes:
+# torus -> twisted ribbon torus -> pulsing star torus -> trefoil knot -> ...
+#
+# Every frame the script runs its own 3D pipeline, with no drawing primitives
+# beyond horizontal lines:
+#   1. Morph    - blends 320 vertices between two precomputed shapes.
+#   2. Transform - rotates every vertex in 3D and projects it with perspective.
+#   3. Shade    - per face: normal vector, back-face culling, diffuse light
+#                 and a specular glint.
+#   4. Sort     - a counting sort orders faces back to front (painter's algorithm).
+#   5. Raster   - every visible face is split into two triangles and filled
+#                 row by row with a hand-written scanline rasterizer.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_nu = 40                # segments along the tube
+v_nv = 8                 # segments around the tube
+v_hold = 300             # frames to show each shape (~5 s)
+v_morph = 120            # frames to morph between shapes (~2 s)
+v_dist = 6.0             # camera distance
+v_focal = 96             # projection scale
+v_stars = 60
+
+v_nverts = v_nu * v_nv
+v_nshapes = 4
+
+# Precomputed shapes: shape s, vertex i lives at s * v_nverts + i
+create_array(v_sx, v_nshapes * v_nverts, numeric)
+create_array(v_sy, v_nshapes * v_nverts, numeric)
+create_array(v_sz, v_nshapes * v_nverts, numeric)
+
+# Per-frame vertex data
+create_array(v_px, v_nverts, numeric)    # screen x
+create_array(v_py, v_nverts, numeric)    # screen y
+create_array(v_rx, v_nverts, numeric)    # rotated 3D position
+create_array(v_ry, v_nverts, numeric)
+create_array(v_rz, v_nverts, numeric)
+
+# Per-frame face data
+create_array(v_fkey, v_nverts, numeric)
+create_array(v_fcol, v_nverts, numeric)
+create_array(v_fint, v_nverts, numeric)
+create_array(v_fvis, v_nverts, numeric)
+create_array(v_cnt, 64, numeric)
+create_array(v_start, 64, numeric)
+create_array(v_order, v_nverts, numeric)
+
+v_pi2 = 6.283185
+
+# ---------------- Build the shapes ----------------
+# Tube shapes 0-2 are variations of a torus around the z axis
+for v_s in (0, 2, 1)
+    for v_iu in (0, v_nu - 1, 1)
+        v_u = v_iu / v_nu * v_pi2
+        for v_iv in (0, v_nv - 1, 1)
+            v_v = v_iv / v_nv * v_pi2
+            v_cr = cos(v_v)
+            v_cz = sin(v_v)
+            if v_s == 0 then
+                # plain torus
+                v_ra = 0.45
+                v_rb = 0.45
+                v_tw = 0
+                v_rr = 1.0
+            elseif v_s == 1 then
+                # ribbon: flat cross-section twisting three half-turns
+                v_ra = 0.62
+                v_rb = 0.14
+                v_tw = v_u * 1.5
+                v_rr = 1.0
+            else
+                # star torus: the ring itself bulges into five lobes
+                v_ra = 0.30 + 0.12 * cos(v_u * 5)
+                v_rb = v_ra
+                v_tw = 0
+                v_rr = 1.0 + 0.28 * cos(v_u * 5)
+            endif
+            # rotate the elliptical cross-section by the twist angle
+            v_ex = v_cr * v_ra
+            v_ez = v_cz * v_rb
+            v_qx = v_ex * cos(v_tw) - v_ez * sin(v_tw)
+            v_qz = v_ex * sin(v_tw) + v_ez * cos(v_tw)
+            v_k = v_s * v_nverts + v_iu * v_nv + v_iv
+            v_sx[v_k] = (v_rr + v_qx) * cos(v_u)
+            v_sy[v_k] = (v_rr + v_qx) * sin(v_u)
+            v_sz[v_k] = v_qz
+        endfor v_iv
+    endfor v_iu
+endfor v_s
+
+# Shape 3: trefoil knot tube. Centre curve plus a frame built from the
+# tangent, so the tube wraps around the curve.
+for v_iu in (0, v_nu - 1, 1)
+    v_u = v_iu / v_nu * v_pi2
+    v_cx = (sin(v_u) + 2 * sin(2 * v_u)) * 0.36
+    v_cy = (cos(v_u) - 2 * cos(2 * v_u)) * 0.36
+    v_cz = -sin(3 * v_u) * 0.36
+    v_tx = (cos(v_u) + 4 * cos(2 * v_u)) * 0.36
+    v_ty = (-sin(v_u) + 4 * sin(2 * v_u)) * 0.36
+    v_tz = -3 * cos(3 * v_u) * 0.36
+    v_tl = sqrt(v_tx * v_tx + v_ty * v_ty + v_tz * v_tz)
+    v_tx = v_tx / v_tl
+    v_ty = v_ty / v_tl
+    v_tz = v_tz / v_tl
+    # N = normalize(T x up), up = z axis
+    v_nx = v_ty
+    v_ny = 0 - v_tx
+    v_nz = 0
+    v_nl = sqrt(v_nx * v_nx + v_ny * v_ny) + 0.000001
+    v_nx = v_nx / v_nl
+    v_ny = v_ny / v_nl
+    # B = T x N
+    v_bx = v_ty * v_nz - v_tz * v_ny
+    v_by = v_tz * v_nx - v_tx * v_nz
+    v_bz = v_tx * v_ny - v_ty * v_nx
+    for v_iv in (0, v_nv - 1, 1)
+        v_v = v_iv / v_nv * v_pi2
+        v_a = cos(v_v) * 0.24
+        v_b = sin(v_v) * 0.24
+        v_k = 3 * v_nverts + v_iu * v_nv + v_iv
+        v_sx[v_k] = v_cx + v_nx * v_a + v_bx * v_b
+        v_sy[v_k] = v_cy + v_ny * v_a + v_by * v_b
+        v_sz[v_k] = v_cz + v_nz * v_a + v_bz * v_b
+    endfor v_iv
+endfor v_iu
+
+# ---------------- Background stars ----------------
+create_array(v_stx, v_stars, numeric)
+create_array(v_sty, v_stars, numeric)
+create_array(v_stb, v_stars, numeric)
+for v_k in (0, v_stars - 1, 1)
+    v_stx[v_k] = random(0, 6300, 0) / 100
+    v_sty[v_k] = random(0, 6300, 0) / 100
+    v_stb[v_k] = random(8, 40, 0)
+endfor v_k
+
+# ---------------- State ----------------
+v_t = 0
+v_shape_a = 0
+v_shape_b = 1
+v_phase = 0              # frames into the current hold + morph cycle
+v_ax = 0.3
+v_ay = 0
+v_az = 0
+
+# ---------------- Rendering ----------------
+
+# Fill triangle (v_x0,v_y0) (v_x1,v_y1) (v_x2,v_y2) with v_tc / v_ti
+def fill_tri {
+    # sort the three corners by y
+    if v_y1 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x1
+        v_x1 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y1
+        v_y1 = v_tmp
+    endif
+    if v_y2 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y2
+        v_y2 = v_tmp
+    endif
+    if v_y2 < v_y1 then
+        v_tmp = v_x1
+        v_x1 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y1
+        v_y1 = v_y2
+        v_y2 = v_tmp
+    endif
+    v_ya = max(int(v_y0 + 0.5), 0)
+    v_yb = min(int(v_y2 + 0.5), 63)
+    v_h02 = v_y2 - v_y0 + 0.0001
+    v_h01 = v_y1 - v_y0 + 0.0001
+    v_h12 = v_y2 - v_y1 + 0.0001
+    for v_yy in (v_ya, v_yb, 1)
+        v_xa = v_x0 + (v_x2 - v_x0) * min(max((v_yy - v_y0) / v_h02, 0), 1)
+        if v_yy < v_y1 then
+            v_xb = v_x0 + (v_x1 - v_x0) * min(max((v_yy - v_y0) / v_h01, 0), 1)
+        else
+            v_xb = v_x1 + (v_x2 - v_x1) * min(max((v_yy - v_y1) / v_h12, 0), 1)
+        endif
+        draw_line(int(min(v_xa, v_xb) + 0.5), v_yy, int(max(v_xa, v_xb) + 0.5), v_yy, v_tc, v_ti)
+    endfor v_yy
+}
+
+def transform {
+    # morph weight with smooth ease in/out
+    v_m = 0
+    if v_phase > v_hold then
+        v_m = (v_phase - v_hold) / v_morph
+        v_m = v_m * v_m * (3 - 2 * v_m)
+    endif
+    v_oa = v_shape_a * v_nverts
+    v_ob = v_shape_b * v_nverts
+    # rotation matrix from three angles
+    v_cxr = cos(v_ax)
+    v_sxr = sin(v_ax)
+    v_cyr = cos(v_ay)
+    v_syr = sin(v_ay)
+    v_czr = cos(v_az)
+    v_szr = sin(v_az)
+    v_m00 = v_cyr * v_czr
+    v_m01 = v_sxr * v_syr * v_czr - v_cxr * v_szr
+    v_m02 = v_cxr * v_syr * v_czr + v_sxr * v_szr
+    v_m10 = v_cyr * v_szr
+    v_m11 = v_sxr * v_syr * v_szr + v_cxr * v_czr
+    v_m12 = v_cxr * v_syr * v_szr - v_sxr * v_czr
+    v_m20 = 0 - v_syr
+    v_m21 = v_sxr * v_cyr
+    v_m22 = v_cxr * v_cyr
+    v_scale = 1 + sin(v_t * 0.021) * 0.06
+    for v_i in (0, v_nverts - 1, 1)
+        v_x = (v_sx[v_oa + v_i] + (v_sx[v_ob + v_i] - v_sx[v_oa + v_i]) * v_m) * v_scale
+        v_y = (v_sy[v_oa + v_i] + (v_sy[v_ob + v_i] - v_sy[v_oa + v_i]) * v_m) * v_scale
+        v_z = (v_sz[v_oa + v_i] + (v_sz[v_ob + v_i] - v_sz[v_oa + v_i]) * v_m) * v_scale
+        v_xr = v_m00 * v_x + v_m01 * v_y + v_m02 * v_z
+        v_yr = v_m10 * v_x + v_m11 * v_y + v_m12 * v_z
+        v_zr = v_m20 * v_x + v_m21 * v_y + v_m22 * v_z
+        v_rx[v_i] = v_xr
+        v_ry[v_i] = v_yr
+        v_rz[v_i] = v_zr
+        v_pz = v_focal / (v_dist - v_zr)
+        v_px[v_i] = 31.5 + v_xr * v_pz
+        v_py[v_i] = 31.5 - v_yr * v_pz
+    endfor v_i
+}
+
+def shade_faces {
+    # light from upper left, in front; viewer looks down -z
+    v_lx = -0.45
+    v_ly = 0.55
+    v_lz = 0.70
+    v_hue0 = v_t * 0.25
+    for v_f in (0, v_nverts - 1, 1)
+        v_iu = int(v_f / v_nv)
+        v_iv = v_f % v_nv
+        v_iu2 = (v_iu + 1) % v_nu
+        v_iv2 = (v_iv + 1) % v_nv
+        v_a = v_iu * v_nv + v_iv
+        v_b = v_iu2 * v_nv + v_iv
+        v_c = v_iu2 * v_nv + v_iv2
+        v_d = v_iu * v_nv + v_iv2
+        # normal from the two diagonals
+        v_e1x = v_rx[v_c] - v_rx[v_a]
+        v_e1y = v_ry[v_c] - v_ry[v_a]
+        v_e1z = v_rz[v_c] - v_rz[v_a]
+        v_e2x = v_rx[v_d] - v_rx[v_b]
+        v_e2y = v_ry[v_d] - v_ry[v_b]
+        v_e2z = v_rz[v_d] - v_rz[v_b]
+        v_nx = v_e1y * v_e2z - v_e1z * v_e2y
+        v_ny = v_e1z * v_e2x - v_e1x * v_e2z
+        v_nz = v_e1x * v_e2y - v_e1y * v_e2x
+        v_cz = (v_rz[v_a] + v_rz[v_c]) * 0.5
+        # view vector from face to camera (camera at z = v_dist)
+        v_vx = 0 - (v_rx[v_a] + v_rx[v_c]) * 0.5
+        v_vy = 0 - (v_ry[v_a] + v_ry[v_c]) * 0.5
+        v_vz = v_dist - v_cz
+        v_facing = v_nx * v_vx + v_ny * v_vy + v_nz * v_vz
+        if v_facing > 0 then
+            v_nl = sqrt(v_nx * v_nx + v_ny * v_ny + v_nz * v_nz) + 0.000001
+            v_dot = (v_nx * v_lx + v_ny * v_ly + v_nz * v_lz) / v_nl
+            v_dif = max(v_dot, 0)
+            v_fint[v_f] = int(14 + v_dif * 78)
+            v_fcol[v_f] = int(v_hue0 + v_iu * 2.5) % 100
+            # specular glint: face points between light and viewer
+            if v_dot > 0.93 then
+                v_fcol[v_f] = -1
+                v_fint[v_f] = 100
+            endif
+            v_fvis[v_f] = 1
+            v_fkey[v_f] = min(max(int((v_cz + 1.8) * 17.5), 0), 63)
+        else
+            v_fvis[v_f] = 0
+        endif
+    endfor v_f
+}
+
+# Counting sort of visible faces by depth (far first)
+def sort_faces {
+    for v_k in (0, 63, 1)
+        v_cnt[v_k] = 0
+    endfor v_k
+    v_nvis = 0
+    for v_f in (0, v_nverts - 1, 1)
+        if v_fvis[v_f] == 1 then
+            v_cnt[v_fkey[v_f]] = v_cnt[v_fkey[v_f]] + 1
+            v_nvis = v_nvis + 1
+        endif
+    endfor v_f
+    v_run = 0
+    for v_k in (0, 63, 1)
+        v_start[v_k] = v_run
+        v_run = v_run + v_cnt[v_k]
+    endfor v_k
+    for v_f in (0, v_nverts - 1, 1)
+        if v_fvis[v_f] == 1 then
+            v_k = v_fkey[v_f]
+            v_order[v_start[v_k]] = v_f
+            v_start[v_k] = v_start[v_k] + 1
+        endif
+    endfor v_f
+}
+
+def draw_faces {
+    for v_n in (0, v_nvis - 1, 1)
+        v_f = v_order[v_n]
+        v_iu = int(v_f / v_nv)
+        v_iv = v_f % v_nv
+        v_iu2 = (v_iu + 1) % v_nu
+        v_iv2 = (v_iv + 1) % v_nv
+        v_a = v_iu * v_nv + v_iv
+        v_b = v_iu2 * v_nv + v_iv
+        v_c = v_iu2 * v_nv + v_iv2
+        v_d = v_iu * v_nv + v_iv2
+        v_ti = v_fint[v_f]
+        v_tc = v_fcol[v_f]
+        if v_tc < 0 then
+            v_tc = "white"
+        endif
+        v_x0 = v_px[v_a]
+        v_y0 = v_py[v_a]
+        v_x1 = v_px[v_b]
+        v_y1 = v_py[v_b]
+        v_x2 = v_px[v_c]
+        v_y2 = v_py[v_c]
+        call fill_tri
+        v_x0 = v_px[v_a]
+        v_y0 = v_py[v_a]
+        v_x1 = v_px[v_c]
+        v_y1 = v_py[v_c]
+        v_x2 = v_px[v_d]
+        v_y2 = v_py[v_d]
+        call fill_tri
+    endfor v_n
+}
+
+def draw_stars {
+    for v_k in (0, v_stars - 1, 1)
+        v_stx[v_k] = v_stx[v_k] - 0.04 - v_stb[v_k] * 0.002
+        if v_stx[v_k] < 0 then
+            v_stx[v_k] = v_stx[v_k] + 64
+        endif
+        mplot(v_stx[v_k], v_sty[v_k], white, v_stb[v_k])
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1
+    v_phase = v_phase + 1
+    if v_phase >= v_hold + v_morph then
+        v_phase = 0
+        v_shape_a = v_shape_b
+        v_shape_b = (v_shape_b + 1) % v_nshapes
+    endif
+    v_ax = v_ax + 0.013
+    v_ay = v_ay + 0.019
+    v_az = v_az + 0.007
+    call transform
+    call shade_faces
+    call sort_faces
+    begin_frame
+        call draw_stars
+        call draw_faces
+    end_frame
+endwhile

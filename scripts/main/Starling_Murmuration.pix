@@ -1,0 +1,419 @@
+# Starling Murmuration - a vast flock swirling over a marsh at sunset
+#
+# Hundreds of starlings wheel through a glowing dusk sky above a reed-lined
+# lake. The flock moves through changing moods: a drifting cloud, a long
+# streaming ribbon, splitting in two and rejoining, a swirling ball,
+# squeezing and spreading, ripples of alarm, and dives down to the reeds.
+# Dense knots of birds show darker than the thin edges. Now and then a
+# falcon cuts through and the flock bursts away from it in a ripple.
+# The sinking sun and the colours of the sky are mirrored in the water.
+#
+# How it is built:
+#   - Each bird follows three local rules: fly in the same direction as its
+#     neighbours, drift toward where they are, and keep out of crowded
+#     spots. A slowly wandering point gives the whole flock somewhere to go.
+#   - Instead of comparing every bird with every other bird, the sky is cut
+#     into a grid. Each frame the grid adds up how many birds are in each
+#     square and how they are moving, and each bird reads just the nine
+#     squares around it. The work grows with the number of birds, not with
+#     its square.
+#   - Birds are drawn in the colour of the sky behind them, darker where the
+#     flock is denser.
+
+fps(60)
+throttle(0)
+
+v_pace = 2.6               # higher = slower, smoother motion at the same fps
+v_k = 1.7 / v_pace
+v_nb = 360                 # number of birds
+v_hz = 49                  # horizon (lake below)
+
+# world box the flock lives in (slightly larger than the screen)
+v_wx0 = -16
+v_wy0 = -12
+v_cs = 4                   # grid square size
+v_gw = 24                  # grid columns (covers x -16 .. 80)
+v_gh = 16                  # grid rows    (covers y -12 .. 52)
+v_ng = v_gw * v_gh
+create_array(v_gc, v_ng, numeric)
+create_array(v_gsx, v_ng, numeric)
+create_array(v_gsy, v_ng, numeric)
+create_array(v_gvx, v_ng, numeric)
+create_array(v_gvy, v_ng, numeric)
+
+create_array(v_bx, v_nb, numeric)
+create_array(v_by, v_nb, numeric)
+create_array(v_bvx, v_nb, numeric)
+create_array(v_bvy, v_nb, numeric)
+create_array(v_bden, v_nb, numeric)
+for v_i in (0, v_nb - 1, 1)
+    v_a = random(0, 628, 0) / 100
+    v_r = random(0, 100, 0) / 10
+    v_bx[v_i] = 32 + cos(v_a) * v_r * 1.6
+    v_by[v_i] = 20 + sin(v_a) * v_r
+    v_bvx[v_i] = 0.8 + random(-20, 20, 0) / 100
+    v_bvy[v_i] = random(-20, 20, 0) / 100
+endfor v_i
+
+# ---------------- Sky ----------------
+# per row: hue (spectral number, may run past 99) and brightness
+create_array(v_skh, 64, numeric)
+create_array(v_ski, 64, numeric)
+def build_sky {
+    for v_y in (0, v_hz - 1, 1)
+        v_f = v_y / (v_hz - 1)
+        # deep blue-violet overhead, through rose, to orange at the horizon
+        v_skh[v_y] = 68 + v_f * v_f * 38 * v_glow
+        v_ski[v_y] = 26 + v_f * 28 + v_f * v_f * 20 * v_glow
+    endfor v_y
+}
+
+def draw_sky {
+    for v_y in (0, v_hz - 1, 1)
+        draw_line(0, v_y, 63, v_y, int(v_skh[v_y]) % 100, v_ski[v_y])
+    endfor v_y
+    # the low sun, half sunk behind the far shore
+    draw_circle(44, v_hz - 1, 5, orange, 55 * v_glow + 10, true)
+    draw_circle(44, v_hz - 1, 3, gold, 80 * v_glow + 15, true)
+    # thin streaks of cloud lit from below
+    for v_c in (0, 2, 1)
+        v_cy = 30 + v_c * 5
+        v_cx = (v_c * 29 + v_t * 0.02 * (1 + v_c * 0.4)) % 100 - 18
+        draw_line(v_cx, v_cy, v_cx + 16 + v_c * 4, v_cy, int(v_skh[v_cy] - 6) % 100, v_ski[v_cy] * 1.3)
+    endfor v_c
+}
+
+def draw_lake {
+    # far shore, then water mirroring the sky, then reeds
+    draw_line(0, v_hz, 63, v_hz, black, 100)
+    for v_x in (0, 63, 1)
+        v_hh = 1 + abs(sin(v_x * 0.13 + 1)) * 2 + sin(v_x * 0.37) * 0.6
+        draw_line(v_x, v_hz - v_hh, v_x, v_hz, black, 100)
+    endfor v_x
+    for v_y in (v_hz + 1, 63, 1)
+        v_my = max(v_hz - (v_y - v_hz) * 2, 0)
+        v_ripple = 0.75 + sin(v_y * 1.7 + v_t * 0.05) * 0.1
+        draw_line(0, v_y, 63, v_y, int(v_skh[v_my]) % 100, v_ski[v_my] * 0.45 * v_ripple)
+    endfor v_y
+    # the sun's glitter on the water
+    for v_y in (v_hz + 2, 60, 2)
+        v_gx = 44 + sin(v_y * 2.3 + v_t * 0.07) * (1 + (v_y - v_hz) * 0.15)
+        draw_line(v_gx - 1, v_y, v_gx + 1, v_y, gold, 40 * v_glow)
+    endfor v_y
+    # reeds in the foreground swaying a little
+    for v_r in (0, 13, 1)
+        v_rx = v_r * 5 + (v_r * 7) % 3
+        if v_rx < 20 or v_rx > 46 then
+            v_rh = 6 + (v_r * 5) % 7
+            v_sway = sin(v_t * 0.03 + v_r) * 0.8
+            draw_line(v_rx, 63, v_rx + v_sway, 63 - v_rh, black, 100)
+            draw_line(v_rx + v_sway, 63 - v_rh, v_rx + v_sway, 63 - v_rh - 2, dark_brown, 40)
+        endif
+    endfor v_r
+}
+
+# ---------------- Flocking ----------------
+def build_grid {
+    for v_c in (0, v_ng - 1, 1)
+        v_gc[v_c] = 0
+        v_gsx[v_c] = 0
+        v_gsy[v_c] = 0
+        v_gvx[v_c] = 0
+        v_gvy[v_c] = 0
+    endfor v_c
+    for v_i in (0, v_nb - 1, 1)
+        v_cx = min(max(int((v_bx[v_i] - v_wx0) / v_cs), 0), v_gw - 1)
+        v_cy = min(max(int((v_by[v_i] - v_wy0) / v_cs), 0), v_gh - 1)
+        v_c = v_cy * v_gw + v_cx
+        v_gc[v_c] = v_gc[v_c] + 1
+        v_gsx[v_c] = v_gsx[v_c] + v_bx[v_i]
+        v_gsy[v_c] = v_gsy[v_c] + v_by[v_i]
+        v_gvx[v_c] = v_gvx[v_c] + v_bvx[v_i]
+        v_gvy[v_c] = v_gvy[v_c] + v_bvy[v_i]
+    endfor v_i
+}
+
+def steer_birds {
+    # half the flock re-steers each frame (alternating); all of them fly on
+    v_par = v_frame % 2
+    for v_i in (v_par, v_nb - 1, 2)
+        v_x = v_bx[v_i]
+        v_y = v_by[v_i]
+        v_vx = v_bvx[v_i]
+        v_vy = v_bvy[v_i]
+        v_cx = min(max(int((v_x - v_wx0) / v_cs), 1), v_gw - 2)
+        v_cy = min(max(int((v_y - v_wy0) / v_cs), 1), v_gh - 2)
+        v_n = 0
+        v_sx = 0
+        v_sy = 0
+        v_svx = 0
+        v_svy = 0
+        v_dl = 0
+        v_dr = 0
+        v_du = 0
+        v_dd = 0
+        for v_oy in (-1, 1, 1)
+            v_row = (v_cy + v_oy) * v_gw + v_cx
+            for v_ox in (-1, 1, 1)
+                v_c = v_row + v_ox
+                v_m = v_gc[v_c]
+                if v_m > 0 then
+                    v_n = v_n + v_m
+                    v_sx = v_sx + v_gsx[v_c]
+                    v_sy = v_sy + v_gsy[v_c]
+                    v_svx = v_svx + v_gvx[v_c]
+                    v_svy = v_svy + v_gvy[v_c]
+                    if v_ox == -1 then
+                        v_dl = v_dl + v_m
+                    elseif v_ox == 1 then
+                        v_dr = v_dr + v_m
+                    endif
+                    if v_oy == -1 then
+                        v_du = v_du + v_m
+                    elseif v_oy == 1 then
+                        v_dd = v_dd + v_m
+                    endif
+                endif
+            endfor v_ox
+        endfor v_oy
+        v_bden[v_i] = v_n
+        # match neighbours' heading, drift to their centre, avoid crowding
+        v_ax = (v_svx / v_n - v_vx) * v_cali + (v_sx / v_n - v_x) * v_ccoh - (v_dr - v_dl) * v_csep
+        v_ay = (v_svy / v_n - v_vy) * v_cali + (v_sy / v_n - v_y) * v_ccoh - (v_dd - v_du) * v_csep
+        # the flock follows a wandering point (half of it a second point when
+        # splitting), each bird a little differently
+        v_w = (0.0022 + (v_i % 7) * 0.0003) * v_ctgt
+        v_gx = v_tx
+        v_gy = v_ty
+        if v_i % 2 == 1 then
+            v_gx = v_tx + (v_tx2 - v_tx) * v_csplit
+            v_gy = v_ty + (v_ty2 - v_ty) * v_csplit
+        endif
+        v_ax = v_ax + (v_gx - v_x) * v_w
+        v_ay = v_ay + (v_gy - v_y) * v_w * 1.3
+        # swirling round the point
+        if v_cswirl > 0.001 then
+            v_ddx = v_x - v_gx
+            v_ddy = v_y - v_gy
+            v_d = sqrt(v_ddx * v_ddx + v_ddy * v_ddy) + 1
+            v_ax = v_ax - v_ddy / v_d * v_cswirl
+            v_ay = v_ay + v_ddx / v_d * v_cswirl
+        endif
+        # a ripple of alarm passing through the flock
+        if v_cwave > 0.001 then
+            v_wd = (v_x - v_wavex) * v_wavedx + (v_y - v_wavey) * v_wavedy
+            if abs(v_wd) < 3 then
+                v_ax = v_ax + v_wavedx * v_cwave * (3 - abs(v_wd))
+                v_ay = v_ay + v_wavedy * v_cwave * (3 - abs(v_wd))
+            endif
+        endif
+        # burst away from the falcon
+        if v_fal == 1 then
+            v_ddx = v_x - v_fx
+            v_ddy = v_y - v_fy
+            v_d2 = v_ddx * v_ddx + v_ddy * v_ddy
+            if v_d2 < 144 then
+                v_d = sqrt(v_d2) + 0.3
+                v_ax = v_ax + v_ddx / v_d * (12 - v_d) * 0.035
+                v_ay = v_ay + v_ddy / v_d * (12 - v_d) * 0.035
+            endif
+        endif
+        # stay over the lake and above the water
+        if v_x < -8 then
+            v_ax = v_ax + 0.04
+        elseif v_x > 72 then
+            v_ax = v_ax - 0.04
+        endif
+        if v_y < 6 then
+            v_ay = v_ay + 0.05
+        elseif v_y > v_hz - 6 then
+            v_ay = v_ay - 0.06
+        endif
+        v_vx = v_vx + v_ax * v_k * 2
+        v_vy = v_vy + v_ay * v_k * 2
+        # keep a steady flying speed
+        v_sp = sqrt(v_vx * v_vx + v_vy * v_vy) + 0.0001
+        v_sn = min(max(v_sp, 0.55), 1.15)
+        v_bvx[v_i] = v_vx / v_sp * v_sn
+        v_bvy[v_i] = v_vy / v_sp * v_sn
+    endfor v_i
+    for v_i in (0, v_nb - 1, 1)
+        v_bx[v_i] = v_bx[v_i] + v_bvx[v_i] * 0.55 * v_k
+        v_by[v_i] = v_by[v_i] + v_bvy[v_i] * 0.55 * v_k
+    endfor v_i
+}
+
+def draw_birds {
+    for v_i in (0, v_nb - 1, 1)
+        v_x = int(v_bx[v_i])
+        v_y = int(v_by[v_i])
+        if v_x >= 0 and v_x <= 63 and v_y >= 0 and v_y < v_hz then
+            # darker where the flock is thick
+            v_dk = max(0.45 - v_bden[v_i] * 0.01, 0.04)
+            mplot(v_x, v_y, int(v_skh[v_y]) % 100, v_ski[v_y] * v_dk)
+        endif
+    endfor v_i
+}
+
+# ---------------- Falcon ----------------
+v_fal = 0
+v_fal_clock = 500
+def falcon {
+    v_fal_clock = v_fal_clock - v_k
+    if v_fal == 0 and v_fal_clock <= 0 then
+        # stoop in from a high corner toward the flock's centre
+        v_fal = 1
+        if random(0, 1, 0) == 0 then
+            v_fx = -10
+        else
+            v_fx = 74
+        endif
+        v_fy = -10
+        v_fdx = v_tx - v_fx
+        v_fdy = v_ty - v_fy
+        v_fl = sqrt(v_fdx * v_fdx + v_fdy * v_fdy)
+        v_fvx = v_fdx / v_fl * 1.6
+        v_fvy = v_fdy / v_fl * 1.6
+    endif
+    if v_fal == 1 then
+        v_fx = v_fx + v_fvx * v_k
+        v_fy = v_fy + v_fvy * v_k
+        if v_fx < -14 or v_fx > 78 or v_fy > v_hz + 4 then
+            v_fal = 0
+            v_fal_clock = random(500, 1100, 0)
+        endif
+        if v_fx >= 1 and v_fx <= 62 and v_fy >= 1 and v_fy < v_hz - 1 then
+            v_wing = int(v_t * 0.25) % 2
+            mplot(v_fx, v_fy, black, 100)
+            mplot(v_fx - 1, v_fy - v_wing, black, 100)
+            mplot(v_fx + 1, v_fy - v_wing, black, 100)
+        endif
+    endif
+}
+
+# ---------------- Flock moods ----------------
+# The flock moves through a series of moods, each lasting a while, and
+# eases from one to the next:
+#   0 drifting cloud     1 long streaming ribbon   2 splitting in two
+#   3 swirling ball      4 breathing (squeeze and spread)
+#   5 ripples of alarm   6 dive to the reeds and climb back
+v_mode = 0
+v_mode_t = 0
+v_mode_len = 700
+v_cali = 0.09
+v_ccoh = 0.02
+v_csep = 0.0022
+v_ctgt = 1
+v_csplit = 0
+v_cswirl = 0
+v_cwave = 0
+v_tx = 32
+v_ty = 27
+v_tx2 = 32
+v_ty2 = 27
+v_wavex = 0
+v_wavey = 0
+v_wavedx = 1
+v_wavedy = 0
+v_mph = 0
+
+def flock_mode {
+    v_mode_t = v_mode_t + v_k
+    if v_mode_t > v_mode_len then
+        v_mode_t = 0
+        v_mode_len = random(550, 900, 0)
+        v_nm = random(0, 5, 0)
+        if v_nm >= v_mode then
+            v_nm = v_nm + 1
+        endif
+        v_mode = v_nm
+    endif
+    # settings this mood aims for
+    v_ali = 0.09
+    v_coh = 0.02
+    v_sep = 0.0022
+    v_tgt = 1
+    v_spl = 0
+    v_swi = 0
+    v_wav = 0
+    v_mph = v_mph + 0.0043 * v_k
+    v_tx = 32 + sin(v_mph) * 20 + sin(v_mph * 2.7 + 1) * 8
+    v_ty = 27 + sin(v_mph * 1.4 + 2) * 7 + sin(v_mph * 3.5) * 3
+    if v_mode == 1 then
+        # ribbon: race along a figure of eight, loosely held together
+        v_mph = v_mph + 0.008 * v_k
+        v_tx = 32 + sin(v_mph) * 26
+        v_ty = 26 + sin(v_mph * 2) * 10
+        v_ali = 0.14
+        v_coh = 0.006
+        v_tgt = 1.8
+    elseif v_mode == 2 then
+        # split into two flocks that circle apart, then rejoin
+        v_spl = min(v_mode_t / 150, 1) * min((v_mode_len - v_mode_t) / 150, 1)
+        v_tx = 20 + sin(v_mph * 1.5) * 8
+        v_ty = 24 + cos(v_mph * 1.2) * 6
+        v_tx2 = 46 + sin(v_mph * 1.3 + 2) * 8
+        v_ty2 = 28 + cos(v_mph * 1.7 + 1) * 6
+    elseif v_mode == 3 then
+        # swirl round a slowly moving centre
+        v_swi = 0.045
+        v_coh = 0.015
+        v_tgt = 1.6
+    elseif v_mode == 4 then
+        # breathe: squeeze tight, then spread out loose
+        v_br = sin(v_mode_t * 0.02)
+        v_coh = 0.022 + v_br * 0.016
+        v_sep = 0.0022 - v_br * 0.0012
+    elseif v_mode == 5 then
+        # waves of alarm sweep across the flock now and then
+        v_wav = 0.06
+        v_wp = (v_mode_t % 160) / 160
+        if v_wp < 0.02 then
+            v_wa = random(0, 628, 0) / 100
+            v_wavedx = cos(v_wa)
+            v_wavedy = sin(v_wa)
+        endif
+        v_wavex = v_tx - v_wavedx * (30 - v_wp * 60)
+        v_wavey = v_ty - v_wavedy * (30 - v_wp * 60)
+    elseif v_mode == 6 then
+        # pour down toward the reeds, skim low, then climb back up
+        v_dv = sin(min(v_mode_t / v_mode_len, 1) * 3.1416)
+        v_ty = 27 + v_dv * 14
+        v_tgt = 1.6
+        v_ali = 0.12
+    endif
+    # ease toward the mood's settings
+    v_e = 0.01 * v_k
+    v_cali = v_cali + (v_ali - v_cali) * v_e
+    v_ccoh = v_ccoh + (v_coh - v_ccoh) * v_e
+    v_csep = v_csep + (v_sep - v_csep) * v_e
+    v_ctgt = v_ctgt + (v_tgt - v_ctgt) * v_e
+    v_csplit = v_csplit + (v_spl - v_csplit) * v_e * 3
+    v_cswirl = v_cswirl + (v_swi - v_cswirl) * v_e
+    v_cwave = v_cwave + (v_wav - v_cwave) * v_e * 3
+}
+
+# ---------------- Main loop ----------------
+v_t = 0
+v_frame = 0
+while true then
+    v_t = v_t + v_k
+    v_frame = v_frame + 1
+    # the sunset deepens and brightens slowly
+    v_glow = 0.75 + sin(v_t * 0.0012) * 0.25
+    if int(v_t) % 30 == 0 then
+        call build_sky
+    endif
+    if v_t <= v_k then
+        call build_sky
+    endif
+    call flock_mode
+    call build_grid
+    call steer_birds
+    begin_frame
+        call draw_sky
+        call draw_lake
+        call draw_birds
+        call falcon
+    end_frame
+endwhile

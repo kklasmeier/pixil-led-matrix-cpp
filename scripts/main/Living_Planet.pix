@@ -1,0 +1,445 @@
+# Living Planet - a lit, rotating world hanging in space
+#
+# A procedurally generated planet turns slowly on its tilted axis. Oceans
+# sparkle where the sun glints off them, continents pass from day into
+# night across a soft terminator, city lights come on in the dark, polar
+# ice caps and snowy peaks catch the light, and a separate cloud layer
+# drifts faster than the ground below. A thin blue atmosphere glows on the
+# sunlit edge, a cratered moon orbits in front of and behind the planet,
+# and a little satellite blinks its way around.
+#
+# How it is built:
+#   - The world is a 128 x 64 height map made at start from three layers
+#     of smoothed random noise, wrapped around the sphere. Clouds are a
+#     second, coarser noise map.
+#   - The sphere itself never moves on screen, so for every pixel of the
+#     disc the latitude, base longitude, sunlight and sun glint are worked
+#     out once at start. Each frame only adds the rotation and looks up
+#     the maps.
+#   - Neighbouring pixels with the same colour and brightness are merged
+#     into one line, so a frame is a few hundred lines rather than 1,400
+#     single pixels.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_R = 21                      # planet radius in pixels
+v_pcx = 31.5                  # planet centre
+v_pcy = 32.5
+v_spin = 0.09 / v_pace        # map columns per frame
+v_cloud_spin = 0.13 / v_pace
+v_tilt = 0.4                  # axis lean (radians)
+v_tip = 0.35                  # north pole tipped toward the viewer
+v_mw = 128                    # map size
+v_mh = 64
+
+# sun direction (from the upper left, a little in front) and half-vector for glints
+v_lx = -0.78
+v_ly = 0.3
+v_lz = 0.55
+v_l = sqrt(v_lx * v_lx + v_ly * v_ly + v_lz * v_lz)
+v_lx = v_lx / v_l
+v_ly = v_ly / v_l
+v_lz = v_lz / v_l
+v_hx = v_lx
+v_hy = v_ly
+v_hz = v_lz + 1
+v_l = sqrt(v_hx * v_hx + v_hy * v_hy + v_hz * v_hz)
+v_hx = v_hx / v_l
+v_hy = v_hy / v_l
+v_hz = v_hz / v_l
+
+# ---------------- World maps ----------------
+create_array(v_map, v_mw * v_mh, numeric)
+create_array(v_cld, 64 * 32, numeric)
+create_array(v_city, v_mw * v_mh, numeric)
+create_array(v_grid, 33 * 17, numeric)
+
+def add_noise {
+    # add one layer of smooth noise (v_gw x v_gh cells, weight v_amp) into
+    # map v_tgt (0 = terrain, 1 = clouds) of size v_tw x v_th
+    for v_k in (0, (v_gw + 1) * (v_gh + 1) - 1, 1)
+        v_grid[v_k] = random(0, 1000, 0) / 1000
+    endfor v_k
+    for v_y in (0, v_th - 1, 1)
+        v_gy = v_y * v_gh / v_th
+        v_iy = int(v_gy)
+        v_fy = v_gy - v_iy
+        v_fy = v_fy * v_fy * (3 - 2 * v_fy)
+        for v_x in (0, v_tw - 1, 1)
+            v_gx = v_x * v_gw / v_tw
+            v_ix = int(v_gx)
+            v_fx = v_gx - v_ix
+            v_fx = v_fx * v_fx * (3 - 2 * v_fx)
+            v_ix2 = (v_ix + 1) % v_gw
+            v_a = v_grid[v_iy * (v_gw + 1) + v_ix]
+            v_b = v_grid[v_iy * (v_gw + 1) + v_ix2]
+            v_c = v_grid[(v_iy + 1) * (v_gw + 1) + v_ix]
+            v_d = v_grid[(v_iy + 1) * (v_gw + 1) + v_ix2]
+            v_n = (v_a + (v_b - v_a) * v_fx) + ((v_c + (v_d - v_c) * v_fx) - (v_a + (v_b - v_a) * v_fx)) * v_fy
+            if v_tgt == 0 then
+                v_map[v_y * v_tw + v_x] = v_map[v_y * v_tw + v_x] + v_n * v_amp
+            else
+                v_cld[v_y * v_tw + v_x] = v_cld[v_y * v_tw + v_x] + v_n * v_amp
+            endif
+        endfor v_x
+    endfor v_y
+}
+
+print("Growing a planet...")
+for v_k in (0, v_mw * v_mh - 1, 1)
+    v_map[v_k] = 0
+endfor v_k
+for v_k in (0, 64 * 32 - 1, 1)
+    v_cld[v_k] = 0
+endfor v_k
+v_tgt = 0
+v_tw = v_mw
+v_th = v_mh
+v_gw = 8
+v_gh = 4
+v_amp = 1
+call add_noise
+v_gw = 16
+v_gh = 8
+v_amp = 0.5
+call add_noise
+v_gw = 32
+v_gh = 16
+v_amp = 0.25
+call add_noise
+v_tgt = 1
+v_tw = 64
+v_th = 32
+v_gw = 8
+v_gh = 4
+v_amp = 1
+call add_noise
+v_gw = 16
+v_gh = 8
+v_amp = 0.5
+call add_noise
+v_gw = 32
+v_gh = 16
+v_amp = 0.3
+call add_noise
+
+v_sea = 0.88 + random(-5, 5, 0) / 100   # sea level: changes how much land there is
+# scattered cities on low, coastal-ish land
+for v_k in (0, v_mw * v_mh - 1, 1)
+    v_city[v_k] = 0
+    if v_map[v_k] > v_sea + 0.02 and v_map[v_k] < v_sea + 0.25 and random(0, 99, 0) < 9 then
+        v_city[v_k] = 1
+    endif
+endfor v_k
+
+# ---------------- Per-pixel tables for the disc ----------------
+create_array(v_rowx0, 64, numeric)
+create_array(v_rown, 64, numeric)
+create_array(v_rowi, 64, numeric)
+create_array(v_pv, 1600, numeric)     # map row offset
+create_array(v_pcv, 1600, numeric)    # cloud row offset
+create_array(v_pu, 1600, numeric)     # base longitude in map columns
+create_array(v_pl, 1600, numeric)     # sunlight
+create_array(v_ps, 1600, numeric)     # sun glint
+create_array(v_ppol, 1600, numeric)   # 1 = polar ice latitude
+v_np = 0
+v_ct = cos(v_tilt)
+v_st = sin(v_tilt)
+v_cp = cos(v_tip)
+v_sp = sin(v_tip)
+for v_sy in (0, 63, 1)
+    v_rown[v_sy] = 0
+    v_rowi[v_sy] = v_np
+    v_dy = v_sy + 0.5 - v_pcy
+    v_first = 1
+    for v_sx in (0, 63, 1)
+        v_dx = v_sx + 0.5 - v_pcx
+        v_d2 = v_dx * v_dx + v_dy * v_dy
+        if v_d2 < v_R * v_R then
+            if v_first == 1 then
+                v_rowx0[v_sy] = v_sx
+                v_first = 0
+            endif
+            v_rown[v_sy] = v_rown[v_sy] + 1
+            v_nx = v_dx / v_R
+            v_ny = 0 - v_dy / v_R
+            v_nz = sqrt(max(1 - v_nx * v_nx - v_ny * v_ny, 0))
+            v_pl[v_np] = v_nx * v_lx + v_ny * v_ly + v_nz * v_lz
+            v_ps[v_np] = pow(max(v_nx * v_hx + v_ny * v_hy + v_nz * v_hz, 0), 80)
+            # into the planet's own frame: undo the axis lean, then the tip
+            v_ax = v_nx * v_ct + v_ny * v_st
+            v_ay = v_ny * v_ct - v_nx * v_st
+            v_by = v_ay * v_cp - v_nz * v_sp
+            v_bz = v_ay * v_sp + v_nz * v_cp
+            v_lat = asin(min(max(v_by, -1), 1))
+            v_lon = atan2(v_ax, v_bz)
+            v_row = min(max(int((0.5 - v_lat / 3.14159) * v_mh), 0), v_mh - 1)
+            v_pv[v_np] = v_row * v_mw
+            v_pcv[v_np] = int(v_row / 2) * 64
+            v_pu[v_np] = (v_lon / 6.28318 + 0.5) * v_mw
+            v_ppol[v_np] = 0
+            if abs(v_lat) > 1.15 then
+                v_ppol[v_np] = 1
+            endif
+            v_np = v_np + 1
+        endif
+    endfor v_sx
+endfor v_sy
+
+# atmosphere rim
+create_array(v_atx, 260, numeric)
+create_array(v_aty, 260, numeric)
+create_array(v_atl, 260, numeric)
+v_nat = 0
+for v_sy in (0, 63, 1)
+    for v_sx in (0, 63, 1)
+        v_dx = v_sx + 0.5 - v_pcx
+        v_dy = v_sy + 0.5 - v_pcy
+        v_d = sqrt(v_dx * v_dx + v_dy * v_dy)
+        if v_d >= v_R and v_d < v_R + 1.6 and v_nat < 260 then
+            v_atx[v_nat] = v_sx
+            v_aty[v_nat] = v_sy
+            v_atl[v_nat] = (v_dx / v_d) * v_lx - (v_dy / v_d) * v_ly + 0.25
+            v_nat = v_nat + 1
+        endif
+    endfor v_sx
+endfor v_sy
+
+# colour names used for the surface
+create_array(v_cname, 12, string)
+v_cname[0] = "black"
+v_cname[1] = "ocean_blue"     # deep sea
+v_cname[2] = "sky_blue"       # shallow sea
+v_cname[3] = "tan"            # beach / desert
+v_cname[4] = "green"          # lowland
+v_cname[5] = "forest_green"   # forest
+v_cname[6] = "olive"          # hills
+v_cname[7] = "bronze"     # mountains
+v_cname[8] = "white"          # snow, ice and cloud
+v_cname[9] = "gold"           # city lights
+v_cname[10] = "azure"         # sun glint
+v_cname[11] = "dark_gray"     # night cloud
+
+# ---------------- Stars ----------------
+v_nstar = 45
+create_array(v_stx, v_nstar, numeric)
+create_array(v_sty, v_nstar, numeric)
+create_array(v_stb, v_nstar, numeric)
+for v_k in (0, v_nstar - 1, 1)
+    v_ok = 0
+    while v_ok == 0 then
+        v_stx[v_k] = random(0, 63, 0)
+        v_sty[v_k] = random(0, 63, 0)
+        v_dx = v_stx[v_k] - v_pcx
+        v_dy = v_sty[v_k] - v_pcy
+        if v_dx * v_dx + v_dy * v_dy > (v_R + 3) * (v_R + 3) then
+            v_ok = 1
+        endif
+    endwhile
+    v_stb[v_k] = random(10, 50, 0)
+endfor v_k
+
+# ---------------- Drawing ----------------
+v_rot = 0
+v_crot = 0
+v_t = 0
+
+def flush_run {
+    if v_runc > 0 then
+        if v_runx1 > v_runx0 then
+            draw_line(v_runx0, v_sy, v_runx1, v_sy, v_cname[v_runc], v_runi)
+        else
+            mplot(v_runx0, v_sy, v_cname[v_runc], v_runi)
+        endif
+    endif
+}
+
+def draw_planet {
+    v_irot = int(v_rot)
+    v_icr = int(v_crot)
+    v_tw2 = v_t * 0.3
+    for v_sy in (0, 63, 1)
+        v_n = v_rown[v_sy]
+        if v_n > 0 then
+            v_i = v_rowi[v_sy]
+            v_sx = v_rowx0[v_sy]
+            v_runc = -1
+            v_runi = -1
+            v_runx0 = v_sx
+            v_runx1 = v_sx
+            for v_q in (v_i, v_i + v_n - 1, 1)
+                v_u = int(v_pu[v_q] + v_irot) % v_mw
+                v_h = v_map[v_pv[v_q] + v_u]
+                v_lt = v_pl[v_q]
+                v_day = min(max((v_lt + 0.12) / 1.12, 0), 1)
+                v_cc = v_cld[v_pcv[v_q] + int((v_u + v_icr) / 2) % 64]
+                v_cl = 0
+                if v_cc > 1.2 then
+                    v_cl = 1
+                endif
+                # surface colour from height
+                if v_ppol[v_q] == 1 or v_h > v_sea + 0.5 then
+                    v_col = 8
+                    v_br = 85
+                elseif v_h < v_sea - 0.14 then
+                    v_col = 1
+                    v_br = 75
+                elseif v_h < v_sea then
+                    v_col = 2
+                    v_br = 70
+                elseif v_h < v_sea + 0.04 then
+                    v_col = 3
+                    v_br = 65
+                elseif v_h < v_sea + 0.16 then
+                    v_col = 4
+                    v_br = 55
+                elseif v_h < v_sea + 0.3 then
+                    v_col = 5
+                    v_br = 60
+                elseif v_h < v_sea + 0.4 then
+                    v_col = 6
+                    v_br = 60
+                else
+                    v_col = 7
+                    v_br = 60
+                endif
+                if v_cl == 1 then
+                    v_col = 8
+                    v_br = min(35 + (v_cc - 1.2) * 220, 92)
+                endif
+                v_in = v_br * v_day
+                # the night side: dim ground, city lights, dark clouds
+                if v_day < 0.08 then
+                    if v_cl == 1 then
+                        v_col = 11
+                        v_in = 10
+                    elseif v_city[v_pv[v_q] + v_u] == 1 then
+                        v_col = 9
+                        v_in = 55
+                        if (v_q * 7 + int(v_tw2)) % 23 == 0 then
+                            v_in = 85
+                        endif
+                    else
+                        v_in = max(v_in, 4)
+                    endif
+                endif
+                # sun glint on open water
+                if v_col <= 2 and v_ps[v_q] > 0.35 then
+                    v_col = 10
+                    v_in = 40 + v_ps[v_q] * 60
+                    if v_ps[v_q] > 0.8 then
+                        v_col = 8
+                    endif
+                endif
+                v_in = min(int(v_in / 4) * 4, 100)
+                if v_in < 4 then
+                    v_col = 0
+                    v_in = 0
+                endif
+                if v_col == v_runc and v_in == v_runi then
+                    v_runx1 = v_sx
+                else
+                    call flush_run
+                    v_runc = v_col
+                    v_runi = v_in
+                    v_runx0 = v_sx
+                    v_runx1 = v_sx
+                endif
+                v_sx = v_sx + 1
+            endfor v_q
+            call flush_run
+        endif
+    endfor v_sy
+    # atmosphere glow on the sunlit edge
+    for v_k in (0, v_nat - 1, 1)
+        if v_atl[v_k] > 0.05 then
+            mplot(v_atx[v_k], v_aty[v_k], sky_blue, min(v_atl[v_k] * 70, 70))
+        endif
+    endfor v_k
+}
+
+def draw_stars {
+    for v_k in (0, v_nstar - 1, 1)
+        v_b = v_stb[v_k]
+        if (v_k * 13 + int(v_t * 0.1)) % 37 == 0 then
+            v_b = v_b + 35
+        endif
+        mplot(v_stx[v_k], v_sty[v_k], white, v_b)
+    endfor v_k
+}
+
+# moon on an inclined orbit; v_mdep > 0 means in front of the planet
+v_ma = 1.0
+def place_moon {
+    v_ma = v_ma + 0.0035 * 1.7 / v_pace
+    v_mx = v_pcx + cos(v_ma) * 29
+    v_my = v_pcy + sin(v_ma) * 9 - cos(v_ma) * 4
+    v_mdep = sin(v_ma)
+    v_mr = 3.4 + v_mdep * 0.6
+}
+
+def draw_moon {
+    v_mr2 = v_mr * v_mr
+    for v_yy in (int(v_my - v_mr), int(v_my + v_mr) + 1, 1)
+        for v_xx in (int(v_mx - v_mr), int(v_mx + v_mr) + 1, 1)
+            v_dx = (v_xx + 0.5 - v_mx) / v_mr
+            v_dy = (v_yy + 0.5 - v_my) / v_mr
+            v_d2 = v_dx * v_dx + v_dy * v_dy
+            if v_d2 < 1 and v_xx >= 0 and v_xx <= 63 and v_yy >= 0 and v_yy <= 63 then
+                v_dz = sqrt(1 - v_d2)
+                v_ml = v_dx * v_lx - v_dy * v_ly + v_dz * v_lz
+                v_mi = max(v_ml, 0) * 75 + 5
+                # a few fixed craters
+                if (v_dx > 0.1 and v_dx < 0.45 and v_dy > -0.4 and v_dy < -0.05) or (v_dx < -0.2 and v_dx > -0.55 and v_dy > 0.15 and v_dy < 0.5) then
+                    v_mi = v_mi * 0.6
+                endif
+                mplot(v_xx, v_yy, light_gray, v_mi)
+            endif
+        endfor v_xx
+    endfor v_yy
+}
+
+# low satellite: blinks, and is hidden while behind the planet
+v_sa = 0
+def draw_satellite {
+    v_sa = v_sa + 0.012 * 1.7 / v_pace
+    v_qx = v_pcx + cos(v_sa) * (v_R + 4)
+    v_qy = v_pcy + sin(v_sa) * 6 + cos(v_sa) * 5
+    v_qd = sin(v_sa + 0.6)
+    v_dx = v_qx - v_pcx
+    v_dy = v_qy - v_pcy
+    if v_qd > 0 or v_dx * v_dx + v_dy * v_dy > v_R * v_R then
+        if int(v_t * 0.08) % 4 == 0 then
+            mplot(v_qx, v_qy, red, 100)
+        else
+            mplot(v_qx, v_qy, white, 60)
+        endif
+    endif
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1.7 / v_pace
+    v_rot = v_rot + v_spin
+    v_crot = v_crot + v_cloud_spin
+    if v_rot >= v_mw then
+        v_rot = v_rot - v_mw
+    endif
+    if v_crot >= 128 then
+        v_crot = v_crot - 128
+    endif
+    call place_moon
+    begin_frame
+        call draw_stars
+        if v_mdep <= 0 then
+            call draw_moon
+        endif
+        call draw_planet
+        call draw_satellite
+        if v_mdep > 0 then
+            call draw_moon
+        endif
+    end_frame
+endwhile

@@ -1,0 +1,154 @@
+# Rotozoomer - the classic demoscene rotate-and-zoom effect, in Pixil
+#
+# A tiling texture with a PIXIL logo spins, zooms in and out, drifts across
+# the screen and wobbles like it is seen through water, while its colours
+# cycle.
+#
+# How it works:
+#   - The 64x64 texture (checkerboard, glowing tiles, grid lines and a logo
+#     drawn with a tiny hand-made font) is built once at startup.
+#   - Each frame picks a rotation angle, zoom and centre. Rotating and
+#     scaling the screen grid means each step right along a row moves a fixed
+#     amount through the texture (du, dv), and each step down moves another
+#     fixed amount. So every pixel costs two additions and a lookup.
+#   - The water wobble adds a small sine offset per row and per column,
+#     taken from two 64-entry tables refilled each frame.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7             # bigger = slower, smoother (1.7 suits fps 60)
+v_wobble = 2.2           # strength of the water wobble (screen pixels)
+v_tex = 64
+
+# ---------------- Texture ----------------
+create_array(v_th, v_tex * v_tex, numeric)   # hue
+create_array(v_ti, v_tex * v_tex, numeric)   # intensity
+create_array(v_logo, v_tex * v_tex, numeric) # 1 = logo pixel
+
+# Background: 16-pixel checkerboard of two hues, each tile glowing toward
+# its centre, with thin grid lines
+for v_y in (0, v_tex - 1, 1)
+    for v_x in (0, v_tex - 1, 1)
+        v_i = v_y * v_tex + v_x
+        v_cx = v_x % 16 - 7.5
+        v_cy = v_y % 16 - 7.5
+        v_glow = 1 - sqrt(v_cx * v_cx + v_cy * v_cy) / 11
+        if (int(v_x / 16) + int(v_y / 16)) % 2 == 0 then
+            v_th[v_i] = 62
+        else
+            v_th[v_i] = 80
+        endif
+        v_ti[v_i] = 22 + v_glow * 48
+        if v_x % 16 == 0 or v_y % 16 == 0 then
+            v_th[v_i] = 50
+            v_ti[v_i] = 60
+        endif
+    endfor v_x
+endfor v_y
+
+# Logo "PIXIL" in a 3x5 pixel font, doubled to 6x10, centred
+# one number per glyph row: 3 bits, left pixel = 4, middle = 2, right = 1
+create_array(v_font, 25, numeric)
+v_font[0] = 7
+v_font[1] = 5
+v_font[2] = 7
+v_font[3] = 4
+v_font[4] = 4
+v_font[5] = 7
+v_font[6] = 2
+v_font[7] = 2
+v_font[8] = 2
+v_font[9] = 7
+v_font[10] = 5
+v_font[11] = 5
+v_font[12] = 2
+v_font[13] = 5
+v_font[14] = 5
+v_font[15] = 7
+v_font[16] = 2
+v_font[17] = 2
+v_font[18] = 2
+v_font[19] = 7
+v_font[20] = 4
+v_font[21] = 4
+v_font[22] = 4
+v_font[23] = 4
+v_font[24] = 7
+for v_g in (0, 4, 1)
+    v_gx = 13 + v_g * 8
+    for v_r in (0, 4, 1)
+        for v_c in (0, 2, 1)
+            if floor(v_font[v_g * 5 + v_r] / pow(2, 2 - v_c)) % 2 == 1 then
+                for v_sy in (0, 1, 1)
+                    for v_sx in (0, 1, 1)
+                        v_logo[(27 + v_r * 2 + v_sy) * v_tex + v_gx + v_c * 2 + v_sx] = 1
+                    endfor v_sx
+                endfor v_sy
+            endif
+        endfor v_c
+    endfor v_r
+endfor v_g
+# dark outline around the letters, then the bright letters
+for v_y in (1, v_tex - 2, 1)
+    for v_x in (1, v_tex - 2, 1)
+        v_i = v_y * v_tex + v_x
+        if v_logo[v_i] == 0 then
+            if v_logo[v_i - 1] + v_logo[v_i + 1] + v_logo[v_i - v_tex] + v_logo[v_i + v_tex] > 0 then
+                v_ti[v_i] = 4
+            endif
+        endif
+    endfor v_x
+endfor v_y
+for v_i in (0, v_tex * v_tex - 1, 1)
+    if v_logo[v_i] == 1 then
+        v_th[v_i] = 14
+        v_ti[v_i] = 100
+    endif
+endfor v_i
+
+# ---------------- Animation ----------------
+create_array(v_rowwob, 64, numeric)
+create_array(v_colwob, 64, numeric)
+v_t = 0
+
+while true then
+    v_t = v_t + 1 / v_pace
+    # rotation speeds up and slows down; zoom breathes from close-up to far out
+    v_ang = v_t * 0.012 + sin(v_t * 0.004) * 2.5
+    # zoom is texture pixels per screen pixel: below 1 magnifies, above 1
+    # shows many tiles. exp() makes zooming in and out feel equally fast.
+    v_zoom = exp(sin(v_t * 0.0095) * 1.1 + sin(v_t * 0.023) * 0.3)
+    # centre of view drifts across the tiling plane
+    v_cu = 32 + v_t * 0.21 + sin(v_t * 0.007) * 40
+    v_cv = 32 + v_t * 0.13 + cos(v_t * 0.005) * 40
+    # per-pixel steps through the texture
+    v_dux = cos(v_ang) * v_zoom
+    v_dvx = sin(v_ang) * v_zoom
+    v_duy = 0 - v_dvx
+    v_dvy = v_dux
+    # water wobble tables
+    # wobble scaled by zoom, so it is a steady ripple of a few screen pixels
+    v_wamp = v_wobble * v_zoom * (0.5 + 0.5 * sin(v_t * 0.006))
+    for v_k in (0, 63, 1)
+        v_rowwob[v_k] = sin(v_k * 0.19 + v_t * 0.09) * v_wamp
+        v_colwob[v_k] = sin(v_k * 0.23 + v_t * 0.07) * v_wamp
+    endfor v_k
+    v_hshift = v_t * 0.18
+    # texture position of the top-left pixel
+    v_u0 = v_cu - 31.5 * v_dux - 31.5 * v_duy
+    v_v0 = v_cv - 31.5 * v_dvx - 31.5 * v_dvy
+    begin_frame
+        for v_y in (0, 63, 1)
+            v_u = v_u0 + v_y * v_duy + v_rowwob[v_y]
+            v_v = v_v0 + v_y * v_dvy
+            for v_x in (0, 63, 1)
+                v_i = (int(v_v + v_colwob[v_x]) % v_tex) * v_tex + int(v_u) % v_tex
+                mplot(v_x, v_y, (v_th[v_i] + v_hshift) % 100, v_ti[v_i])
+                v_u = v_u + v_dux
+                v_v = v_v + v_dvx
+            endfor v_x
+        endfor v_y
+    end_frame
+endwhile

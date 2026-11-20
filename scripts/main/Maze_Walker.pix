@@ -1,0 +1,512 @@
+# Maze Walker - a Wolfenstein-style raycaster, written entirely in Pixil
+#
+# A new random maze every run: red brick, blue stone and wooden corridors,
+# golden gems floating in the dead ends, and a glowing green exit door.
+# An autopilot follows the right-hand wall (which always finds the way out
+# of a maze like this), collecting gems as it goes.
+#
+# Each frame:
+#   - Floor casting: every floor pixel is projected back onto the map to get
+#     a stone-tile checkerboard that moves correctly as you walk and turn.
+#   - Raycasting: one ray per screen column steps through the map grid (DDA)
+#     until it hits a wall, giving the distance, which face was hit, and
+#     where along the wall it landed. Brick, stone and plank textures are
+#     built procedurally from that, then shaded by distance and facing.
+#   - Sprites: gems are projected into the view and hidden behind walls using
+#     each column's wall distance.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_cells = 10             # maze size in cells (map is 2 * cells + 1 square)
+v_pace = 1.7             # stretches every motion over more frames: 1.7 at
+                         # 60 fps moves like 1.0 did at 35 fps, just smoother.
+                         # Raise it to slow everything down, lower to speed up.
+v_gems_max = 6
+
+# Base timings (in frames at v_pace = 1), scaled by v_pace
+v_move_frames = int(22 * v_pace)        # walk from one cell to the next
+v_turn_frames = int(9 * v_pace)         # per 90 degrees when turning around
+v_overview_frames = int(150 * v_pace)   # overhead map before each run
+v_flash_frames = int(10 * v_pace)       # gold flash when a gem is collected
+v_exit_turn = int(30 * v_pace)          # exit: turn to face the door
+v_exit_walk = int(70 * v_pace)          # exit: step up to the door
+v_exit_end = int(110 * v_pace)          # exit: then a new maze
+
+v_m = v_cells * 2 + 1
+create_array(v_map, v_m * v_m, numeric)
+create_array(v_stack, v_cells * v_cells, numeric)
+create_array(v_zbuf, 64, numeric)
+create_array(v_gx, v_gems_max, numeric)
+create_array(v_gy, v_gems_max, numeric)
+create_array(v_gon, v_gems_max, numeric)
+create_array(v_dirx4, 4, numeric)
+create_array(v_diry4, 4, numeric)
+v_dirx4[0] = 1
+v_diry4[0] = 0
+v_dirx4[1] = 0
+v_diry4[1] = 1
+v_dirx4[2] = -1
+v_diry4[2] = 0
+v_dirx4[3] = 0
+v_diry4[3] = -1
+
+v_t = 0
+v_mazes = 0
+
+# ---------------- Maze generation ----------------
+# Recursive backtracker with an explicit stack: carve passages between cells
+def build_maze {
+    for v_i in (0, v_m * v_m - 1, 1)
+        v_map[v_i] = 1
+    endfor v_i
+    v_seed = random(0, 99, 0)
+    v_sp = 0
+    v_cx = 0
+    v_cy = 0
+    v_map[(v_cy * 2 + 1) * v_m + v_cx * 2 + 1] = 0
+    v_stack[0] = 0
+    v_sp = 1
+    while v_sp > 0 then
+        v_top = v_stack[v_sp - 1]
+        v_cx = v_top % v_cells
+        v_cy = int(v_top / v_cells)
+        # count unvisited neighbours, pick one at random
+        v_nopt = 0
+        v_pick = -1
+        v_start = random(0, 3, 0)
+        for v_k in (0, 3, 1)
+            v_d = (v_start + v_k) % 4
+            v_nx = v_cx + v_dirx4[v_d]
+            v_ny = v_cy + v_diry4[v_d]
+            if v_pick < 0 and v_nx >= 0 and v_nx < v_cells and v_ny >= 0 and v_ny < v_cells then
+                if v_map[(v_ny * 2 + 1) * v_m + v_nx * 2 + 1] == 1 then
+                    v_pick = v_d
+                endif
+            endif
+        endfor v_k
+        if v_pick < 0 then
+            v_sp = v_sp - 1
+        else
+            v_nx = v_cx + v_dirx4[v_pick]
+            v_ny = v_cy + v_diry4[v_pick]
+            v_map[(v_cy * 2 + 1 + v_diry4[v_pick]) * v_m + v_cx * 2 + 1 + v_dirx4[v_pick]] = 0
+            v_map[(v_ny * 2 + 1) * v_m + v_nx * 2 + 1] = 0
+            v_stack[v_sp] = v_ny * v_cells + v_nx
+            v_sp = v_sp + 1
+        endif
+    endwhile
+
+    # wall materials by neighbourhood: 1 brick, 2 blue stone, 3 wood
+    for v_y in (0, v_m - 1, 1)
+        for v_x in (0, v_m - 1, 1)
+            v_i = v_y * v_m + v_x
+            if v_map[v_i] > 0 then
+                v_map[v_i] = (int(v_x / 6) * 7 + int(v_y / 6) * 5 + v_seed) % 3 + 1
+            endif
+        endfor v_x
+    endfor v_y
+    # exit door in the outer wall beside the far corner cell
+    v_map[(v_m - 2) * v_m + v_m - 1] = 4
+
+    # gems in dead ends (cells with three walls), away from the start
+    v_ng = 0
+    for v_k in (0, v_gems_max - 1, 1)
+        v_gon[v_k] = 0
+    endfor v_k
+    v_tries = 0
+    while v_ng < v_gems_max and v_tries < 400 then
+        v_tries = v_tries + 1
+        v_cx = random(0, v_cells - 1, 0)
+        v_cy = random(0, v_cells - 1, 0)
+        v_x = v_cx * 2 + 1
+        v_y = v_cy * 2 + 1
+        v_walls = (v_map[v_y * v_m + v_x + 1] > 0) + (v_map[v_y * v_m + v_x - 1] > 0) + (v_map[(v_y + 1) * v_m + v_x] > 0) + (v_map[(v_y - 1) * v_m + v_x] > 0)
+        if v_walls == 3 and v_cx + v_cy > 2 and v_cx + v_cy < v_cells * 2 - 2 then
+            v_dup = 0
+            for v_k in (0, v_gems_max - 1, 1)
+                if v_gon[v_k] == 1 and v_gx[v_k] == v_x + 0.5 and v_gy[v_k] == v_y + 0.5 then
+                    v_dup = 1
+                endif
+            endfor v_k
+            if v_dup == 0 then
+                v_gx[v_ng] = v_x + 0.5
+                v_gy[v_ng] = v_y + 0.5
+                v_gon[v_ng] = 1
+                v_ng = v_ng + 1
+            endif
+        endif
+    endwhile
+
+    # start in the top-left cell, facing an open passage
+    v_cellx = 1
+    v_celly = 1
+    v_heading = 0
+    if v_map[1 * v_m + 2] > 0 then
+        v_heading = 1
+    endif
+    v_posx = 1.5
+    v_posy = 1.5
+    v_ang = v_heading * 1.5708
+    v_da = 0
+    v_mode = 0
+    v_mode_t = 0
+    v_overview = v_overview_frames
+    v_won = 0
+    v_flash = 0
+    v_mazes = v_mazes + 1
+}
+
+# ---------------- Autopilot (right-hand rule) ----------------
+def open_dir {
+    # input v_d (0-3); output v_open (1 if the passage that way is open)
+    v_open = v_map[(v_celly + v_diry4[v_d]) * v_m + v_cellx + v_dirx4[v_d]] == 0
+}
+
+def autopilot {
+    for v_k in (0, v_gems_max - 1, 1)
+        if v_gon[v_k] == 1 then
+            if abs(v_gx[v_k] - v_posx) + abs(v_gy[v_k] - v_posy) < 1.1 then
+                v_gon[v_k] = 0
+                v_flash = v_flash_frames
+            endif
+        endif
+    endfor v_k
+    if v_mode == 0 then
+        # at a cell centre: check for the exit, choose a way
+        if v_cellx == v_m - 2 and v_celly == v_m - 2 and v_won == 0 then
+            # face the exit door and finish
+            v_won = 1
+            v_mode = 3
+            v_mode_t = 0
+            v_ang0 = v_ang
+            v_ang1 = 0
+            v_da = v_ang1 - v_ang0
+            v_da = v_da - 6.283185 * floor((v_da + 3.141593) / 6.283185)
+        else
+            v_choice = -1
+            for v_k in (1, 4, 1)
+                # right, straight, left, back
+                v_d = (v_heading + 2 - v_k + 4) % 4
+                if v_k == 1 then
+                    v_d = (v_heading + 1) % 4
+                elseif v_k == 2 then
+                    v_d = v_heading
+                elseif v_k == 3 then
+                    v_d = (v_heading + 3) % 4
+                else
+                    v_d = (v_heading + 2) % 4
+                endif
+                call open_dir
+                if v_choice < 0 and v_open then
+                    v_choice = v_d
+                endif
+            endfor v_k
+            v_turn = (v_choice - v_heading + 4) % 4
+            if v_turn == 3 then
+                v_turn = -1
+            endif
+            v_ang0 = v_ang
+            v_ang1 = v_ang0 + v_turn * 1.5708
+            v_da = v_ang1 - v_ang0
+            if v_turn == 2 then
+                # dead end: turn around on the spot first
+                v_mode = 1
+            else
+                # straight on, or round a corner while walking
+                v_mode = 2
+            endif
+            v_heading = v_choice
+            v_mode_t = 0
+            v_fromx = v_posx
+            v_fromy = v_posy
+        endif
+    elseif v_mode == 1 then
+        # turning on the spot
+        v_mode_t = v_mode_t + 1
+        v_frames = v_turn_frames * abs(v_turn)
+        v_e = v_mode_t / v_frames
+        v_e = v_e * v_e * (3 - 2 * v_e)
+        v_ang = v_ang0 + v_da * v_e
+        if v_mode_t >= v_frames then
+            v_ang = v_ang1
+            v_ang0 = v_ang1
+            v_da = 0
+            v_mode = 2
+            v_mode_t = 0
+        endif
+    elseif v_mode == 2 then
+        # walking two map squares to the next cell centre
+        v_mode_t = v_mode_t + 1
+        v_e = v_mode_t / v_move_frames
+        v_e = v_e * v_e * (3 - 2 * v_e)
+        v_posx = v_fromx + v_dirx4[v_heading] * 2 * v_e
+        v_posy = v_fromy + v_diry4[v_heading] * 2 * v_e
+        # finish any corner turn during the first part of the walk
+        if v_da != 0 then
+            v_te = min(v_mode_t / (v_move_frames * 0.6), 1)
+            v_te = v_te * v_te * (3 - 2 * v_te)
+            v_ang = v_ang0 + v_da * v_te
+        endif
+        if v_mode_t >= v_move_frames then
+            v_cellx = v_cellx + v_dirx4[v_heading] * 2
+            v_celly = v_celly + v_diry4[v_heading] * 2
+            v_posx = v_cellx + 0.5
+            v_posy = v_celly + 0.5
+            v_ang = v_ang0 + v_da
+            v_da = 0
+            v_mode = 0
+        endif
+    else
+        # reached the exit: turn to face it, step up to the door, then a new maze
+        v_mode_t = v_mode_t + 1
+        if v_mode_t <= v_exit_turn then
+            v_e = v_mode_t / v_exit_turn
+            v_e = v_e * v_e * (3 - 2 * v_e)
+            v_ang = v_ang0 + v_da * v_e
+        elseif v_mode_t <= v_exit_walk then
+            v_posx = v_cellx + 0.5 + (v_mode_t - v_exit_turn) / (v_exit_walk - v_exit_turn) * 0.3
+        elseif v_mode_t > v_exit_end then
+            call build_maze
+        endif
+    endif
+}
+
+# ---------------- Rendering ----------------
+def draw_ceiling_floor {
+    v_dirx = cos(v_ang)
+    v_diry = sin(v_ang)
+    v_plx = 0 - v_diry * 0.78
+    v_ply = v_dirx * 0.78
+    # the eye sits a little behind the walker, so walls never fill the view
+    v_eyex = v_posx - v_dirx * 0.3
+    v_eyey = v_posy - v_diry * 0.3
+    v_bob = sin(v_t * 0.28) * 0.6 * (v_mode == 2)
+    v_hz = 32 + v_bob
+    # ceiling: dark gradient
+    for v_y in (0, 31, 1)
+        draw_line(0, v_y, 63, v_y, dark_gray, 8 + v_y * 0.9)
+    endfor v_y
+    # floor casting
+    v_r0x = v_dirx - v_plx
+    v_r0y = v_diry - v_ply
+    v_r1x = v_dirx + v_plx
+    v_r1y = v_diry + v_ply
+    for v_y in (int(v_hz) + 1, 63, 1)
+        v_p = v_y - v_hz
+        v_rd = 27 / v_p
+        v_fsx = v_rd * (v_r1x - v_r0x) / 64
+        v_fsy = v_rd * (v_r1y - v_r0y) / 64
+        v_fx = v_eyex + v_rd * v_r0x
+        v_fy = v_eyey + v_rd * v_r0y
+        v_fi = max(70 - v_rd * 9, 6)
+        for v_x in (0, 63, 1)
+            if (int(v_fx * 2) + int(v_fy * 2)) % 2 == 0 then
+                mplot(v_x, v_y, gray, v_fi)
+            else
+                mplot(v_x, v_y, standard_brown, v_fi * 0.8)
+            endif
+            v_fx = v_fx + v_fsx
+            v_fy = v_fy + v_fsy
+        endfor v_x
+    endfor v_y
+}
+
+def draw_walls {
+    v_glow = 60 + sin(v_t * 0.15) * 30
+    for v_x in (0, 63, 1)
+        v_camx = (v_x + 0.5) / 32 - 1
+        v_rdx = v_dirx + v_plx * v_camx
+        v_rdy = v_diry + v_ply * v_camx
+        v_mx = int(v_eyex)
+        v_my = int(v_eyey)
+        v_ddx = 999999
+        if v_rdx != 0 then
+            v_ddx = abs(1 / v_rdx)
+        endif
+        v_ddy = 999999
+        if v_rdy != 0 then
+            v_ddy = abs(1 / v_rdy)
+        endif
+        if v_rdx < 0 then
+            v_stx = -1
+            v_sdx = (v_eyex - v_mx) * v_ddx
+        else
+            v_stx = 1
+            v_sdx = (v_mx + 1 - v_eyex) * v_ddx
+        endif
+        if v_rdy < 0 then
+            v_sty = -1
+            v_sdy = (v_eyey - v_my) * v_ddy
+        else
+            v_sty = 1
+            v_sdy = (v_my + 1 - v_eyey) * v_ddy
+        endif
+        # DDA: step square by square until the ray enters a wall
+        v_wt = 0
+        while v_wt == 0 then
+            if v_sdx < v_sdy then
+                v_sdx = v_sdx + v_ddx
+                v_mx = v_mx + v_stx
+                v_side = 0
+            else
+                v_sdy = v_sdy + v_ddy
+                v_my = v_my + v_sty
+                v_side = 1
+            endif
+            v_wt = v_map[v_my * v_m + v_mx]
+        endwhile
+        if v_side == 0 then
+            v_perp = v_sdx - v_ddx
+            v_u = v_eyey + v_perp * v_rdy
+        else
+            v_perp = v_sdy - v_ddy
+            v_u = v_eyex + v_perp * v_rdx
+        endif
+        v_u = v_u - floor(v_u)
+        v_perp = max(v_perp, 0.05)
+        v_zbuf[v_x] = v_perp
+        v_lh = 54 / v_perp
+        v_y0 = v_hz - v_lh / 2
+        v_shade = max(1 - v_perp / 11, 0.12) * (1 - v_side * 0.3)
+
+        if v_wt == 1 then
+            # red brick: 5 courses, staggered joints
+            for v_r in (0, 4, 1)
+                v_ya = v_y0 + v_lh * v_r / 5
+                v_yb = v_y0 + v_lh * (v_r + 1) / 5
+                v_bu = v_u * 2 + 0.5 * (v_r % 2)
+                v_tone = 0.82 + ((int(v_bu) * 3 + v_r * 5 + v_mx * 7 + v_my) % 4) * 0.06
+                if v_bu - floor(v_bu) < 0.07 then
+                    draw_line(v_x, max(v_ya, 0), v_x, min(v_yb, 63), gray, 45 * v_shade)
+                else
+                    draw_line(v_x, max(v_ya + 1, 0), v_x, min(v_yb, 63), crimson, 80 * v_shade * v_tone)
+                    if v_ya >= 0 and v_ya <= 63 then
+                        mplot(v_x, v_ya, gray, 45 * v_shade)
+                    endif
+                endif
+            endfor v_r
+        elseif v_wt == 2 then
+            # blue stone: 3 rows of large blocks
+            for v_r in (0, 2, 1)
+                v_ya = v_y0 + v_lh * v_r / 3
+                v_yb = v_y0 + v_lh * (v_r + 1) / 3
+                v_bu = v_u * 1.5 + 0.37 * v_r
+                v_tone = 0.8 + ((int(v_bu) * 5 + v_r * 3 + v_mx + v_my * 3) % 3) * 0.1
+                if v_bu - floor(v_bu) < 0.06 then
+                    draw_line(v_x, max(v_ya, 0), v_x, min(v_yb, 63), navy, 50 * v_shade)
+                else
+                    draw_line(v_x, max(v_ya + 1, 0), v_x, min(v_yb, 63), royal_blue, 75 * v_shade * v_tone)
+                    if v_ya >= 0 and v_ya <= 63 then
+                        mplot(v_x, v_ya, navy, 50 * v_shade)
+                    endif
+                endif
+            endfor v_r
+        elseif v_wt == 3 then
+            # wooden planks with dark seams and a trim along the top
+            v_pu = v_u * 4
+            if v_pu - floor(v_pu) < 0.12 then
+                draw_line(v_x, max(v_y0, 0), v_x, min(v_y0 + v_lh, 63), dark_brown, 60 * v_shade)
+            else
+                draw_line(v_x, max(v_y0, 0), v_x, min(v_y0 + v_lh, 63), wood_brown, (70 + (int(v_pu) % 2) * 12) * v_shade)
+            endif
+            v_trim = v_y0 + v_lh * 0.08
+            draw_line(v_x, max(v_y0, 0), v_x, min(v_trim, 63), tan, 70 * v_shade)
+        else
+            # exit door: pulsing green with bars
+            v_bar = v_u * 6 - floor(v_u * 6) < 0.25
+            if v_bar then
+                draw_line(v_x, max(v_y0, 0), v_x, min(v_y0 + v_lh, 63), forest_green, 50 * v_shade)
+            else
+                draw_line(v_x, max(v_y0, 0), v_x, min(v_y0 + v_lh, 63), spring_green, v_glow * max(v_shade, 0.6))
+            endif
+        endif
+    endfor v_x
+}
+
+# Gems: billboards projected into view, hidden behind nearer walls
+def draw_gems {
+    v_inv = 1 / (v_plx * v_diry - v_dirx * v_ply)
+    for v_k in (0, v_gems_max - 1, 1)
+        if v_gon[v_k] == 1 then
+            v_rx = v_gx[v_k] - v_eyex
+            v_ry = v_gy[v_k] - v_eyey
+            v_tx = v_inv * (v_diry * v_rx - v_dirx * v_ry)
+            v_ty = v_inv * (0 - v_ply * v_rx + v_plx * v_ry)
+            if v_ty > 0.3 then
+                v_sx = 32 * (1 + v_tx / v_ty)
+                v_col = int(v_sx)
+                if v_col >= 0 and v_col <= 63 then
+                    if v_ty < v_zbuf[v_col] then
+                        v_sz = 54 / v_ty
+                        v_sy = v_hz + min(v_sz, 40) * (0.1 + sin(v_t * 0.09 + v_k) * 0.05)
+                        v_gr = min(max(v_sz * 0.11, 1), 6)
+                        v_gi = max(1 - v_ty / 11, 0.25)
+                        draw_circle(v_sx, v_sy, v_gr * 1.8, orange, 30 * v_gi, true)
+                        draw_circle(v_sx, v_sy, v_gr, gold, 95 * v_gi, true)
+                        if v_gr > 1.5 then
+                            mplot(v_sx - v_gr * 0.4, v_sy - v_gr * 0.4, white, 100 * v_gi)
+                        endif
+                    endif
+                endif
+            endif
+        endif
+    endfor v_k
+}
+
+# Overhead map shown before each run
+def draw_overview {
+    v_sc = 3
+    v_off = int((64 - v_m * v_sc) / 2)
+    for v_y in (0, v_m - 1, 1)
+        for v_x in (0, v_m - 1, 1)
+            v_w = v_map[v_y * v_m + v_x]
+            if v_w > 0 then
+                if v_w == 1 then
+                    v_oc = "crimson"
+                elseif v_w == 2 then
+                    v_oc = "royal_blue"
+                elseif v_w == 3 then
+                    v_oc = "wood_brown"
+                else
+                    v_oc = "spring_green"
+                endif
+                draw_rectangle(v_off + v_x * v_sc, v_off + v_y * v_sc, v_sc, v_sc, v_oc, 55, true)
+            endif
+        endfor v_x
+    endfor v_y
+    for v_k in (0, v_gems_max - 1, 1)
+        if v_gon[v_k] == 1 then
+            draw_rectangle(v_off + int(v_gx[v_k]) * v_sc, v_off + int(v_gy[v_k]) * v_sc, v_sc, v_sc, gold, 90, true)
+        endif
+    endfor v_k
+    if v_t % 20 < 12 then
+        draw_rectangle(v_off + v_v_cell_draw_x, v_off + v_v_cell_draw_y, v_sc, v_sc, white, 100, true)
+    endif
+}
+
+# ---------------- Main loop ----------------
+call build_maze
+
+while true then
+    v_t = v_t + 1 / v_pace
+    begin_frame
+        if v_overview > 0 then
+            v_overview = v_overview - 1
+            v_v_cell_draw_x = v_cellx * 3
+            v_v_cell_draw_y = v_celly * 3
+            call draw_overview
+        else
+            call autopilot
+            call draw_ceiling_floor
+            call draw_walls
+            call draw_gems
+            if v_flash > 0 then
+                v_flash = v_flash - 1
+                draw_rectangle(0, 0, 64, 64, gold, v_flash / v_flash_frames * 40, false)
+                draw_rectangle(1, 1, 62, 62, gold, v_flash / v_flash_frames * 30, false)
+            endif
+        endif
+    end_frame
+endwhile

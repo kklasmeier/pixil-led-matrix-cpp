@@ -1,0 +1,579 @@
+# Rubik's Cube - a 3D cube that scrambles and solves itself, in Pixil
+#
+# A classic cube tumbles slowly in space. It scrambles itself with quick
+# random turns, pauses, then turns back move by move until it is solved,
+# celebrates with a spin, and starts again.
+#
+# Note: it "solves" by playing its own scramble backwards. Every turn is a
+# real, animated face turn, but there is no solving algorithm searching for
+# the moves.
+#
+# How it works:
+#   - The cube is 54 stickers. Each knows its little cube's position (each
+#     coordinate -1, 0 or 1), the direction its face points, and its colour.
+#   - A face turn rotates every sticker in that layer by 90 degrees about the
+#     axis; while it animates, those stickers are drawn at the in-between angle.
+#   - Each frame every sticker is rotated by the camera, culled if it faces
+#     away, depth sorted, and drawn as a black backing square with a coloured
+#     square on top, lit by how much it faces the light. During a turn, two
+#     black squares stand in for the cube's insides showing through the gap.
+#   - Squares are filled as two triangles with a scanline routine.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_scramble_moves = 20
+v_fast = int(10 * v_pace)    # frames per scramble turn
+v_slow = int(22 * v_pace)    # frames per solving turn
+v_pause = int(80 * v_pace)   # pauses between phases
+v_dist = 7.5                 # camera distance
+v_focal = 78                 # projection scale
+
+# ---------------- Stickers ----------------
+create_array(v_spx, 54, numeric)
+create_array(v_spy, 54, numeric)
+create_array(v_spz, 54, numeric)
+create_array(v_snx, 54, numeric)
+create_array(v_sny, 54, numeric)
+create_array(v_snz, 54, numeric)
+create_array(v_scol, 54, numeric)
+create_array(v_cname, 6, string)
+v_cname[0] = "red"
+v_cname[1] = "orange"
+v_cname[2] = "white"
+v_cname[3] = "yellow"
+v_cname[4] = "green"
+v_cname[5] = "blue"
+
+# Faces: +x red, -x orange, +y white, -y yellow, +z green, -z blue
+v_s = 0
+for v_x in (-1, 1, 1)
+    for v_y in (-1, 1, 1)
+        for v_z in (-1, 1, 1)
+            if abs(v_x) == 1 then
+                v_spx[v_s] = v_x
+                v_spy[v_s] = v_y
+                v_spz[v_s] = v_z
+                v_snx[v_s] = v_x
+                v_sny[v_s] = 0
+                v_snz[v_s] = 0
+                v_scol[v_s] = (1 - v_x) / 2
+                v_s = v_s + 1
+            endif
+            if abs(v_y) == 1 then
+                v_spx[v_s] = v_x
+                v_spy[v_s] = v_y
+                v_spz[v_s] = v_z
+                v_snx[v_s] = 0
+                v_sny[v_s] = v_y
+                v_snz[v_s] = 0
+                v_scol[v_s] = 2 + (1 - v_y) / 2
+                v_s = v_s + 1
+            endif
+            if abs(v_z) == 1 then
+                v_spx[v_s] = v_x
+                v_spy[v_s] = v_y
+                v_spz[v_s] = v_z
+                v_snx[v_s] = 0
+                v_sny[v_s] = 0
+                v_snz[v_s] = v_z
+                v_scol[v_s] = 4 + (1 - v_z) / 2
+                v_s = v_s + 1
+            endif
+        endfor v_z
+    endfor v_y
+endfor v_x
+
+# ---------------- Moves ----------------
+create_array(v_max, v_scramble_moves, numeric)   # axis 0 x, 1 y, 2 z
+create_array(v_mly, v_scramble_moves, numeric)   # layer -1 or 1
+create_array(v_mdr, v_scramble_moves, numeric)   # direction -1 or 1
+
+def new_scramble {
+    v_pax = -1
+    for v_k in (0, v_scramble_moves - 1, 1)
+        # never turn the same axis twice in a row (it could undo itself)
+        v_ax = random(0, 2, 0)
+        if v_ax == v_pax then
+            v_ax = (v_ax + random(1, 2, 0)) % 3
+        endif
+        v_max[v_k] = v_ax
+        v_mly[v_k] = random(0, 1, 0) * 2 - 1
+        v_mdr[v_k] = random(0, 1, 0) * 2 - 1
+        v_pax = v_ax
+    endfor v_k
+}
+
+# Rotate vector (v_rx, v_ry, v_rz) about axis v_ax by angle with cos v_ca, sin v_sa
+def rot_vec {
+    if v_ax == 0 then
+        v_t1 = v_ry * v_ca - v_rz * v_sa
+        v_rz = v_ry * v_sa + v_rz * v_ca
+        v_ry = v_t1
+    elseif v_ax == 1 then
+        v_t1 = v_rz * v_sa + v_rx * v_ca
+        v_rz = v_rz * v_ca - v_rx * v_sa
+        v_rx = v_t1
+    else
+        v_t1 = v_rx * v_ca - v_ry * v_sa
+        v_ry = v_rx * v_sa + v_ry * v_ca
+        v_rx = v_t1
+    endif
+}
+
+# Finish a turn: rotate the layer's stickers by exactly 90 degrees
+def apply_turn {
+    v_ca = 0
+    v_sa = v_tdir
+    for v_s in (0, 53, 1)
+        v_on = 0
+        if v_tax == 0 then
+            v_on = v_spx[v_s] == v_tly
+        elseif v_tax == 1 then
+            v_on = v_spy[v_s] == v_tly
+        else
+            v_on = v_spz[v_s] == v_tly
+        endif
+        if v_on then
+            v_ax = v_tax
+            v_rx = v_spx[v_s]
+            v_ry = v_spy[v_s]
+            v_rz = v_spz[v_s]
+            call rot_vec
+            v_spx[v_s] = round(v_rx)
+            v_spy[v_s] = round(v_ry)
+            v_spz[v_s] = round(v_rz)
+            v_rx = v_snx[v_s]
+            v_ry = v_sny[v_s]
+            v_rz = v_snz[v_s]
+            call rot_vec
+            v_snx[v_s] = round(v_rx)
+            v_sny[v_s] = round(v_ry)
+            v_snz[v_s] = round(v_rz)
+        endif
+    endfor v_s
+}
+
+# ---------------- Drawing ----------------
+create_array(v_qd, 60, numeric)     # depth of each square to draw
+create_array(v_qi, 60, numeric)     # which sticker (or -1 / -2 for the cut planes)
+create_array(v_qx, 60 * 4, numeric) # projected corners
+create_array(v_qy, 60 * 4, numeric)
+create_array(v_ql, 60, numeric)     # lighting
+v_lx = -0.4
+v_ly = 0.7
+v_lz = 0.6
+
+def fill_tri {
+    if v_y1 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x1
+        v_x1 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y1
+        v_y1 = v_tmp
+    endif
+    if v_y2 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y2
+        v_y2 = v_tmp
+    endif
+    if v_y2 < v_y1 then
+        v_tmp = v_x1
+        v_x1 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y1
+        v_y1 = v_y2
+        v_y2 = v_tmp
+    endif
+    v_ya = max(int(v_y0 + 0.5), 0)
+    v_yb = min(int(v_y2 + 0.5), 63)
+    v_h02 = v_y2 - v_y0 + 0.0001
+    v_h01 = v_y1 - v_y0 + 0.0001
+    v_h12 = v_y2 - v_y1 + 0.0001
+    for v_yy in (v_ya, v_yb, 1)
+        v_xa = v_x0 + (v_x2 - v_x0) * min(max((v_yy - v_y0) / v_h02, 0), 1)
+        if v_yy < v_y1 then
+            v_xb = v_x0 + (v_x1 - v_x0) * min(max((v_yy - v_y0) / v_h01, 0), 1)
+        else
+            v_xb = v_x1 + (v_x2 - v_x1) * min(max((v_yy - v_y1) / v_h12, 0), 1)
+        endif
+        draw_line(int(min(v_xa, v_xb) + 0.5), v_yy, int(max(v_xa, v_xb) + 0.5), v_yy, v_tc, v_ti)
+    endfor v_yy
+}
+
+# Fill the square whose 4 corners are stored at slot v_q, shrunk toward its
+# centre by v_shrink (1 = full size)
+def fill_quad {
+    v_b = v_q * 4
+    v_mx = (v_qx[v_b] + v_qx[v_b + 1] + v_qx[v_b + 2] + v_qx[v_b + 3]) * 0.25
+    v_my = (v_qy[v_b] + v_qy[v_b + 1] + v_qy[v_b + 2] + v_qy[v_b + 3]) * 0.25
+    v_ax0 = v_mx + (v_qx[v_b] - v_mx) * v_shrink
+    v_ay0 = v_my + (v_qy[v_b] - v_my) * v_shrink
+    v_ax1 = v_mx + (v_qx[v_b + 1] - v_mx) * v_shrink
+    v_ay1 = v_my + (v_qy[v_b + 1] - v_my) * v_shrink
+    v_ax2 = v_mx + (v_qx[v_b + 2] - v_mx) * v_shrink
+    v_ay2 = v_my + (v_qy[v_b + 2] - v_my) * v_shrink
+    v_ax3 = v_mx + (v_qx[v_b + 3] - v_mx) * v_shrink
+    v_ay3 = v_my + (v_qy[v_b + 3] - v_my) * v_shrink
+    v_x0 = v_ax0
+    v_y0 = v_ay0
+    v_x1 = v_ax1
+    v_y1 = v_ay1
+    v_x2 = v_ax2
+    v_y2 = v_ay2
+    call fill_tri
+    v_x0 = v_ax0
+    v_y0 = v_ay0
+    v_x1 = v_ax2
+    v_y1 = v_ay2
+    v_x2 = v_ax3
+    v_y2 = v_ay3
+    call fill_tri
+}
+
+# Camera rotation (yaw then pitch) and projection of point (v_rx, v_ry, v_rz)
+# into screen (v_ox, v_oy) and depth v_oz
+def view_point {
+    v_vx = v_rx * v_cy - v_rz * v_sy
+    v_vz = v_rx * v_sy + v_rz * v_cy
+    v_vy = v_ry * v_cp - v_vz * v_sp
+    v_vz = v_ry * v_sp + v_vz * v_cp
+    v_oz = v_vz
+    v_pz = v_focal / (v_dist - v_vz)
+    v_ox = 31.5 + v_vx * v_pz
+    v_oy = 31.5 - v_vy * v_pz
+}
+
+# Store square: centre (v_qcx, v_qcy, v_qcz), half-edge vectors u and v
+# (v_ux..v_uz, v_wx..v_wz), into slot v_nq
+def store_quad {
+    v_b = v_nq * 4
+    v_rx = v_qcx - v_ux - v_wx
+    v_ry = v_qcy - v_uy - v_wy
+    v_rz = v_qcz - v_uz - v_wz
+    call view_point
+    v_qx[v_b] = v_ox
+    v_qy[v_b] = v_oy
+    v_rx = v_qcx + v_ux - v_wx
+    v_ry = v_qcy + v_uy - v_wy
+    v_rz = v_qcz + v_uz - v_wz
+    call view_point
+    v_qx[v_b + 1] = v_ox
+    v_qy[v_b + 1] = v_oy
+    v_rx = v_qcx + v_ux + v_wx
+    v_ry = v_qcy + v_uy + v_wy
+    v_rz = v_qcz + v_uz + v_wz
+    call view_point
+    v_qx[v_b + 2] = v_ox
+    v_qy[v_b + 2] = v_oy
+    v_rx = v_qcx - v_ux + v_wx
+    v_ry = v_qcy - v_uy + v_wy
+    v_rz = v_qcz - v_uz + v_wz
+    call view_point
+    v_qx[v_b + 3] = v_ox
+    v_qy[v_b + 3] = v_oy
+    v_rx = v_qcx
+    v_ry = v_qcy
+    v_rz = v_qcz
+    call view_point
+    v_qd[v_nq] = v_oz
+}
+
+def draw_cube {
+    v_cy = cos(v_yaw)
+    v_sy = sin(v_yaw)
+    v_cp = cos(v_pitch)
+    v_sp = sin(v_pitch)
+    v_ca = cos(v_tang)
+    v_sa = sin(v_tang)
+    v_nq = 0
+    for v_s in (0, 53, 1)
+        # is this sticker in the turning layer?
+        v_on = 0
+        if v_turning == 1 then
+            if v_tax == 0 then
+                v_on = v_spx[v_s] == v_tly
+            elseif v_tax == 1 then
+                v_on = v_spy[v_s] == v_tly
+            else
+                v_on = v_spz[v_s] == v_tly
+            endif
+        endif
+        v_nx = v_snx[v_s]
+        v_ny = v_sny[v_s]
+        v_nz = v_snz[v_s]
+        # the two edge directions of the sticker: the axes it does not face
+        v_ux = v_ny != 0 or v_nz != 0
+        v_uy = 0
+        v_uz = 0
+        if v_ux == 0 then
+            v_uy = 1
+        endif
+        v_wx = 0
+        v_wy = v_nz != 0
+        v_wz = v_nz == 0
+        if v_ny != 0 then
+            v_wy = 0
+            v_wz = 1
+        endif
+        v_qcx = v_spx[v_s] + v_nx * 0.5
+        v_qcy = v_spy[v_s] + v_ny * 0.5
+        v_qcz = v_spz[v_s] + v_nz * 0.5
+        if v_on then
+            v_ax = v_tax
+            v_rx = v_qcx
+            v_ry = v_qcy
+            v_rz = v_qcz
+            call rot_vec
+            v_qcx = v_rx
+            v_qcy = v_ry
+            v_qcz = v_rz
+            v_rx = v_nx
+            v_ry = v_ny
+            v_rz = v_nz
+            call rot_vec
+            v_nx = v_rx
+            v_ny = v_ry
+            v_nz = v_rz
+            v_rx = v_ux
+            v_ry = v_uy
+            v_rz = v_uz
+            call rot_vec
+            v_ux = v_rx
+            v_uy = v_ry
+            v_uz = v_rz
+            v_rx = v_wx
+            v_ry = v_wy
+            v_rz = v_wz
+            call rot_vec
+            v_wx = v_rx
+            v_wy = v_ry
+            v_wz = v_rz
+        endif
+        # facing the camera? (normal in view space toward the viewer)
+        v_rx = v_nx
+        v_ry = v_ny
+        v_rz = v_nz
+        v_vx = v_rx * v_cy - v_rz * v_sy
+        v_vz = v_rx * v_sy + v_rz * v_cy
+        v_vy = v_ry * v_cp - v_vz * v_sp
+        v_vz = v_ry * v_sp + v_vz * v_cp
+        if v_vz > 0.05 then
+            v_ux = v_ux * 0.5
+            v_uy = v_uy * 0.5
+            v_uz = v_uz * 0.5
+            v_wx = v_wx * 0.5
+            v_wy = v_wy * 0.5
+            v_wz = v_wz * 0.5
+            call store_quad
+            v_qi[v_nq] = v_s
+            v_ql[v_nq] = 0.45 + max(v_vx * v_lx + v_vy * v_ly + v_vz * v_lz, 0) * 0.55
+            v_nq = v_nq + 1
+        endif
+    endfor v_s
+    # during a turn, the cube's black insides show through the gap
+    if v_turning == 1 then
+        v_ux = (v_tax != 0) * 1.5
+        v_uy = (v_tax == 0) * 1.5
+        v_uz = 0
+        v_wx = 0
+        v_wy = (v_tax == 2) * 1.5
+        v_wz = (v_tax != 2) * 1.5
+        v_cut = v_tly * 0.5
+        v_qcx = (v_tax == 0) * v_cut
+        v_qcy = (v_tax == 1) * v_cut
+        v_qcz = (v_tax == 2) * v_cut
+        call store_quad
+        v_qi[v_nq] = -1
+        v_qd[v_nq] = v_qd[v_nq] - 0.01
+        v_nq = v_nq + 1
+        # the same square, turned with the moving layer
+        v_ax = v_tax
+        v_rx = v_qcx
+        v_ry = v_qcy
+        v_rz = v_qcz
+        call rot_vec
+        v_qcx = v_rx
+        v_qcy = v_ry
+        v_qcz = v_rz
+        v_rx = v_ux
+        v_ry = v_uy
+        v_rz = v_uz
+        call rot_vec
+        v_ux = v_rx
+        v_uy = v_ry
+        v_uz = v_rz
+        v_rx = v_wx
+        v_ry = v_wy
+        v_rz = v_wz
+        call rot_vec
+        v_wx = v_rx
+        v_wy = v_ry
+        v_wz = v_rz
+        call store_quad
+        v_qi[v_nq] = -2
+        v_qd[v_nq] = v_qd[v_nq] - 0.01
+        v_nq = v_nq + 1
+    endif
+    # sort far to near (insertion sort on depth; larger z is nearer)
+    for v_a in (1, v_nq - 1, 1)
+        v_j = v_a
+        while v_j > 0 and v_qd[v_j - 1] > v_qd[v_j] then
+            call swap_quads
+            v_j = v_j - 1
+        endwhile
+    endfor v_a
+    # the cube's insides first, so they only ever show through the gap
+    for v_q in (0, v_nq - 1, 1)
+        if v_qi[v_q] < 0 then
+            v_tc = "black"
+            v_ti = 100
+            v_shrink = 1
+            call fill_quad
+        endif
+    endfor v_q
+    for v_q in (0, v_nq - 1, 1)
+        if v_qi[v_q] >= 0 then
+            v_tc = "black"
+            v_ti = 100
+            v_shrink = 1
+            call fill_quad
+            v_tc = v_cname[v_scol[v_qi[v_q]]]
+            v_ti = v_ql[v_q] * 100
+            v_shrink = 0.8
+            call fill_quad
+        endif
+    endfor v_q
+}
+
+def swap_quads {
+    # swap slots v_j and v_j - 1
+    v_p = v_j - 1
+    v_tmp = v_qd[v_j]
+    v_qd[v_j] = v_qd[v_p]
+    v_qd[v_p] = v_tmp
+    v_tmp = v_qi[v_j]
+    v_qi[v_j] = v_qi[v_p]
+    v_qi[v_p] = v_tmp
+    v_tmp = v_ql[v_j]
+    v_ql[v_j] = v_ql[v_p]
+    v_ql[v_p] = v_tmp
+    for v_c in (0, 3, 1)
+        v_tmp = v_qx[v_j * 4 + v_c]
+        v_qx[v_j * 4 + v_c] = v_qx[v_p * 4 + v_c]
+        v_qx[v_p * 4 + v_c] = v_tmp
+        v_tmp = v_qy[v_j * 4 + v_c]
+        v_qy[v_j * 4 + v_c] = v_qy[v_p * 4 + v_c]
+        v_qy[v_p * 4 + v_c] = v_tmp
+    endfor v_c
+}
+
+# ---------------- Sequencer ----------------
+# phase 0: show solved, 1: scramble, 2: pause, 3: solve, 4: celebrate
+v_phase = 0
+v_ptime = 0
+v_movei = 0
+v_turning = 0
+v_tang = 0
+v_tframes = 1
+v_tt = 0
+v_yaw = 0.6
+v_pitch = 0.5
+v_t = 0
+v_spinboost = 0
+call new_scramble
+
+def start_turn {
+    v_turning = 1
+    v_tt = 0
+    v_tang = 0
+}
+
+def sequencer {
+    if v_turning == 1 then
+        v_tt = v_tt + 1
+        v_e = v_tt / v_tframes
+        v_e = v_e * v_e * (3 - 2 * v_e)
+        v_tang = v_tdir * 1.5708 * v_e
+        if v_tt >= v_tframes then
+            call apply_turn
+            v_turning = 0
+            v_tang = 0
+        endif
+    else
+        v_ptime = v_ptime + 1
+        if v_phase == 0 then
+            if v_ptime > v_pause then
+                v_phase = 1
+                v_movei = 0
+            endif
+        elseif v_phase == 1 then
+            if v_movei < v_scramble_moves then
+                v_tax = v_max[v_movei]
+                v_tly = v_mly[v_movei]
+                v_tdir = v_mdr[v_movei]
+                v_tframes = v_fast
+                v_movei = v_movei + 1
+                call start_turn
+            else
+                v_phase = 2
+                v_ptime = 0
+            endif
+        elseif v_phase == 2 then
+            if v_ptime > v_pause then
+                v_phase = 3
+                v_movei = v_scramble_moves - 1
+            endif
+        elseif v_phase == 3 then
+            if v_movei >= 0 then
+                # undo the scramble: same layer, opposite direction, reverse order
+                v_tax = v_max[v_movei]
+                v_tly = v_mly[v_movei]
+                v_tdir = 0 - v_mdr[v_movei]
+                v_tframes = v_slow
+                v_movei = v_movei - 1
+                call start_turn
+            else
+                v_phase = 4
+                v_ptime = 0
+            endif
+        else
+            v_spinboost = 1
+            if v_ptime > v_pause * 1.5 then
+                v_spinboost = 0
+                v_phase = 0
+                v_ptime = 0
+                call new_scramble
+            endif
+        endif
+    endif
+}
+
+def status_text {
+    if v_phase == 1 then
+        draw_text(2, 58, "SCRAMBLE", tiny64_font, 5, orange, 60)
+    elseif v_phase == 3 then
+        v_done = v_scramble_moves - 1 - v_movei
+        draw_text(2, 58, "SOLVING " & v_done & "/" & v_scramble_moves, tiny64_font, 5, sky_blue, 60)
+    elseif v_phase == 4 then
+        draw_text(2, 58, "SOLVED!", tiny64_font, 5, lime, 90)
+    endif
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1 / v_pace
+    call sequencer
+    v_yaw = v_yaw + (0.008 + v_spinboost * 0.05) / v_pace * 1.7
+    v_pitch = 0.5 + sin(v_t * 0.007) * 0.25
+    begin_frame
+        call draw_cube
+        call status_text
+    end_frame
+endwhile

@@ -58,7 +58,7 @@ ConsumerLink::~ConsumerLink() {
 }
 
 std::string ConsumerLink::start(const LinkOptions& opts) {
-    if (running()) throw LinkError("consumer bridge already running");
+    if (running()) throw LinkError("consumer already running");
     opts_ = opts;
     reply_buf_.clear();
     replies_.clear();
@@ -69,22 +69,12 @@ std::string ConsumerLink::start(const LinkOptions& opts) {
         throw LinkError(sys_error("pipe2"));
     }
 
-    std::vector<std::string> argv_s;
-    if (opts.consumer == ConsumerKind::Native) {
-        if (opts.native_binary.empty()) throw LinkError("native consumer binary path is empty");
-        argv_s = {opts.native_binary};
-        if (opts.headless) argv_s.push_back("--headless");
-        if (!opts.record_path.empty()) {
-            argv_s.push_back("--record");
-            argv_s.push_back(opts.record_path);
-        }
-    } else {
-        argv_s = {opts.python, "-u", opts.bridge_script, "--legacy-root", opts.legacy_root};
-        if (opts.headless) argv_s.push_back("--headless");
-        if (!opts.record_path.empty()) {
-            argv_s.push_back("--record");
-            argv_s.push_back(opts.record_path);
-        }
+    if (opts.native_binary.empty()) throw LinkError("pixil-consumer binary path is empty");
+    std::vector<std::string> argv_s = {opts.native_binary};
+    if (opts.headless) argv_s.push_back("--headless");
+    if (!opts.record_path.empty()) {
+        argv_s.push_back("--record");
+        argv_s.push_back(opts.record_path);
     }
     std::vector<char*> argv;
     for (auto& s : argv_s) argv.push_back(s.data());
@@ -117,7 +107,7 @@ std::string ConsumerLink::start(const LinkOptions& opts) {
     set_nonblocking(control_fd_);
     set_nonblocking(reply_fd_);
 
-    return wait_reply('H', opts.ready_timeout_ms, "bridge ready").payload;
+    return wait_reply('H', opts.ready_timeout_ms, "consumer ready").payload;
 }
 
 bool ConsumerLink::child_alive() {
@@ -136,7 +126,7 @@ void ConsumerLink::check_stop() {
 void ConsumerLink::read_replies(int timeout_ms) {
     if (reply_eof_) {
         if (!error_.empty()) throw LinkError("consumer failed: " + error_);
-        throw LinkError("consumer bridge exited (reply pipe closed)");
+        throw LinkError("consumer exited (reply pipe closed)");
     }
     pollfd p{reply_fd_, POLLIN, 0};
     int n = poll(&p, 1, timeout_ms);
@@ -204,7 +194,7 @@ ConsumerLink::Reply ConsumerLink::wait_reply(char kind, int timeout_ms, const ch
 }
 
 void ConsumerLink::write_frame(int fd, char kind, std::string_view payload) {
-    if (!running()) throw LinkError("consumer bridge is not running");
+    if (!running()) throw LinkError("consumer is not running");
     std::string frame(kHeaderSize, '\0');
     frame[0] = kind;
     auto len = static_cast<uint32_t>(payload.size());
@@ -228,7 +218,7 @@ void ConsumerLink::write_frame(int fd, char kind, std::string_view payload) {
             if (!error_.empty()) throw LinkError("consumer failed: " + error_);
             continue;
         }
-        if (n < 0 && errno == EPIPE) throw LinkError("consumer bridge exited (data pipe closed)");
+        if (n < 0 && errno == EPIPE) throw LinkError("consumer exited (data pipe closed)");
         throw LinkError(sys_error("write"));
     }
 }
@@ -358,15 +348,13 @@ void ConsumerLink::kill_child() {
 
 void ConsumerLink::emergency_blackout() {
     if (opts_.headless) return;
+    if (opts_.native_binary.empty()) return;
     std::cerr << "[pixil] running emergency blackout\n";
-    std::string code =
-        "import os, sys; r = sys.argv[1]; sys.path.insert(0, r); os.chdir(r); "
-        "from rgb_matrix_lib.emergency_blackout import run_emergency_blackout; run_emergency_blackout()";
     pid_t pid = fork();
     if (pid < 0) return;
     if (pid == 0) {
-        execlp(opts_.python.c_str(), opts_.python.c_str(), "-c", code.c_str(), opts_.legacy_root.c_str(),
-               static_cast<char*>(nullptr));
+        execl(opts_.native_binary.c_str(), opts_.native_binary.c_str(), "--blackout",
+              static_cast<char*>(nullptr));
         _exit(127);
     }
     if (!wait_exit(pid, 4000)) {

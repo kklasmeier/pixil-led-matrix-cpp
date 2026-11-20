@@ -1,4 +1,4 @@
-// pixil — native Pixil producer (Phase 1). Drives the legacy Python consumer per ADR-001.
+// pixil — native Pixil producer. Spawns pixil-consumer (ADR-001 / ADR-002).
 #include <poll.h>
 #include <termios.h>
 #include <unistd.h>
@@ -98,12 +98,10 @@ private:
 void usage(std::ostream& os) {
     os << "usage: pixil [options] [script.pix ...]\n"
           "\n"
-          "Native Pixil producer. By default the LED consumer is still the legacy Python\n"
-          "rgb_matrix_lib via bridge/pixil_consumer_bridge.py (ADR-001). Phase 2 adds a\n"
-          "temporary --consumer switch for the C++ pixil-consumer (ADR-002).\n"
+          "Native Pixil producer. Spawns pixil-consumer to drive the LED matrix (ADR-001).\n"
           "\n"
           "options:\n"
-          "  --hello              run the M2 hello-matrix demo (no .pix language needed)\n"
+          "  --hello              run the hello-matrix demo (no .pix language needed)\n"
           "  script or main/*     one script, several scripts, or a wildcard under scripts/\n"
           "  -t, --time mm:ss     play each script for this long (60:00 is one hour)\n"
           "  -d, --debug LEVEL    DEBUG_OFF (default), DEBUG_CONCISE, DEBUG_SUMMARY,\n"
@@ -120,12 +118,7 @@ void usage(std::ostream& os) {
           "  --dry-run            parse and trace only; a wildcard plays one sorted pass\n"
           "  --headless           consumer without GPIO\n"
           "  --record FILE        consumer-side JSONL log of every command it executed\n"
-          "  --consumer KIND      python (default) or native — temporary Phase 2 switch\n"
           "  --consumer-bin FILE  pixil-consumer binary (default: alongside this pixil)\n"
-          "  --legacy-root DIR    legacy tree with rgb_matrix_lib/ (python consumer;\n"
-          "                       default $PIXIL_LEGACY_ROOT or <repo>/../git)\n"
-          "  --bridge FILE        python consumer bridge (default <repo>/bridge/...)\n"
-          "  --python EXE         Python interpreter for the python consumer (default python3)\n"
           "  --version            print version and exit\n"
           "  --help               this help\n"
           "\n"
@@ -149,11 +142,7 @@ struct Options {
     int64_t seed = 1;
     std::string trace;
     std::string record;
-    ConsumerKind consumer = ConsumerKind::Python;
     std::string consumer_bin;
-    std::string legacy_root;
-    std::string bridge;
-    std::string python = "python3";
     std::vector<std::string> scripts;
 };
 
@@ -297,22 +286,13 @@ int parse_args(int argc, char** argv, Options& o) {
             o.dry_run = true;
         } else if (a == "--record") {
             o.record = value("--record");
-        } else if (a == "--consumer") {
-            std::string kind = value("--consumer");
-            if (kind == "python") o.consumer = ConsumerKind::Python;
-            else if (kind == "native") o.consumer = ConsumerKind::Native;
-            else {
-                std::cerr << "pixil: --consumer must be python or native\n";
-                std::exit(2);
-            }
         } else if (a == "--consumer-bin") {
             o.consumer_bin = value("--consumer-bin");
-        } else if (a == "--legacy-root") {
-            o.legacy_root = value("--legacy-root");
-        } else if (a == "--bridge") {
-            o.bridge = value("--bridge");
-        } else if (a == "--python") {
-            o.python = value("--python");
+        } else if (a == "--consumer" || a == "--legacy-root" || a == "--bridge" || a == "--python") {
+            // Removed at C6 cutover (native-only). Reject so old launch scripts fail loudly.
+            std::cerr << "pixil: " << a
+                      << " was removed; this tree is native-only (no Python/legacy consumer)\n";
+            std::exit(2);
         } else if (!a.empty() && a[0] == '-') {
             std::cerr << "pixil: unknown option " << a << "\n";
             usage(std::cerr);
@@ -581,25 +561,14 @@ int main(int argc, char** argv) {
     }
 
     fs::path repo = repo_root();
-    if (opt.legacy_root.empty()) {
-        const char* env = std::getenv("PIXIL_LEGACY_ROOT");
-        opt.legacy_root = env && *env ? env : (repo / ".." / "git").string();
-    }
-    if (opt.bridge.empty()) opt.bridge = (repo / "bridge" / "pixil_consumer_bridge.py").string();
     std::error_code ec;
-    opt.legacy_root = fs::weakly_canonical(opt.legacy_root, ec).string();
     if (opt.consumer_bin.empty()) {
         fs::path exe = fs::read_symlink("/proc/self/exe", ec);
         if (!ec) opt.consumer_bin = (exe.parent_path() / "pixil-consumer").string();
         else opt.consumer_bin = (repo / "build" / "release" / "pixil-consumer").string();
     }
-    if (!opt.dry_run && opt.consumer == ConsumerKind::Python &&
-        !fs::exists(fs::path(opt.legacy_root) / "rgb_matrix_lib")) {
-        std::cerr << "pixil: no rgb_matrix_lib/ under legacy root " << opt.legacy_root << "\n";
-        return 2;
-    }
-    if (!opt.dry_run && opt.consumer == ConsumerKind::Native && !fs::exists(opt.consumer_bin)) {
-        std::cerr << "pixil: native consumer not found: " << opt.consumer_bin << "\n";
+    if (!opt.dry_run && !fs::exists(opt.consumer_bin)) {
+        std::cerr << "pixil: pixil-consumer not found: " << opt.consumer_bin << "\n";
         return 2;
     }
     if (!opt.dry_run && !opt.headless && geteuid() != 0) {
@@ -616,11 +585,7 @@ int main(int argc, char** argv) {
     SpaceSkip space_skip;
 
     LinkOptions lo;
-    lo.consumer = opt.consumer;
-    lo.python = opt.python;
-    lo.bridge_script = opt.bridge;
     lo.native_binary = opt.consumer_bin;
-    lo.legacy_root = opt.legacy_root;
     lo.headless = opt.headless;
     lo.record_path = opt.record;
     lo.stop_requested = [] { return g_stop.load(); };

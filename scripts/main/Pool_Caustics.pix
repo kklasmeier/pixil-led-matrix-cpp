@@ -1,0 +1,171 @@
+    # Pool Caustics - a sunlit swimming pool with real ripples, written in Pixil
+#
+# Looking down into a tiled pool on a sunny day. Raindrops and the odd big
+# splash send ripples spreading, bouncing off the pool walls and crossing
+# each other. Through the water the tiles wobble, and bright caustic light
+# dances across the floor.
+#
+# How it works:
+#   - Water: the classic two-buffer wave simulation. Each cell's new height is
+#     half the sum of its four neighbours minus its own old height, slightly
+#     damped, with a touch of viscosity. Two frames of heights live in one
+#     array (offset 0 and offset N) and swap roles every frame. The water runs
+#     at 32x32 and is drawn smoothly at 64x64; the floor tiles stay sharp.
+#   - Refraction: each pixel reads the pool floor at a spot pushed sideways
+#     by the surface slope there, so the tiles bend under the waves.
+#   - Caustics: where the surface is curved like a lens, light focuses on the
+#     floor. The curvature (neighbour sum minus four times the centre) makes
+#     those spots brighter and the spaces between them darker.
+#   - Sun glints: where the slope tilts toward the sun, a white sparkle.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_damp = 0.986           # how quickly ripples die away
+v_refract = 0.07         # how strongly the tiles bend
+v_caustic = 0.03         # strength of the caustic light
+v_rain = 0.45            # chance of a raindrop each frame
+v_splash_every = 420     # frames between big splashes (roughly)
+
+# ---------------- Water buffers ----------------
+v_w = 36                 # 32 x 32 water cells (2-33) plus a still 2-cell border
+v_n = v_w * v_w
+create_array(v_h, v_n * 2, numeric)
+create_array(v_gxa, v_n, numeric)    # per-cell slope (x)
+create_array(v_gya, v_n, numeric)    # per-cell slope (y)
+create_array(v_lta, v_n, numeric)    # per-cell caustic light
+v_cur = 0                # offset of the current heights
+v_old = v_n              # offset of the previous heights
+
+# ---------------- Pool floor texture ----------------
+# 8x8 tiles with grout, a little colour variation per tile, and the floor
+# getting deeper (darker) toward one side.
+create_array(v_fh, 64 * 64, numeric)
+create_array(v_fi, 64 * 64, numeric)
+for v_y in (0, 63, 1)
+    for v_x in (0, 63, 1)
+        v_i = v_y * 64 + v_x
+        v_tx = int(v_x / 8)
+        v_ty = int(v_y / 8)
+        v_hue = 50 + ((v_tx * 7 + v_ty * 3) % 5) * 0.8
+        v_in = 56 + ((v_tx * 5 + v_ty * 11) % 4) * 3 - v_x * 0.15
+        if v_x % 8 == 0 or v_y % 8 == 0 then
+            # grout
+            v_in = v_in * 0.6
+        endif
+        v_fh[v_i] = v_hue
+        v_fi[v_i] = v_in
+    endfor v_x
+endfor v_y
+
+v_t = 0
+v_frame = 0
+
+def disturb {
+    # input: v_dx, v_dy (cell 2-33), v_amp; pushes a small blob of water
+    for v_oy in (-1, 1, 1)
+        for v_ox in (-1, 1, 1)
+            v_cx = min(max(v_dx + v_ox, 2), 33)
+            v_cy = min(max(v_dy + v_oy, 2), 33)
+            v_fall = 1
+            if v_ox != 0 or v_oy != 0 then
+                v_fall = 0.5
+            endif
+            v_h[v_cur + v_cy * v_w + v_cx] = v_h[v_cur + v_cy * v_w + v_cx] + v_amp * v_fall
+        endfor v_ox
+    endfor v_oy
+}
+
+def weather {
+    v_frame = v_frame + 1
+    # raindrops
+    if random(0, 999, 0) < v_rain * 1000 * 1.7 / v_pace then
+        v_dx = random(2, 33, 0)
+        v_dy = random(2, 33, 0)
+        v_amp = 0 - random(15, 45, 0)
+        call disturb
+    endif
+    # a big splash now and then
+    if v_frame % int(v_splash_every * v_pace / 1.7) == 0 then
+        v_dx = random(8, 28, 0)
+        v_dy = random(8, 28, 0)
+        v_amp = -260
+        call disturb
+    endif
+}
+
+# Step the waves, and record each cell's slope and caustic light
+def water_step {
+    v_w2 = v_w * 2
+    for v_y in (2, 33, 1)
+        v_row = v_y * v_w
+        for v_x in (2, 33, 1)
+            v_c = v_row + v_x
+            v_i = v_cur + v_c
+            v_l = v_h[v_i - 1]
+            v_r = v_h[v_i + 1]
+            v_u = v_h[v_i - v_w]
+            v_d = v_h[v_i + v_w]
+            v_sum = v_l + v_r + v_u + v_d
+            v_gxa[v_c] = v_r - v_l
+            v_gya[v_c] = v_d - v_u
+            # curvature measured two cells apart: it sees real waves but not
+            # the cell-to-cell flicker this simulation method produces
+            v_lap = v_h[v_i - 2] + v_h[v_i + 2] + v_h[v_i - v_w2] + v_h[v_i + v_w2] - 4 * v_h[v_i]
+            v_lta[v_c] = min(max(0.8 + v_lap * v_caustic, 0.3), 2.0)
+            # wave step with a little viscosity
+            v_j = v_old + v_c
+            v_h[v_j] = (v_sum * 0.5 - v_h[v_j]) * v_damp * 0.9 + v_sum * 0.025
+        endfor v_x
+    endfor v_y
+    v_tmp = v_cur
+    v_cur = v_old
+    v_old = v_tmp
+}
+
+# Each water cell covers 2x2 pixels; the in-between pixels blend with the
+# neighbouring cells so the waves look smooth, while the tiles stay sharp
+def render {
+    for v_y in (2, 33, 1)
+        v_row = v_y * v_w
+        v_sy = v_y * 2 - 4
+        for v_x in (2, 33, 1)
+            v_c = v_row + v_x
+            v_g1 = v_gxa[v_c]
+            v_g2 = v_gya[v_c]
+            v_l1 = v_lta[v_c]
+            v_rg1 = (v_g1 + v_gxa[v_c + 1]) * 0.5
+            v_rg2 = (v_g2 + v_gya[v_c + 1]) * 0.5
+            v_rl = (v_l1 + v_lta[v_c + 1]) * 0.5
+            v_dg1 = (v_g1 + v_gxa[v_c + v_w]) * 0.5
+            v_dg2 = (v_g2 + v_gya[v_c + v_w]) * 0.5
+            v_dl = (v_l1 + v_lta[v_c + v_w]) * 0.5
+            v_sx = v_x * 2 - 4
+            if v_g1 * 0.6 + v_g2 * 0.8 > 26 then
+                # sun glint
+                draw_rectangle(v_sx, v_sy, 2, 2, white, 100, true)
+            else
+                v_k = (int(v_sy + v_g2 * v_refract) % 64) * 64 + int(v_sx + v_g1 * v_refract) % 64
+                mplot(v_sx, v_sy, v_fh[v_k], min(v_fi[v_k] * v_l1, 100))
+                v_k = (int(v_sy + v_rg2 * v_refract) % 64) * 64 + int(v_sx + 1 + v_rg1 * v_refract) % 64
+                mplot(v_sx + 1, v_sy, v_fh[v_k], min(v_fi[v_k] * v_rl, 100))
+                v_k = (int(v_sy + 1 + v_dg2 * v_refract) % 64) * 64 + int(v_sx + v_dg1 * v_refract) % 64
+                mplot(v_sx, v_sy + 1, v_fh[v_k], min(v_fi[v_k] * v_dl, 100))
+                v_k = (int(v_sy + 1 + (v_rg2 + v_dg2) * 0.5 * v_refract) % 64) * 64 + int(v_sx + 1 + (v_rg1 + v_dg1) * 0.5 * v_refract) % 64
+                mplot(v_sx + 1, v_sy + 1, v_fh[v_k], min(v_fi[v_k] * (v_rl + v_dl) * 0.5, 100))
+            endif
+        endfor v_x
+    endfor v_y
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1 / v_pace
+    call weather
+    call water_step
+    begin_frame
+        call render
+    end_frame
+endwhile

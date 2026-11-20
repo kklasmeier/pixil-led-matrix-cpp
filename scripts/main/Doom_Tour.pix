@@ -1,0 +1,960 @@
+# Doom Tour - a 2.5D Doom-style engine, written entirely in Pixil
+#
+# A guided walk through a hand-built level: a flickering tech corridor, a
+# great pillared hall with a staircase up to a balcony, stairs down to an
+# open courtyard under a dusk sky, a bridge over a glowing acid pit, a
+# cramped metal duct, a red brick chamber with torches, and back.
+#
+# How it renders (per screen column, every frame):
+#   - Every map cell has its own floor height, ceiling height, light level,
+#     wall material and floor colour; some are open to the sky.
+#   - A ray steps through the grid (DDA). In each cell it passes it draws that
+#     cell's floor and ceiling (or sky), then any step up, step down or lower
+#     ceiling at the next cell's edge, and shrinks the column's open window.
+#     It stops at a solid wall or when the window closes - the same idea as
+#     Doom's renderer, on a grid.
+#   - Walls are textured by material (tech panels, brown stone, grey blocks,
+#     red brick, wooden risers, metal), lit per area and faded by distance.
+#   - Barrels and torches are sprites, hidden behind nearer walls.
+#   - The camera glides along a smooth spline path, rising and falling with
+#     the floor as it climbs stairs.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7             # bigger = slower, smoother tour (1.7 suits fps 60)
+v_walk = 0.05 / v_pace   # cells per frame
+v_eye = 0.55             # eye height above the floor
+v_maxd = 17              # draw distance (cells); beyond this is darkness
+v_plane = 0.75           # half field of view (camera plane length)
+v_sc = 32 / v_plane      # projection scale: pixels per unit at distance 1
+
+# ---------------- Map ----------------
+v_w = 44
+v_h = 31
+v_n = v_w * v_h
+create_array(v_fh, v_n, numeric)     # floor height
+create_array(v_ch, v_n, numeric)     # ceiling height (<= floor means solid)
+create_array(v_lt, v_n, numeric)     # light level 0-1
+create_array(v_mat, v_n, numeric)    # wall material
+create_array(v_fc, v_n, numeric)     # floor colour (palette index)
+create_array(v_cc, v_n, numeric)     # ceiling colour (palette index)
+create_array(v_sky, v_n, numeric)    # 1 = open to the sky
+create_array(v_flk, v_n, numeric)    # 1 = flickering light
+
+create_array(v_pal, 8, string)
+v_pal[0] = "dark_gray"
+v_pal[1] = "gray"
+v_pal[2] = "dark_brown"
+v_pal[3] = "maroon"
+v_pal[4] = "lime"
+v_pal[5] = "olive"
+v_pal[6] = "standard_brown"
+v_pal[7] = "silver"
+
+# Materials: main colour, joint colour, course height, block width, stagger
+create_array(v_mc1, 7, string)
+create_array(v_mc2, 7, string)
+create_array(v_mco, 7, numeric)
+create_array(v_mw, 7, numeric)
+create_array(v_mst, 7, numeric)
+v_mc1[1] = "silver"
+v_mc2[1] = "dark_gray"
+v_mco[1] = 0.5
+v_mw[1] = 0.5
+v_mst[1] = 0
+v_mc1[2] = "standard_brown"
+v_mc2[2] = "dark_brown"
+v_mco[2] = 0.33
+v_mw[2] = 0.5
+v_mst[2] = 0.5
+v_mc1[3] = "gray"
+v_mc2[3] = "dark_gray"
+v_mco[3] = 0.5
+v_mw[3] = 1.0
+v_mst[3] = 0.5
+v_mc1[4] = "crimson"
+v_mc2[4] = "maroon"
+v_mco[4] = 0.25
+v_mw[4] = 0.5
+v_mst[4] = 0.5
+v_mc1[5] = "bronze"
+v_mc2[5] = "dark_brown"
+v_mco[5] = 1.0
+v_mw[5] = 1.0
+v_mst[5] = 0
+v_mc1[6] = "dark_gray"
+v_mc2[6] = "black"
+v_mco[6] = 0.3
+v_mw[6] = 0.25
+v_mst[6] = 0
+
+# Fill a rectangle of cells (v_ax0..v_ax1, v_ay0..v_ay1) with the current
+# room settings v_af (floor), v_ac (ceiling), v_al (light), v_am (material),
+# v_afc (floor colour), v_acc (ceiling colour), v_as (sky), v_afl (flicker)
+def fill_room {
+    for v_yy in (v_ay0, v_ay1, 1)
+        for v_xx in (v_ax0, v_ax1, 1)
+            v_i = v_yy * v_w + v_xx
+            v_fh[v_i] = v_af
+            v_ch[v_i] = v_ac
+            v_lt[v_i] = v_al
+            v_mat[v_i] = v_am
+            v_fc[v_i] = v_afc
+            v_cc[v_i] = v_acc
+            v_sky[v_i] = v_as
+            v_flk[v_i] = v_afl
+        endfor v_xx
+    endfor v_yy
+    # the solid walls around the room take the room's material
+    for v_yy in (max(v_ay0 - 1, 0), min(v_ay1 + 1, v_h - 1), 1)
+        for v_xx in (max(v_ax0 - 1, 0), min(v_ax1 + 1, v_w - 1), 1)
+            v_i = v_yy * v_w + v_xx
+            if v_ch[v_i] <= v_fh[v_i] and v_paint == 1 then
+                v_mat[v_i] = v_am
+            endif
+        endfor v_xx
+    endfor v_yy
+}
+
+# Make cells solid with material v_am
+def fill_solid {
+    for v_yy in (v_ay0, v_ay1, 1)
+        for v_xx in (v_ax0, v_ax1, 1)
+            v_i = v_yy * v_w + v_xx
+            v_fh[v_i] = 0
+            v_ch[v_i] = 0
+            v_mat[v_i] = v_am
+        endfor v_xx
+    endfor v_yy
+}
+
+def set_area {
+    # shorthand: v_ax0 v_ay0 v_ax1 v_ay1 are set by the caller
+    call fill_room
+}
+
+# ---- Build the level ----
+v_paint = 1
+# Everything starts as solid grey stone
+v_ax0 = 0
+v_ay0 = 0
+v_ax1 = v_w - 1
+v_ay1 = v_h - 1
+v_am = 3
+call fill_solid
+
+# West storeroom (start and end of the loop)
+v_af = 0
+v_ac = 1.6
+v_al = 0.55
+v_am = 2
+v_afc = 2
+v_acc = 0
+v_as = 0
+v_afl = 0
+v_ax0 = 1
+v_ay0 = 23
+v_ax1 = 5
+v_ay1 = 29
+call fill_room
+
+# Tech corridor with a flickering stretch
+v_af = 0
+v_ac = 1.2
+v_al = 0.6
+v_am = 1
+v_afc = 0
+v_acc = 0
+v_ax0 = 6
+v_ay0 = 27
+v_ax1 = 12
+v_ay1 = 28
+call fill_room
+v_afl = 1
+v_ax0 = 8
+v_ax1 = 9
+call fill_room
+v_afl = 0
+
+# Great hall: 16 x 18, high ceiling
+v_af = 0
+v_ac = 3.2
+v_al = 0.8
+v_am = 2
+v_afc = 6
+v_acc = 0
+v_ax0 = 13
+v_ay0 = 12
+v_ax1 = 28
+v_ay1 = 29
+call fill_room
+v_paint = 0
+# balcony along the north wall: dark metal floor
+v_afc = 0
+v_af = 1.6
+v_ay0 = 12
+v_ay1 = 15
+call fill_room
+# parapet along the balcony edge, with a bright silver top
+v_afc = 7
+v_af = 1.9
+v_ax0 = 15
+v_ay0 = 15
+v_ay1 = 15
+call fill_room
+# staircase up the west wall to the balcony
+v_am = 5
+v_afc = 6
+for v_sy in (16, 25, 1)
+    v_af = (26 - v_sy) * 0.16
+    v_ax0 = 13
+    v_ax1 = 14
+    v_ay0 = v_sy
+    v_ay1 = v_sy
+    call fill_room
+endfor v_sy
+# stepped stage on the east side
+v_ay0 = 17
+v_ay1 = 25
+v_af = 0.15
+v_ax0 = 24
+v_ax1 = 24
+call fill_room
+v_af = 0.30
+v_ax0 = 25
+v_ax1 = 25
+call fill_room
+v_af = 0.45
+v_ax0 = 26
+v_ax1 = 28
+call fill_room
+# two rows of pillars
+v_am = 3
+for v_py in (18, 26, 4)
+    v_ax0 = 17
+    v_ax1 = 17
+    v_ay0 = v_py
+    v_ay1 = v_py
+    call fill_solid
+    v_ax0 = 21
+    v_ax1 = 21
+    call fill_solid
+endfor v_py
+
+v_paint = 1
+# North corridor: stairs down from the balcony to courtyard level
+v_am = 1
+v_al = 0.5
+v_afc = 0
+v_acc = 0
+for v_sy in (3, 11, 1)
+    v_af = max(0, (v_sy - 3) * 0.2)
+    if v_sy == 11 then
+        v_af = 1.6
+    endif
+    v_ac = v_af + 1.3
+    v_ax0 = 20
+    v_ax1 = 21
+    v_ay0 = v_sy
+    v_ay1 = v_sy
+    call fill_room
+endfor v_sy
+v_af = 0
+v_ac = 1.3
+v_ax0 = 22
+v_ax1 = 22
+v_ay0 = 3
+v_ay1 = 4
+call fill_room
+
+v_paint = 1
+# Courtyard under the sky
+v_af = 0
+v_ac = 4.5
+v_al = 0.95
+v_am = 3
+v_afc = 5
+v_acc = 0
+v_as = 1
+v_ax0 = 23
+v_ay0 = 1
+v_ax1 = 41
+v_ay1 = 9
+call fill_room
+v_paint = 0
+# acid pit, glowing
+v_af = -0.35
+v_al = 1
+v_afc = 4
+v_ax0 = 27
+v_ay0 = 2
+v_ax1 = 36
+v_ay1 = 8
+call fill_room
+# wooden bridge across it
+v_af = 0
+v_al = 0.95
+v_am = 6
+v_afc = 6
+v_ay0 = 5
+v_ay1 = 6
+call fill_room
+v_as = 0
+
+v_paint = 1
+# Low metal duct heading south
+v_af = 0
+v_ac = 0.95
+v_al = 0.38
+v_am = 6
+v_afc = 0
+v_acc = 0
+v_ax0 = 38
+v_ay0 = 10
+v_ax1 = 39
+v_ay1 = 18
+call fill_room
+
+v_paint = 1
+# Red chamber, sunken, octagonal, with a dais
+v_af = -0.3
+v_ac = 2.0
+v_al = 0.68
+v_am = 4
+v_afc = 3
+v_acc = 0
+v_ax0 = 33
+v_ay0 = 19
+v_ax1 = 42
+v_ay1 = 28
+call fill_room
+v_am = 4
+v_ax0 = 33
+v_ax1 = 34
+v_ay0 = 19
+v_ay1 = 19
+call fill_solid
+v_ax1 = 33
+v_ay1 = 20
+call fill_solid
+v_ax0 = 41
+v_ax1 = 42
+v_ay0 = 19
+v_ay1 = 19
+call fill_solid
+v_ax0 = 42
+v_ay1 = 20
+call fill_solid
+v_ax0 = 33
+v_ax1 = 34
+v_ay0 = 28
+v_ay1 = 28
+call fill_solid
+v_ax1 = 33
+v_ay0 = 27
+call fill_solid
+v_ax0 = 41
+v_ax1 = 42
+v_ay0 = 28
+v_ay1 = 28
+call fill_solid
+v_ax0 = 42
+v_ay0 = 27
+call fill_solid
+v_paint = 0
+v_af = 0.1
+v_ac = 2.0
+v_am = 5
+v_ax0 = 37
+v_ax1 = 38
+v_ay0 = 23
+v_ay1 = 24
+call fill_room
+
+v_paint = 1
+# Return corridor: stairs up from the chamber onto the hall's stage
+v_am = 1
+v_al = 0.55
+v_afc = 0
+v_ay0 = 21
+v_ay1 = 22
+v_af = 0.45
+v_ax0 = 29
+v_ax1 = 29
+v_ac = 1.85
+call fill_room
+v_af = 0.25
+v_ax0 = 30
+v_ax1 = 30
+call fill_room
+v_af = 0.05
+v_ax0 = 31
+v_ax1 = 31
+call fill_room
+v_af = -0.15
+v_ax0 = 32
+v_ax1 = 32
+call fill_room
+
+# ---------------- Sprites ----------------
+v_nspr = 12
+create_array(v_spx, v_nspr, numeric)
+create_array(v_spy, v_nspr, numeric)
+create_array(v_spt, v_nspr, numeric)     # 1 barrel, 2 torch
+v_k = 0
+def add_sprite {
+    v_spx[v_k] = v_qx
+    v_spy[v_k] = v_qy
+    v_spt[v_k] = v_qt
+    v_k = v_k + 1
+}
+v_qt = 1
+v_qx = 1.6
+v_qy = 29.3
+call add_sprite
+v_qx = 5.4
+v_qy = 23.5
+call add_sprite
+v_qx = 24.0
+v_qy = 1.8
+call add_sprite
+v_qx = 25.2
+v_qy = 8.6
+call add_sprite
+v_qx = 40.4
+v_qy = 1.8
+call add_sprite
+v_qx = 40.6
+v_qy = 8.6
+call add_sprite
+v_qt = 2
+v_qx = 36.6
+v_qy = 22.6
+call add_sprite
+v_qx = 39.4
+v_qy = 22.6
+call add_sprite
+v_qx = 36.6
+v_qy = 25.4
+call add_sprite
+v_qx = 39.4
+v_qy = 25.4
+call add_sprite
+v_qx = 26.4
+v_qy = 17.4
+call add_sprite
+v_qx = 26.4
+v_qy = 25.6
+call add_sprite
+
+# ---------------- Tour path ----------------
+v_np = 39
+create_array(v_wpx, v_np, numeric)
+create_array(v_wpy, v_np, numeric)
+# Optional look-at target per waypoint: the camera turns its head toward
+# (v_wlx, v_wly) with strength v_wlw (0 = just look where you are going)
+create_array(v_wlx, v_np, numeric)
+create_array(v_wly, v_np, numeric)
+create_array(v_wlw, v_np, numeric)
+create_array(v_wlp, v_np, numeric)     # head tilt: pixels to look down
+v_k = 0
+def wp {
+    v_wpx[v_k] = v_qx
+    v_wpy[v_k] = v_qy
+    v_k = v_k + 1
+}
+v_qx = 7.0
+v_qy = 27.6
+call wp
+v_qx = 11.0
+v_qy = 27.9
+call wp
+v_qx = 15.0
+v_qy = 28.3
+call wp
+v_qx = 19.5
+v_qy = 28.2
+call wp
+v_qx = 23.8
+v_qy = 27.6
+call wp
+v_qx = 24.0
+v_qy = 24.2
+call wp
+v_qx = 19.0
+v_qy = 24.0
+call wp
+v_qx = 15.8
+v_qy = 26.8
+call wp
+v_qx = 14.0
+v_qy = 26.5
+call wp
+v_qx = 14.0
+v_qy = 21.0
+call wp
+v_qx = 14.0
+v_qy = 16.2
+call wp
+v_qx = 15.8
+v_qy = 13.5
+call wp
+v_qx = 19.0
+v_qy = 13.4
+call wp
+v_qx = 20.9
+v_qy = 11.0
+call wp
+v_qx = 20.9
+v_qy = 7.0
+call wp
+v_qx = 21.0
+v_qy = 4.2
+call wp
+v_qx = 24.0
+v_qy = 4.0
+call wp
+v_qx = 26.0
+v_qy = 5.8
+call wp
+v_qx = 31.5
+v_qy = 6.0
+call wp
+v_qx = 36.8
+v_qy = 6.0
+call wp
+v_qx = 38.9
+v_qy = 7.8
+call wp
+v_qx = 38.9
+v_qy = 11.5
+call wp
+v_qx = 38.9
+v_qy = 16.0
+call wp
+v_qx = 38.6
+v_qy = 20.4
+call wp
+v_qx = 40.3
+v_qy = 23.8
+call wp
+v_qx = 38.0
+v_qy = 26.6
+call wp
+v_qx = 35.4
+v_qy = 24.6
+call wp
+v_qx = 34.6
+v_qy = 21.9
+call wp
+v_qx = 31.0
+v_qy = 21.9
+call wp
+v_qx = 27.5
+v_qy = 21.6
+call wp
+v_qx = 24.0
+v_qy = 21.0
+call wp
+v_qx = 19.3
+v_qy = 20.0
+call wp
+v_qx = 18.6
+v_qy = 26.9
+call wp
+v_qx = 15.0
+v_qy = 28.0
+call wp
+v_qx = 11.0
+v_qy = 28.0
+call wp
+v_qx = 6.5
+v_qy = 27.7
+call wp
+v_qx = 3.2
+v_qy = 28.6
+call wp
+v_qx = 1.9
+v_qy = 25.8
+call wp
+v_qx = 3.6
+v_qy = 24.0
+call wp
+
+def look_at {
+    # input v_li (waypoint), v_qx/v_qy (target), v_qw (strength)
+    v_wlx[v_li] = v_qx
+    v_wly[v_li] = v_qy
+    v_wlw[v_li] = v_qw
+}
+# glance at the pillars and stage when entering the hall
+v_qx = 25
+v_qy = 21
+v_qw = 0.3
+v_li = 2
+call look_at
+v_li = 3
+call look_at
+# from the balcony, look down over the great hall
+v_qx = 21
+v_qy = 24
+v_qw = 0.3
+v_li = 10
+call look_at
+v_qw = 0.8
+v_li = 11
+call look_at
+v_wlp[11] = 16
+v_li = 12
+call look_at
+v_wlp[12] = 16
+# on the bridge, glance down at the acid
+v_qx = 31
+v_qy = 2.5
+v_qw = 0.35
+v_li = 17
+call look_at
+v_wlp[17] = 7
+v_li = 18
+call look_at
+v_wlp[18] = 7
+# circling the chamber, keep an eye on the torch-lit dais
+v_qx = 38
+v_qy = 24
+v_qw = 0.6
+v_li = 23
+call look_at
+v_li = 24
+call look_at
+v_li = 25
+call look_at
+v_qw = 0.3
+v_li = 26
+call look_at
+
+# Catmull-Rom spline through the waypoints: segment v_sg, position v_st (0-1)
+def path_point {
+    v_i1 = v_sg % v_np
+    v_i0 = (v_i1 - 1 + v_np) % v_np
+    v_i2 = (v_i1 + 1) % v_np
+    v_i3 = (v_i1 + 2) % v_np
+    v_t2 = v_st * v_st
+    v_t3 = v_t2 * v_st
+    v_qx = 0.5 * (2 * v_wpx[v_i1] + (v_wpx[v_i2] - v_wpx[v_i0]) * v_st + (2 * v_wpx[v_i0] - 5 * v_wpx[v_i1] + 4 * v_wpx[v_i2] - v_wpx[v_i3]) * v_t2 + (3 * v_wpx[v_i1] - v_wpx[v_i0] - 3 * v_wpx[v_i2] + v_wpx[v_i3]) * v_t3)
+    v_qy = 0.5 * (2 * v_wpy[v_i1] + (v_wpy[v_i2] - v_wpy[v_i0]) * v_st + (2 * v_wpy[v_i0] - 5 * v_wpy[v_i1] + 4 * v_wpy[v_i2] - v_wpy[v_i3]) * v_t2 + (3 * v_wpy[v_i1] - v_wpy[v_i0] - 3 * v_wpy[v_i2] + v_wpy[v_i3]) * v_t3)
+}
+
+def seg_len {
+    # input v_sg -> v_sl
+    v_i1 = v_sg % v_np
+    v_i2 = (v_i1 + 1) % v_np
+    v_sl = sqrt((v_wpx[v_i2] - v_wpx[v_i1]) * (v_wpx[v_i2] - v_wpx[v_i1]) + (v_wpy[v_i2] - v_wpy[v_i1]) * (v_wpy[v_i2] - v_wpy[v_i1])) + 0.01
+}
+
+# ---------------- Camera ----------------
+v_seg = 0
+v_pt = 0
+v_t = 0
+v_ang = 0
+v_ez = v_eye
+v_pitch = 0
+v_camx = 7.0
+v_camy = 27.6
+
+def move_camera {
+    v_sg = v_seg
+    call seg_len
+    v_pt = v_pt + v_walk / v_sl
+    if v_pt >= 1 then
+        v_pt = v_pt - 1
+        v_seg = (v_seg + 1) % v_np
+    endif
+    v_sg = v_seg
+    v_st = v_pt
+    call path_point
+    v_camx = v_qx
+    v_camy = v_qy
+    # look ahead along the path to choose where to face
+    v_sg = v_seg
+    call seg_len
+    v_st = v_pt + 0.9 / v_sl
+    if v_st >= 1 then
+        v_l0 = v_sl
+        v_sg = v_seg + 1
+        call seg_len
+        v_st = (v_st - 1) * v_l0 / v_sl
+        v_st = min(v_st, 0.99)
+    endif
+    call path_point
+    v_hx = v_qx - v_camx
+    v_hy = v_qy - v_camy
+    v_hl = sqrt(v_hx * v_hx + v_hy * v_hy) + 0.0001
+    v_hx = v_hx / v_hl
+    v_hy = v_hy / v_hl
+    # blend in the look-at target for this stretch of the path
+    v_i1 = v_seg % v_np
+    v_i2 = (v_i1 + 1) % v_np
+    v_lw1 = v_wlw[v_i1] * (1 - v_pt)
+    v_lw2 = v_wlw[v_i2] * v_pt
+    v_lw = v_lw1 + v_lw2
+    if v_lw > 0.001 then
+        v_lx = (v_wlx[v_i1] * v_lw1 + v_wlx[v_i2] * v_lw2) / v_lw - v_camx
+        v_ly = (v_wly[v_i1] * v_lw1 + v_wly[v_i2] * v_lw2) / v_lw - v_camy
+        v_ll = sqrt(v_lx * v_lx + v_ly * v_ly) + 0.0001
+        v_hx = v_hx * (1 - v_lw) + v_lx / v_ll * v_lw
+        v_hy = v_hy * (1 - v_lw) + v_ly / v_ll * v_lw
+    endif
+    v_want = atan2(v_hy, v_hx)
+    v_tilt = v_wlp[v_i1] * (1 - v_pt) + v_wlp[v_i2] * v_pt
+    v_pitch = v_pitch + (v_tilt - v_pitch) * 0.04
+    v_da = v_want - v_ang
+    v_da = v_da - 6.283185 * floor((v_da + 3.141593) / 6.283185)
+    v_ang = v_ang + v_da * 0.06
+    # eye follows the floor smoothly (stairs become a glide)
+    v_cell = int(v_camy) * v_w + int(v_camx)
+    v_ez = v_ez + (v_fh[v_cell] + v_eye - v_ez) * 0.12
+}
+
+# ---------------- Rendering ----------------
+create_array(v_zbuf, 64, numeric)
+
+# Draw a textured wall face in column v_x between world heights v_h0..v_h1
+# at distance v_d, texture position v_fu, material v_fm, intensity v_fi,
+# clipped to the open window v_wt..v_wb
+def draw_face {
+    v_co = v_mco[v_fm]
+    v_k0 = floor(v_h0 / v_co)
+    v_k1 = ceil(v_h1 / v_co) - 1
+    for v_fk in (v_k0, v_k1, 1)
+        v_hl = max(v_fk * v_co, v_h0)
+        v_hh = min((v_fk + 1) * v_co, v_h1)
+        v_ya = v_hz - (v_hh - v_ez) * v_sc / v_d
+        v_yb = v_hz - (v_hl - v_ez) * v_sc / v_d
+        v_r0 = max(ceil(v_ya), v_wt)
+        v_r1 = min(ceil(v_yb) - 1, v_wb)
+        if v_r0 <= v_r1 then
+            v_bu = v_fu / v_mw[v_fm] + v_mst[v_fm] * (v_fk % 2)
+            v_tone = 0.84 + ((floor(v_bu) * 3 + v_fk * 5) % 3) * 0.07
+            if v_bu - floor(v_bu) < 0.07 then
+                draw_line(v_x, v_r0, v_x, v_r1, v_mc2[v_fm], v_fi * 0.55)
+            else
+                draw_line(v_x, v_r0, v_x, v_r1, v_mc1[v_fm], v_fi * v_tone)
+                if v_r0 == ceil(v_ya) and v_r1 > v_r0 then
+                    mplot(v_x, v_r0, v_mc2[v_fm], v_fi * 0.55)
+                endif
+            endif
+        endif
+    endfor v_fk
+}
+
+def render {
+    v_dirx = cos(v_ang)
+    v_diry = sin(v_ang)
+    v_plx = 0 - v_diry * v_plane
+    v_ply = v_dirx * v_plane
+    # horizon row: looking down moves it up the screen
+    v_hz = 32 - v_pitch + sin(v_t * 0.16) * 0.5
+    # flickering lights and the pulsing acid glow
+    v_flick = 1
+    if sin(v_t * 0.31) + sin(v_t * 0.73) + sin(v_t * 1.9) > 0.9 then
+        v_flick = 0.3
+    endif
+    v_acid = 0.8 + sin(v_t * 0.05) * 0.2
+    for v_x in (0, 63, 1)
+        v_cx = (v_x + 0.5) / 32 - 1
+        v_rdx = v_dirx + v_plx * v_cx
+        v_rdy = v_diry + v_ply * v_cx
+        v_mx = int(v_camx)
+        v_my = int(v_camy)
+        v_ddx = 999999
+        if v_rdx != 0 then
+            v_ddx = abs(1 / v_rdx)
+        endif
+        v_ddy = 999999
+        if v_rdy != 0 then
+            v_ddy = abs(1 / v_rdy)
+        endif
+        if v_rdx < 0 then
+            v_stx = -1
+            v_sdx = (v_camx - v_mx) * v_ddx
+        else
+            v_stx = 1
+            v_sdx = (v_mx + 1 - v_camx) * v_ddx
+        endif
+        if v_rdy < 0 then
+            v_sty = -1
+            v_sdy = (v_camy - v_my) * v_ddy
+        else
+            v_sty = 1
+            v_sdy = (v_my + 1 - v_camy) * v_ddy
+        endif
+        v_wt = 0
+        v_wb = 63
+        v_dprev = 0.02
+        v_pc = v_my * v_w + v_mx
+        v_done = 0
+        v_zcl = v_maxd
+        while v_done == 0 then
+            if v_sdx < v_sdy then
+                v_d = v_sdx
+                v_sdx = v_sdx + v_ddx
+                v_mx = v_mx + v_stx
+                v_side = 0
+            else
+                v_d = v_sdy
+                v_sdy = v_sdy + v_ddy
+                v_my = v_my + v_sty
+                v_side = 1
+            endif
+            if v_d >= v_maxd then
+                v_d = v_maxd
+                v_done = 1
+            endif
+            v_pf = v_fh[v_pc]
+            v_pcl = v_ch[v_pc]
+            v_light = v_lt[v_pc]
+            if v_flk[v_pc] == 1 then
+                v_light = v_light * v_flick
+            endif
+            v_fog = 1 - (v_dprev + v_d) * 0.5 / v_maxd
+            v_fog = 1 - (1 - v_fog) * (1 - v_fog) * 0.3 - (1 - v_fog) * 0.7
+            # floor of the cell we are crossing
+            if v_pf < v_ez then
+                v_ya = v_hz + (v_ez - v_pf) * v_sc / v_d
+                v_r0 = max(ceil(v_ya), v_wt)
+                v_r1 = min(ceil(v_hz + (v_ez - v_pf) * v_sc / v_dprev) - 1, v_wb)
+                if v_r0 <= v_r1 then
+                    v_fcol = v_fc[v_pc]
+                    v_fi = v_light * v_fog * (88 - ((v_mx + v_my) % 2) * 14)
+                    if v_fcol == 4 then
+                        v_fi = 100 * v_acid * max(v_fog, 0.5)
+                    endif
+                    draw_line(v_x, v_r0, v_x, v_r1, v_pal[v_fcol], v_fi)
+                endif
+                v_wb = min(v_wb, ceil(v_ya) - 1)
+            endif
+            # ceiling (or sky) of the cell we are crossing
+            if v_pcl > v_ez then
+                v_yb = v_hz - (v_pcl - v_ez) * v_sc / v_d
+                v_r0 = max(ceil(v_hz - (v_pcl - v_ez) * v_sc / v_dprev), v_wt)
+                v_r1 = min(ceil(v_yb) - 1, v_wb)
+                if v_r0 <= v_r1 then
+                    if v_sky[v_pc] == 1 then
+                        v_my2 = (v_r0 + v_r1) * 0.5 - v_hz + 32
+                        if v_my2 < 9 then
+                            draw_line(v_x, v_r0, v_x, v_r1, navy, 30)
+                        elseif v_my2 < 16 then
+                            draw_line(v_x, v_r0, v_x, v_r1, indigo, 40)
+                        elseif v_my2 < 22 then
+                            draw_line(v_x, v_r0, v_x, v_r1, purple, 50)
+                        elseif v_my2 < 26 then
+                            draw_line(v_x, v_r0, v_x, v_r1, rose, 55)
+                        elseif v_my2 < 29 then
+                            draw_line(v_x, v_r0, v_x, v_r1, orange, 68)
+                        else
+                            draw_line(v_x, v_r0, v_x, v_r1, peach, 78)
+                        endif
+                    else
+                        draw_line(v_x, v_r0, v_x, v_r1, v_pal[v_cc[v_pc]], v_light * v_fog * 60)
+                    endif
+                endif
+                v_wt = max(v_wt, ceil(v_yb))
+            endif
+            if v_done == 0 then
+                v_nc = v_my * v_w + v_mx
+                v_nf = v_fh[v_nc]
+                v_ncl = v_ch[v_nc]
+                if v_side == 0 then
+                    v_fu = v_camy + v_d * v_rdy
+                else
+                    v_fu = v_camx + v_d * v_rdx
+                endif
+                v_fu = v_fu - floor(v_fu)
+                v_fm = v_mat[v_nc]
+                v_fd = v_d / v_maxd
+                v_fi = min(v_light * 1.15, 1) * (1 - v_fd * 0.75 - v_fd * v_fd * 0.25) * (100 - v_side * 22)
+                if v_ncl <= v_nf then
+                    # solid wall: fills the rest of the window
+                    v_h0 = v_pf
+                    v_h1 = v_pcl
+                    call draw_face
+                    v_done = 1
+                    v_zcl = v_d
+                else
+                    if v_nf > v_pf then
+                        # step up
+                        v_h0 = v_pf
+                        v_h1 = v_nf
+                        call draw_face
+                        v_wb = min(v_wb, ceil(v_hz - (v_nf - v_ez) * v_sc / v_d) - 1)
+                    endif
+                    if v_ncl < v_pcl then
+                        # lower ceiling ahead (or the edge of the sky)
+                        v_h0 = v_ncl
+                        v_h1 = v_pcl
+                        call draw_face
+                        v_wt = max(v_wt, ceil(v_hz - (v_ncl - v_ez) * v_sc / v_d))
+                    endif
+                    if v_wt > v_wb then
+                        v_done = 1
+                        v_zcl = v_d
+                    endif
+                endif
+            endif
+            v_pc = v_my * v_w + v_mx
+            v_dprev = v_d
+        endwhile
+        v_zbuf[v_x] = v_zcl
+    endfor v_x
+}
+
+def draw_sprites {
+    v_inv = 1 / (v_plx * v_diry - v_dirx * v_ply)
+    for v_k in (0, v_nspr - 1, 1)
+        v_rx = v_spx[v_k] - v_camx
+        v_ry = v_spy[v_k] - v_camy
+        v_tx = v_inv * (v_diry * v_rx - v_dirx * v_ry)
+        v_ty = v_inv * (0 - v_ply * v_rx + v_plx * v_ry)
+        if v_ty > 0.25 and v_ty < v_maxd then
+            v_sx = 32 * (1 + v_tx / v_ty)
+            v_col = int(v_sx)
+            if v_col >= 0 and v_col <= 63 then
+                if v_ty < v_zbuf[v_col] then
+                    v_scell = int(v_spy[v_k]) * v_w + int(v_spx[v_k])
+                    v_s = v_sc / v_ty
+                    v_base = v_hz - (v_fh[v_scell] - v_ez) * v_s
+                    v_si = max(1 - v_ty / v_maxd, 0) * v_lt[v_scell] * 100
+                    if v_spt[v_k] == 1 then
+                        # barrel
+                        v_bw = max(v_s * 0.36, 1)
+                        v_bh = max(v_s * 0.5, 1)
+                        draw_rectangle(v_sx - v_bw / 2, v_base - v_bh, v_bw, v_bh, olive, v_si * 0.9, true)
+                        draw_rectangle(v_sx - v_bw / 2, v_base - v_bh * 0.72, v_bw, max(v_bh * 0.1, 1), dark_gray, v_si, true)
+                        draw_rectangle(v_sx - v_bw / 2, v_base - v_bh * 0.32, v_bw, max(v_bh * 0.1, 1), dark_gray, v_si, true)
+                        draw_rectangle(v_sx - v_bw / 2, v_base - v_bh, v_bw, max(v_bh * 0.08, 1), lime, v_si, true)
+                    else
+                        # torch: pole and a flickering flame
+                        v_top = v_base - v_s * 0.75
+                        draw_line(v_sx, v_base, v_sx, v_top, dark_gray, v_si)
+                        v_fl = 0.8 + sin(v_t * 0.9 + v_k * 3) * 0.2
+                        v_fr = max(v_s * 0.07, 1)
+                        draw_circle(v_sx, v_top - v_fr, v_fr * 1.6, orange, 55 * v_fl, true)
+                        draw_circle(v_sx, v_top - v_fr, v_fr, yellow, 100 * v_fl, true)
+                    endif
+                endif
+            endif
+        endif
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1 / v_pace
+    call move_camera
+    begin_frame
+        call render
+        call draw_sprites
+    end_frame
+endwhile

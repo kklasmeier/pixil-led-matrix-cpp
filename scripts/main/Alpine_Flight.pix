@@ -1,0 +1,529 @@
+# Alpine Flight - a low flight over snowy mountains, from day into night
+#
+# You glide over an endless range of snow-covered peaks, pine forests
+# dusted with snow, frozen lakes and little mountain cabins. The day turns:
+# a blue sky gives way to a sunset that lights the snow pink, then night
+# falls, the snow glows blue under the moon, cabin windows light up, stars
+# come out and the northern lights ripple across the sky, until dawn
+# brings the day back. Snow showers drift through now and then.
+#
+# How it is built:
+#   - A "voxel space" renderer: one ray per screen column marches away from
+#     the camera, and each terrain sample that rises above what is already
+#     drawn becomes a vertical span.
+#   - The world is a tileable height map made from sums of waves, sharpened
+#     into peaks. Each cell gets a kind (ice, snow, pine, rock, cabin) and a
+#     light level from its slope.
+#   - The time of day sets the sky colours (spectral hues blended between
+#     day, sunset, night and dawn) and picks the colour and brightness of
+#     each kind of ground. Distant ground fades into the colour of the sky.
+#   - Falling snow is a cloud of flakes in 3D around the camera, so you fly
+#     through it.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_map = 128                 # height map size (wraps)
+v_sea = 20                  # lakes below this height (frozen)
+v_horizon = 22              # screen row of the horizon in level flight
+v_proj = 32                 # projection scale (bigger = taller mountains)
+v_fov = 0.62                # half field of view, radians
+v_zmax = 120                # draw distance in map cells
+v_speed = 0.5 / v_pace      # cells per frame
+v_clearance = 24            # height kept above the terrain ahead
+v_daylen = 7000 * v_pace / 1.7   # frames for one full day
+
+# ---------------- World ----------------
+create_array(v_h, v_map * v_map, numeric)
+create_array(v_cid, v_map * v_map, numeric)   # 0 ice, 1 snow, 2 pine, 3 rock, 4 cabin
+create_array(v_lit, v_map * v_map, numeric)
+
+print("Raising the mountains...")
+v_waves = 14
+create_array(v_wfx, v_waves, numeric)
+create_array(v_wfy, v_waves, numeric)
+create_array(v_wph, v_waves, numeric)
+create_array(v_wam, v_waves, numeric)
+for v_k in (0, v_waves - 1, 1)
+    v_f = 1 + int(v_k / 3)
+    v_wfx[v_k] = random(0 - v_f, v_f, 0)
+    v_wfy[v_k] = random(0 - v_f, v_f, 0)
+    if v_wfx[v_k] == 0 and v_wfy[v_k] == 0 then
+        v_wfx[v_k] = v_f
+    endif
+    v_wph[v_k] = random(0, 628, 0) / 100
+    v_wam[v_k] = 1 / (v_f * 1.1)
+endfor v_k
+v_two_pi_n = 6.283185 / v_map
+v_hmin = 999
+v_hmax = -999
+for v_y in (0, v_map - 1, 1)
+    for v_x in (0, v_map - 1, 1)
+        v_s = 0
+        v_r = 0
+        for v_k in (0, v_waves - 1, 1)
+            v_w = sin((v_wfx[v_k] * v_x + v_wfy[v_k] * v_y) * v_two_pi_n + v_wph[v_k])
+            v_s = v_s + v_w * v_wam[v_k]
+            v_r = v_r + (1 - abs(v_w)) * v_wam[v_k]
+        endfor v_k
+        v_val = v_s + v_r * 0.75
+        v_h[v_y * v_map + v_x] = v_val
+        v_hmin = min(v_hmin, v_val)
+        v_hmax = max(v_hmax, v_val)
+    endfor v_x
+endfor v_y
+v_span = v_hmax - v_hmin
+for v_i in (0, v_map * v_map - 1, 1)
+    v_h[v_i] = pow((v_h[v_i] - v_hmin) / v_span, 1.5) * 100
+endfor v_i
+
+for v_y in (0, v_map - 1, 1)
+    for v_x in (0, v_map - 1, 1)
+        v_i = v_y * v_map + v_x
+        v_hv = v_h[v_i]
+        v_west = v_h[v_y * v_map + (v_x + v_map - 1) % v_map]
+        v_north = v_h[((v_y + v_map - 1) % v_map) * v_map + v_x]
+        v_slope = (v_west - v_hv) * 0.9 + (v_north - v_hv) * 0.4
+        v_lit[v_i] = min(max(0.65 - v_slope * 0.1, 0.25), 1)
+        v_steep = abs(v_west - v_hv) + abs(v_north - v_hv)
+        if v_hv < v_sea then
+            v_cid[v_i] = 0
+            v_lit[v_i] = 0.6 + ((v_x * 7 + v_y * 3) % 5) * 0.05
+            v_h[v_i] = v_sea
+        elseif v_hv < 28 then
+            v_cid[v_i] = 1
+            if random(0, 999, 0) < 15 then
+                v_cid[v_i] = 4
+                v_h[v_i] = v_hv + 1.5
+            elseif random(0, 99, 0) < 12 then
+                v_cid[v_i] = 2
+                v_h[v_i] = v_hv + 1.5
+            endif
+        elseif v_hv < 50 then
+            # snowy pine forest: trees poke up between patches of snow
+            if random(0, 999, 0) < 6 then
+                v_cid[v_i] = 4
+                v_h[v_i] = v_hv + 1.5
+            elseif random(0, 99, 0) < 55 then
+                v_cid[v_i] = 2
+                v_h[v_i] = v_hv + 1.8
+            else
+                v_cid[v_i] = 1
+            endif
+        elseif v_hv < 64 then
+            if v_steep > 3.2 then
+                v_cid[v_i] = 3
+            else
+                v_cid[v_i] = 1
+            endif
+        else
+            v_cid[v_i] = 1
+            if v_steep > 6 then
+                v_cid[v_i] = 3
+            endif
+        endif
+    endfor v_x
+endfor v_y
+
+# ---------------- Sky keyframes ----------------
+# 6 bands from the top of the sky to the horizon. Hues are spectral numbers
+# (they may run past 99; they wrap round the colour wheel when drawn).
+v_bands = 6
+create_array(v_btop, v_bands, numeric)
+v_btop[0] = -99
+v_btop[1] = -26
+v_btop[2] = -17
+v_btop[3] = -10
+v_btop[4] = -5
+v_btop[5] = -2
+# keyframes: 0 day, 1 sunset, 2 night, 3 dawn; hue and intensity per band
+create_array(v_kh, 24, numeric)
+create_array(v_ki, 24, numeric)
+def set_key {
+    v_kh[v_kf * 6 + v_kb] = v_khue
+    v_ki[v_kf * 6 + v_kb] = v_kint
+}
+# day: deep blue overhead to pale cyan at the horizon
+for v_kb in (0, 5, 1)
+    v_kf = 0
+    v_khue = 60 - v_kb * 2
+    v_kint = 45 + v_kb * 5
+    call set_key
+    # sunset: indigo, purple, magenta, red, orange
+    v_kf = 1
+    v_khue = 68 + v_kb * 8
+    v_kint = 30 + v_kb * 9
+    call set_key
+    # night: very dark blue
+    v_kf = 2
+    v_khue = 65 - v_kb * 0.5
+    v_kint = 5 + v_kb * 1.2
+    call set_key
+    # dawn: violet into rose and gold
+    v_kf = 3
+    v_khue = 74 + v_kb * 7
+    v_kint = 22 + v_kb * 8
+    call set_key
+endfor v_kb
+create_array(v_shue, v_bands, numeric)
+create_array(v_sint, v_bands, numeric)
+
+# ground palette for the current time of day: colour and brightness per kind
+create_array(v_pc, 5, string)
+create_array(v_pm, 5, numeric)
+
+# stars and northern lights are fixed bearings in the world
+v_stars = 34
+create_array(v_star_a, v_stars, numeric)
+create_array(v_star_y, v_stars, numeric)
+create_array(v_star_i, v_stars, numeric)
+for v_k in (0, v_stars - 1, 1)
+    v_star_a[v_k] = random(0, 628, 0) / 100
+    v_star_y[v_k] = random(12, 34, 0)
+    v_star_i[v_k] = random(25, 75, 0)
+endfor v_k
+
+# snow flakes around the camera (camera space: side, up, ahead)
+v_nflake = 70
+create_array(v_sfx, v_nflake, numeric)
+create_array(v_sfy, v_nflake, numeric)
+create_array(v_sfz, v_nflake, numeric)
+for v_k in (0, v_nflake - 1, 1)
+    v_sfx[v_k] = random(-100, 100, 0) / 10
+    v_sfy[v_k] = random(-60, 60, 0) / 10
+    v_sfz[v_k] = random(5, 140, 0) / 10
+endfor v_k
+
+# ---------------- Camera ----------------
+v_cx = random(0, 127, 0)
+v_cy = random(0, 127, 0)
+v_ang = random(0, 628, 0) / 100
+v_cam_h = 60
+v_turn = 0
+v_roll = 0
+v_t = 0
+v_tod = 0.12                 # time of day 0-1 (0 = morning)
+v_sun_ang = v_ang + 0.3      # the sun sets ahead of where we start
+v_moon_ang = v_ang + 2.6
+
+create_array(v_ybuf, 64, numeric)
+create_array(v_rdx, 64, numeric)
+create_array(v_rdy, 64, numeric)
+create_array(v_rofs, 64, numeric)
+
+def height_at {
+    v_qi = (int(v_qy) % v_map) * v_map + (int(v_qx) % v_map)
+    v_qh = v_h[v_qi]
+}
+
+def autopilot {
+    v_t = v_t + 1.7 / v_pace
+    v_turn = (sin(v_t * 0.0061) * 0.010 + sin(v_t * 0.0173 + 1.3) * 0.006) * 1.7 / v_pace
+    v_ang = v_ang + v_turn
+    v_roll = v_roll + (v_turn * 26 * v_pace / 1.7 - v_roll) * 0.05
+    v_fx = cos(v_ang)
+    v_fy = sin(v_ang)
+    v_cx = v_cx + v_fx * v_speed
+    v_cy = v_cy + v_fy * v_speed
+    v_cx = v_cx - floor(v_cx / v_map) * v_map
+    v_cy = v_cy - floor(v_cy / v_map) * v_map
+    v_ahead = 0
+    for v_d in (2, 38, 4)
+        v_qx = v_cx + v_fx * v_d + v_map * 4
+        v_qy = v_cy + v_fy * v_d + v_map * 4
+        call height_at
+        v_ahead = max(v_ahead, v_qh - v_d * 0.2)
+    endfor v_d
+    v_cam_h = v_cam_h + (v_ahead + v_clearance - v_cam_h) * 0.04
+}
+
+# ---------------- Time of day ----------------
+def smoothstep {
+    v_ss = min(max((v_sx0 - v_se0) / (v_se1 - v_se0), 0), 1)
+    v_ss = v_ss * v_ss * (3 - 2 * v_ss)
+}
+
+def time_of_day {
+    v_tod = v_tod + 1 / v_daylen
+    if v_tod >= 1 then
+        v_tod = v_tod - 1
+    endif
+    # pick the two keyframes around now and blend between them
+    # day 0.00-0.36, to sunset 0.46, to night 0.58-0.80, to dawn 0.90, to day 1.0
+    if v_tod < 0.36 then
+        v_ka = 0
+        v_kb2 = 0
+        v_kw = 0
+    elseif v_tod < 0.46 then
+        v_ka = 0
+        v_kb2 = 1
+        v_sx0 = v_tod
+        v_se0 = 0.36
+        v_se1 = 0.46
+        call smoothstep
+        v_kw = v_ss
+    elseif v_tod < 0.58 then
+        v_ka = 1
+        v_kb2 = 2
+        v_sx0 = v_tod
+        v_se0 = 0.46
+        v_se1 = 0.58
+        call smoothstep
+        v_kw = v_ss
+    elseif v_tod < 0.8 then
+        v_ka = 2
+        v_kb2 = 2
+        v_kw = 0
+    elseif v_tod < 0.9 then
+        v_ka = 2
+        v_kb2 = 3
+        v_sx0 = v_tod
+        v_se0 = 0.8
+        v_se1 = 0.9
+        call smoothstep
+        v_kw = v_ss
+    else
+        v_ka = 3
+        v_kb2 = 0
+        v_sx0 = v_tod
+        v_se0 = 0.9
+        v_se1 = 1.0
+        call smoothstep
+        v_kw = v_ss
+    endif
+    for v_b in (0, v_bands - 1, 1)
+        v_h0 = v_kh[v_ka * 6 + v_b]
+        v_h1 = v_kh[v_kb2 * 6 + v_b]
+        v_shue[v_b] = v_h0 + (v_h1 - v_h0) * v_kw
+        v_sint[v_b] = v_ki[v_ka * 6 + v_b] + (v_ki[v_kb2 * 6 + v_b] - v_ki[v_ka * 6 + v_b]) * v_kw
+    endfor v_b
+    # daylight 0-1, glow (sunset / dawn) 0-1, night 0-1
+    v_sx0 = v_tod
+    v_se0 = 0.36
+    v_se1 = 0.56
+    call smoothstep
+    v_day = 1 - v_ss
+    if v_tod > 0.8 then
+        v_sx0 = v_tod
+        v_se0 = 0.82
+        v_se1 = 0.98
+        call smoothstep
+        v_day = v_ss
+    endif
+    v_glow = max(1 - abs(v_tod - 0.47) / 0.07, 0) + max(1 - abs(v_tod - 0.89) / 0.06, 0)
+    v_night = min(max((0.35 - v_day) / 0.3, 0), 1)
+    # ground colours for this moment
+    if v_night > 0.5 then
+        v_pc[1] = "sky_blue"
+        v_pm[1] = 0.45
+        v_pc[0] = "navy"
+        v_pm[0] = 0.9
+        v_pc[2] = "teal"
+        v_pm[2] = 0.12
+        v_pc[3] = "gray"
+        v_pm[3] = 0.22
+        v_pc[4] = "gold"
+        v_pm[4] = 0.95
+        v_lamps = 1
+    else
+        v_pc[1] = "white"
+        v_pm[1] = 0.2 + v_day * 0.8
+        if v_glow > 0.35 then
+            v_pc[1] = "pink"
+            v_pm[1] = 0.45 + v_glow * 0.4
+        endif
+        v_pc[0] = "azure"
+        v_pm[0] = 0.15 + v_day * 0.5
+        v_pc[2] = "forest_green"
+        v_pm[2] = 0.08 + v_day * 0.5
+        v_pc[3] = "gray"
+        v_pm[3] = 0.15 + v_day * 0.55
+        v_pc[4] = "wood_brown"
+        v_pm[4] = 0.2 + v_day * 0.6
+        v_lamps = 0
+        if v_day < 0.45 then
+            v_pc[4] = "gold"
+            v_pm[4] = 0.9
+            v_lamps = 1
+        endif
+    endif
+}
+
+# ---------------- Drawing ----------------
+def setup_rays {
+    for v_i in (0, 63, 1)
+        v_a = v_ang + (v_i - 31.5) / 31.5 * v_fov
+        v_rdx[v_i] = cos(v_a)
+        v_rdy[v_i] = sin(v_a)
+        v_rofs[v_i] = (v_i - 31.5) * v_roll
+    endfor v_i
+}
+
+def bearing_to_screen {
+    # world bearing v_ba -> screen column v_bsx, visible flag v_bvis
+    v_rel = v_ba - v_ang
+    v_rel = v_rel - 6.283185 * floor((v_rel + 3.141593) / 6.283185)
+    v_bvis = 0
+    if abs(v_rel) < v_fov + 0.15 then
+        v_bvis = 1
+    endif
+    v_bsx = 31.5 + v_rel / v_fov * 31.5
+}
+
+def draw_sky {
+    for v_i in (0, 63, 1)
+        v_base = v_horizon + v_rofs[v_i]
+        for v_b in (0, v_bands - 1, 1)
+            v_y0 = max(v_base + v_btop[v_b], 0)
+            if v_b < v_bands - 1 then
+                v_y1 = min(v_base + v_btop[v_b + 1] - 1, 63)
+            else
+                v_y1 = 63
+            endif
+            if v_y1 >= v_y0 then
+                draw_line(v_i, v_y0, v_i, v_y1, int(v_shue[v_b]) % 100, v_sint[v_b])
+            endif
+        endfor v_b
+    endfor v_i
+    # stars
+    if v_night > 0.3 then
+        for v_k in (0, v_stars - 1, 1)
+            v_ba = v_star_a[v_k]
+            call bearing_to_screen
+            if v_bvis == 1 then
+                v_sy = v_horizon - v_star_y[v_k] + (v_bsx - 31.5) * v_roll
+                if v_sy >= 0 and v_bsx >= 0 and v_bsx <= 63 then
+                    mplot(v_bsx, v_sy, white, v_star_i[v_k] * v_night * (0.75 + sin(v_t * 0.08 + v_k * 1.7) * 0.25))
+                endif
+            endif
+        endfor v_k
+        # northern lights: rippling green curtains with violet tops
+        for v_i in (0, 63, 1)
+            v_a = v_ang + (v_i - 31.5) / 31.5 * v_fov
+            v_cur = sin(v_a * 3 + v_t * 0.004) * 0.5 + sin(v_a * 7 - v_t * 0.009) * 0.5
+            if v_cur > 0 then
+                v_ab = v_horizon - 9 - sin(v_a * 5 + v_t * 0.012) * 3 + v_rofs[v_i]
+                v_al = 4 + v_cur * 9
+                v_ai = v_cur * 55 * (v_night - 0.3) / 0.7 * (0.55 + 0.45 * sin(v_a * 40 + v_t * 0.03))
+                draw_line(v_i, v_ab - v_al, v_i, v_ab, spring_green, v_ai)
+                draw_line(v_i, v_ab - v_al - 3, v_i, v_ab - v_al - 1, violet, v_ai * 0.3)
+            endif
+        endfor v_i
+        # moon
+        v_ba = v_moon_ang
+        call bearing_to_screen
+        if v_bvis == 1 then
+            v_sy = v_horizon - 24 + (v_bsx - 31.5) * v_roll
+            draw_circle(v_bsx, v_sy, 3, light_gray, 80 * v_night, true)
+            draw_circle(v_bsx + 1, v_sy - 1, 1, gray, 60 * v_night, true)
+        endif
+    endif
+    # sun: high in the day, setting toward the horizon, rising again at dawn
+    if v_day > 0.05 then
+        v_ba = v_sun_ang
+        call bearing_to_screen
+        if v_bvis == 1 then
+            if v_tod < 0.6 then
+                v_el = max(0.5 - v_tod, -0.05) * 60
+            else
+                v_el = (v_tod - 1) * 60 + 2
+            endif
+            v_sy = v_horizon - v_el + (v_bsx - 31.5) * v_roll
+            if v_sy > -6 then
+                draw_circle(v_bsx, v_sy, 5, orange, 30 * v_day + 10, true)
+                draw_circle(v_bsx, v_sy, 3, gold, 80, true)
+                draw_circle(v_bsx, v_sy, 1.5, yellow, 100, true)
+            endif
+        endif
+    endif
+}
+
+def draw_terrain {
+    v_hz_hue = int(v_shue[v_bands - 1]) % 100
+    v_hz_int = v_sint[v_bands - 1]
+    for v_i in (0, 63, 1)
+        v_dx = v_rdx[v_i]
+        v_dy = v_rdy[v_i]
+        v_ofs = v_rofs[v_i] + v_horizon
+        v_top = 64
+        v_z = 1.5
+        v_dz = 0.6
+        while v_z < v_zmax and v_top > 0 then
+            v_mx = int(v_cx + v_dx * v_z + v_map * 8) % v_map
+            v_my = int(v_cy + v_dy * v_z + v_map * 8) % v_map
+            v_ci = v_my * v_map + v_mx
+            v_sy = int((v_cam_h - v_h[v_ci]) / v_z * v_proj + v_ofs)
+            if v_sy < v_top then
+                v_fog = 1 - v_z / v_zmax
+                v_col = v_cid[v_ci]
+                if v_fog < 0.4 then
+                    # far ridges fade into the colour of the sky at the horizon
+                    v_cc = v_hz_hue
+                    v_inten = v_hz_int * (0.55 + v_fog) * (0.6 + v_lit[v_ci] * 0.4)
+                else
+                    v_cc = v_pc[v_col]
+                    if v_col == 4 and v_lamps == 1 then
+                        v_inten = 90 * v_fog
+                    else
+                        v_inten = v_lit[v_ci] * v_fog * v_pm[v_col] * 100
+                    endif
+                endif
+                if v_inten >= 2 then
+                    draw_line(v_i, max(v_sy, 0), v_i, v_top - 1, v_cc, min(v_inten, 100))
+                endif
+                v_top = v_sy
+            endif
+            v_z = v_z + v_dz
+            v_dz = v_dz * 1.045
+        endwhile
+    endfor v_i
+}
+
+def draw_snow {
+    # snow showers come and go
+    v_amt = max(sin(v_t * 0.0011 + 2), 0)
+    v_nact = int(v_nflake * v_amt)
+    if v_night > 0.5 then
+        v_flc = "light_gray"
+        v_fli = 45
+    else
+        v_flc = "white"
+        v_fli = 50 + v_day * 40
+    endif
+    for v_k in (0, v_nflake - 1, 1)
+        # flakes rush toward you, fall and drift with the turn
+        v_sfz[v_k] = v_sfz[v_k] - v_speed * 0.9
+        v_sfy[v_k] = v_sfy[v_k] - 0.04 * 1.7 / v_pace
+        v_sfx[v_k] = v_sfx[v_k] - v_turn * v_sfz[v_k] * 1.5 + sin(v_t * 0.03 + v_k) * 0.01
+        if v_sfz[v_k] < 0.6 or v_sfy[v_k] < -7 then
+            v_sfx[v_k] = random(-100, 100, 0) / 10
+            v_sfy[v_k] = random(-30, 70, 0) / 10
+            v_sfz[v_k] = random(60, 140, 0) / 10
+        endif
+        if v_k < v_nact then
+            v_fsx = 31.5 + v_sfx[v_k] / v_sfz[v_k] * 30
+            v_fsy = v_horizon + 8 - v_sfy[v_k] / v_sfz[v_k] * 30 + (v_fsx - 31.5) * v_roll
+            if v_fsx >= 0 and v_fsx <= 63 and v_fsy >= 0 and v_fsy <= 63 then
+                if v_sfz[v_k] < 2.5 then
+                    draw_line(v_fsx, v_fsy, v_fsx + 1, v_fsy, v_flc, v_fli)
+                else
+                    mplot(v_fsx, v_fsy, v_flc, v_fli * min(1, 4 / v_sfz[v_k]))
+                endif
+            endif
+        endif
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call autopilot
+    call time_of_day
+    call setup_rays
+    begin_frame
+        call draw_sky
+        call draw_terrain
+        call draw_snow
+    end_frame
+endwhile

@@ -1,0 +1,349 @@
+# Plains Storm - a thunderstorm rolling across open prairie
+#
+# Heavy storm clouds churn and drift across a wide prairie. Wind sweeps the
+# tall grass in waves and bends a lone tree, rain slants down in gusts, and
+# grey curtains of rain hang under the clouds in the distance. Lightning
+# forks down to the ground with branching bolts, flickers again, and lights
+# up the whole sky and land; other flashes glow inside the clouds. A small
+# farmhouse with a lit window and a barn sit out on the plain. The storm
+# builds, peaks and eases off, over and over.
+#
+# How it is built:
+#   - The clouds are a wide strip of smooth noise made at start and slid
+#     across the sky, drawn row by row as runs of equal shade.
+#   - Bolts are made by splitting a line again and again and nudging each
+#     new midpoint sideways, with a branch or two split off the same way.
+#   - One flash value brightens every part of the scene together.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_hz = 40                 # horizon row
+v_cw = 192                # cloud strip width (wraps)
+v_ch = 34                 # cloud strip height (rows 0 .. ch-1)
+
+# ---------------- Clouds ----------------
+create_array(v_cl, v_cw * v_ch, numeric)    # shade 0-7
+create_array(v_grid, 25 * 9, numeric)
+print("Building the storm...")
+def add_noise {
+    for v_i in (0, (v_gw + 1) * (v_gh + 1) - 1, 1)
+        v_grid[v_i] = random(0, 1000, 0) / 1000
+    endfor v_i
+    for v_y in (0, v_ch - 1, 1)
+        v_gy = v_y * v_gh / v_ch
+        v_iy = int(v_gy)
+        v_fy = v_gy - v_iy
+        v_fy = v_fy * v_fy * (3 - 2 * v_fy)
+        for v_x in (0, v_cw - 1, 1)
+            v_gx = v_x * v_gw / v_cw
+            v_ix = int(v_gx)
+            v_fx = v_gx - v_ix
+            v_fx = v_fx * v_fx * (3 - 2 * v_fx)
+            v_ix2 = (v_ix + 1) % v_gw
+            v_a = v_grid[v_iy * (v_gw + 1) + v_ix]
+            v_b = v_grid[v_iy * (v_gw + 1) + v_ix2]
+            v_c = v_grid[(v_iy + 1) * (v_gw + 1) + v_ix]
+            v_d = v_grid[(v_iy + 1) * (v_gw + 1) + v_ix2]
+            v_top = v_a + (v_b - v_a) * v_fx
+            v_bot = v_c + (v_d - v_c) * v_fx
+            v_cl[v_y * v_cw + v_x] = v_cl[v_y * v_cw + v_x] + (v_top + (v_bot - v_top) * v_fy) * v_amp
+        endfor v_x
+    endfor v_y
+}
+for v_i in (0, v_cw * v_ch - 1, 1)
+    v_cl[v_i] = 0
+endfor v_i
+v_gw = 6
+v_gh = 2
+v_amp = 1
+call add_noise
+v_gw = 12
+v_gh = 4
+v_amp = 0.5
+call add_noise
+v_gw = 24
+v_gh = 8
+v_amp = 0.3
+call add_noise
+# turn into shades: darker toward the base, with lumpy billows
+for v_y in (0, v_ch - 1, 1)
+    for v_x in (0, v_cw - 1, 1)
+        v_i = v_y * v_cw + v_x
+        v_n = v_cl[v_i] / 1.8
+        v_s = v_n * 5 + (v_y / v_ch) * 2.2 - 0.6
+        v_cl[v_i] = min(max(int(v_s), 0), 7)
+    endfor v_x
+endfor v_y
+create_array(v_shi, 8, numeric)
+v_shi[0] = 7
+v_shi[1] = 10
+v_shi[2] = 14
+v_shi[3] = 18
+v_shi[4] = 23
+v_shi[5] = 28
+v_shi[6] = 34
+v_shi[7] = 40
+
+# ---------------- Scene state ----------------
+v_t = 0
+v_scroll = 0
+v_flash = 0               # 0-1, brightens everything
+v_storm = 0.5             # 0 calm - 1 at its height
+v_wind = 0
+
+# lightning bolt: 17 points on the main stroke, up to 2 branches of 9
+create_array(v_bx, 17, numeric)
+create_array(v_by, 17, numeric)
+create_array(v_brx, 18, numeric)
+create_array(v_bry, 18, numeric)
+v_bolt_t = -1
+v_bolt_clock = 120
+v_cloudflash_clock = 60
+
+def split_line {
+    # midpoint displacement over v_bxs/v_bys arrays (in v_bx/v_by), v_npt points
+    v_stepn = v_npt - 1
+    v_disp = v_d0
+    while v_stepn > 1 then
+        v_half = v_stepn / 2
+        for v_i in (0, v_npt - 2, v_stepn)
+            v_m = v_i + v_half
+            v_bx[v_m] = (v_bx[v_i] + v_bx[v_i + v_stepn]) / 2 + random(-100, 100, 0) / 100 * v_disp
+            v_by[v_m] = (v_by[v_i] + v_by[v_i + v_stepn]) / 2 + random(-30, 30, 0) / 100 * v_disp
+        endfor v_i
+        v_stepn = v_half
+        v_disp = v_disp * 0.55
+    endwhile
+}
+
+def new_bolt {
+    v_x0 = random(6, 57, 0)
+    v_x1 = v_x0 + random(-14, 14, 0)
+    v_npt = 17
+    v_bx[0] = v_x0
+    v_by[0] = random(3, 12, 0)
+    v_bx[16] = min(max(v_x1, 2), 61)
+    v_by[16] = v_hz + random(0, 6, 0)
+    v_d0 = 11
+    call split_line
+    # branches: copy a stretch of the main stroke's start and send it sideways
+    v_nbr = random(0, 2, 0)
+    for v_b in (0, v_nbr - 1, 1)
+        v_s0 = random(3, 9, 0)
+        v_brx[v_b * 9] = v_bx[v_s0]
+        v_bry[v_b * 9] = v_by[v_s0]
+        v_dir = random(0, 1, 0) * 2 - 1
+        v_len = random(6, 13, 0)
+        for v_j in (1, 8, 1)
+            v_brx[v_b * 9 + v_j] = v_brx[v_b * 9 + v_j - 1] + v_dir * v_len / 8 + random(-10, 10, 0) / 10
+            v_bry[v_b * 9 + v_j] = v_bry[v_b * 9 + v_j - 1] + v_len / 10 + random(0, 10, 0) / 10
+        endfor v_j
+    endfor v_b
+    v_bolt_t = 0
+}
+
+# rain
+v_nrain = 70
+create_array(v_rx, v_nrain, numeric)
+create_array(v_ry, v_nrain, numeric)
+create_array(v_rs, v_nrain, numeric)
+for v_i in (0, v_nrain - 1, 1)
+    v_rx[v_i] = random(-10, 73, 0)
+    v_ry[v_i] = random(0, 63, 0)
+    v_rs[v_i] = random(15, 25, 0) / 10
+endfor v_i
+
+# grass blades
+v_ngr = 40
+create_array(v_gx, v_ngr, numeric)
+create_array(v_gy, v_ngr, numeric)
+create_array(v_gh2, v_ngr, numeric)
+for v_i in (0, v_ngr - 1, 1)
+    v_gx[v_i] = random(0, 63, 0)
+    v_gy[v_i] = random(v_hz + 6, 63, 0)
+    v_gh2[v_i] = 2 + (v_gy[v_i] - v_hz) * 0.12
+endfor v_i
+
+# ---------------- Drawing ----------------
+def lit {
+    # base brightness v_b0 -> v_li with the flash added
+    v_li = min(v_b0 * (1 + v_flash * 2.6) + v_flash * 12, 100)
+}
+
+def draw_clouds {
+    v_off = int(v_scroll)
+    v_dark = 1.15 - v_storm * 0.35
+    for v_y in (0, v_ch - 1, 1)
+        v_ra = v_y * v_cw
+        v_runs = -1
+        v_runx = 0
+        for v_x in (0, 64, 1)
+            if v_x < 64 then
+                v_sh = v_cl[v_ra + (v_x + v_off) % v_cw]
+            else
+                v_sh = -2
+            endif
+            if v_sh != v_runs then
+                if v_runs >= 0 then
+                    v_b0 = v_shi[v_runs] * v_dark
+                    call lit
+                    if v_flash > 0.35 then
+                        draw_line(v_runx, v_y, v_x - 1, v_y, light_gray, v_li)
+                    else
+                        draw_line(v_runx, v_y, v_x - 1, v_y, gray, v_li)
+                    endif
+                endif
+                v_runs = v_sh
+                v_runx = v_x
+            endif
+        endfor v_x
+    endfor v_y
+    # a pale band of distant clearer sky above the horizon
+    for v_y in (v_ch, v_hz - 1, 1)
+        v_b0 = 14 + (v_y - v_ch) * 2.2
+        call lit
+        draw_line(0, v_y, 63, v_y, tan, v_li)
+    endfor v_y
+    # curtains of rain hanging under the clouds far away
+    for v_c in (0, 3, 1)
+        v_cx = (v_c * 23 + 12 - v_scroll * 0.6) % 92 - 14
+        v_cwid = 5 + v_c % 3 * 2
+        for v_x in (int(v_cx), int(v_cx + v_cwid), 2)
+            if v_x >= 0 and v_x <= 63 then
+                v_b0 = 7 + v_storm * 5
+                call lit
+                draw_line(v_x, v_ch - 3, v_x + 2, v_hz - 1, gray, v_li)
+            endif
+        endfor v_x
+    endfor v_c
+}
+
+def draw_land {
+    for v_y in (v_hz, 63, 1)
+        v_b0 = 10 + (v_y - v_hz) * 0.9
+        call lit
+        draw_line(0, v_y, 63, v_y, olive, v_li)
+    endfor v_y
+    # waves of wind across the grass
+    for v_y in (v_hz + 2, 63, 3)
+        for v_x in (0, 63, 4)
+            v_wv = sin(v_x * 0.12 - v_t * 0.06 * (0.5 + v_storm) + v_y * 0.4)
+            if v_wv > 0.55 then
+                v_b0 = 16 + (v_y - v_hz) * 0.8
+                call lit
+                draw_line(v_x, v_y, v_x + 3, v_y, tan, v_li)
+            endif
+        endfor v_x
+    endfor v_y
+    # blades leaning with the wind
+    for v_i in (0, v_ngr - 1, 1)
+        v_lean = (v_wind * 0.8 + sin(v_t * 0.1 + v_gx[v_i] * 0.3) * 0.4) * v_gh2[v_i] * 0.5
+        v_b0 = 14 + (v_gy[v_i] - v_hz) * 0.7
+        call lit
+        draw_line(v_gx[v_i], v_gy[v_i], v_gx[v_i] + v_lean, v_gy[v_i] - v_gh2[v_i], green, v_li * 0.8)
+    endfor v_i
+}
+
+def draw_buildings {
+    # farmhouse and barn on the plain, a fence, and a lone tree
+    v_b0 = 12
+    call lit
+    draw_rectangle(40, v_hz - 3, 6, 4, dark_brown, v_li * 1.3, true)
+    for v_r in (0, 2, 1)
+        draw_line(39 + v_r, v_hz - 4 - v_r, 46 - v_r, v_hz - 4 - v_r, gray, v_li * 1.2)
+    endfor v_r
+    mplot(42, v_hz - 2, gold, 75 + sin(v_t * 0.2) * 10)
+    draw_rectangle(49, v_hz - 4, 7, 5, maroon, v_li * 2, true)
+    draw_line(48, v_hz - 4, 52, v_hz - 7, maroon, v_li * 2)
+    draw_line(52, v_hz - 7, 56, v_hz - 4, maroon, v_li * 2)
+    for v_fx in (2, 34, 4)
+        draw_line(v_fx, v_hz + 4, v_fx, v_hz + 6, wood_brown, v_li * 1.5)
+    endfor v_fx
+    draw_line(2, v_hz + 4, 34, v_hz + 4, wood_brown, v_li)
+    # the tree bends with the gusts
+    v_bend = v_wind * 1.6
+    draw_line(16, v_hz + 2, 16 + v_bend * 0.4, v_hz - 6, dark_brown, v_li * 2)
+    draw_circle(16 + v_bend, v_hz - 8, 4, forest_green, v_li * 1.1, true)
+    draw_circle(13 + v_bend * 0.8, v_hz - 6, 3, forest_green, v_li * 1.0, true)
+    draw_circle(19 + v_bend * 1.1, v_hz - 6, 3, forest_green, v_li * 0.9, true)
+}
+
+def draw_bolt {
+    if v_bolt_t >= 0 then
+        v_bolt_t = v_bolt_t + v_k
+        # main strike, a flicker, then a restrike
+        v_on = 0
+        if v_bolt_t < 4 or (v_bolt_t > 6 and v_bolt_t < 9) or (v_bolt_t > 12 and v_bolt_t < 14) then
+            v_on = 1
+        endif
+        if v_on == 1 then
+            v_flash = max(v_flash, 0.9)
+            for v_i in (0, 15, 1)
+                draw_line(v_bx[v_i] + 1, v_by[v_i], v_bx[v_i + 1] + 1, v_by[v_i + 1], azure, 30)
+                draw_line(v_bx[v_i], v_by[v_i], v_bx[v_i + 1], v_by[v_i + 1], white, 100)
+            endfor v_i
+            for v_b in (0, v_nbr - 1, 1)
+                for v_j in (0, 7, 1)
+                    draw_line(v_brx[v_b * 9 + v_j], v_bry[v_b * 9 + v_j], v_brx[v_b * 9 + v_j + 1], v_bry[v_b * 9 + v_j + 1], azure, 60)
+                endfor v_j
+            endfor v_b
+            # glow where it strikes
+            draw_circle(v_bx[16], v_by[16], 2, white, 60, true)
+        endif
+        if v_bolt_t > 16 then
+            v_bolt_t = -1
+        endif
+    endif
+}
+
+def draw_rain {
+    v_rc = 22 + v_storm * 12
+    v_nact = int(v_nrain * (0.25 + v_storm * 0.75))
+    for v_i in (0, v_nrain - 1, 1)
+        v_ry[v_i] = v_ry[v_i] + v_rs[v_i] * v_k
+        v_rx[v_i] = v_rx[v_i] + v_wind * 0.6 * v_k
+        if v_ry[v_i] > 63 then
+            v_ry[v_i] = random(-6, 0, 0)
+            v_rx[v_i] = random(-12, 75, 0)
+        endif
+        if v_i < v_nact then
+            v_b0 = v_rc
+            call lit
+            draw_line(v_rx[v_i], v_ry[v_i], v_rx[v_i] - v_wind * 0.8, v_ry[v_i] - 3, light_gray, v_li * 0.8)
+        endif
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + v_k
+    # the storm builds and eases over a couple of minutes
+    v_storm = min(max(0.55 + sin(v_t * 0.0025) * 0.4 + sin(v_t * 0.0071) * 0.15, 0), 1)
+    v_wind = 1.2 + sin(v_t * 0.013) * 0.8 + sin(v_t * 0.041) * 0.4 + v_storm * 0.8
+    v_scroll = v_scroll + (0.04 + v_storm * 0.04) * v_k
+    if v_scroll >= v_cw then
+        v_scroll = v_scroll - v_cw
+    endif
+    v_flash = max(v_flash - 0.12 * v_k, 0)
+    # lightning: ground strikes and flashes inside the clouds
+    v_bolt_clock = v_bolt_clock - v_k * (0.3 + v_storm)
+    if v_bolt_clock <= 0 and v_bolt_t < 0 then
+        call new_bolt
+        v_bolt_clock = random(90, 360, 0)
+    endif
+    v_cloudflash_clock = v_cloudflash_clock - v_k * (0.3 + v_storm)
+    if v_cloudflash_clock <= 0 then
+        v_flash = max(v_flash, random(25, 55, 0) / 100)
+        v_cloudflash_clock = random(50, 200, 0)
+    endif
+    begin_frame
+        call draw_clouds
+        call draw_land
+        call draw_buildings
+        call draw_bolt
+        call draw_rain
+    end_frame
+endwhile

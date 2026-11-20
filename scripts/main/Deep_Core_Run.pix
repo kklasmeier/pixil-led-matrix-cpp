@@ -1,0 +1,800 @@
+# Deep Core Run - a six-degrees-of-freedom flight through twisting mine shafts
+#
+# You pilot a small ship down an endless procedurally generated mine. The
+# shaft bends, climbs, dives and corkscrews; it opens into wider chambers and
+# changes character as you go deeper (rusty mine, blue tech corridors, toxic
+# green labs). Ceiling lights stream past, blast doors slide open as you
+# approach, and hovering guard drones are locked onto and destroyed with
+# twin lasers.
+#
+# How it is built:
+#   - The shaft is a chain of rings. Each new ring is placed by turning a
+#     travelling frame (forward, right, up) by small yaw, pitch and roll
+#     amounts, so the tunnel twists freely in 3D.
+#   - Each ring is an eight-sided cross-section (a square with bevelled
+#     corners). Every pair of rings makes eight wall panels.
+#   - Panels are clipped at the near plane, projected and filled with a
+#     scanline fill, drawn from far to near so nearer walls cover farther
+#     ones. Panels facing away are skipped.
+#   - Fog darkens distant panels to black, so the shaft fades into darkness.
+#   - The camera rides between rings with smoothing, banks into turns and
+#     weaves inside the shaft.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_speed = 0.115 / v_pace    # rings travelled per frame
+v_seglen = 3.0              # distance between rings
+v_nring = 17                # rings kept ahead of the camera
+v_focal = 34
+v_near = 0.25
+v_fogz = 38                 # panels fade to black by this distance
+v_half = 2.3                # half-size of the shaft cross-section
+v_maxdr = 8                 # drones alive at once
+
+# ---------------- Cross-section (unit square with bevelled corners) -------
+create_array(v_sx8, 8, numeric)
+create_array(v_sy8, 8, numeric)
+v_c = 0.45
+v_sx8[0] = v_c
+v_sy8[0] = 1
+v_sx8[1] = 1
+v_sy8[1] = v_c
+v_sx8[2] = 1
+v_sy8[2] = 0 - v_c
+v_sx8[3] = v_c
+v_sy8[3] = -1
+v_sx8[4] = 0 - v_c
+v_sy8[4] = -1
+v_sx8[5] = -1
+v_sy8[5] = 0 - v_c
+v_sx8[6] = -1
+v_sy8[6] = v_c
+v_sx8[7] = 0 - v_c
+v_sy8[7] = 1
+# panel k joins corner k and k+1:
+# 7 ceiling, 1 right wall, 3 floor, 5 left wall, the rest are bevels
+create_array(v_flit, 8, numeric)
+v_flit[0] = 0.75
+v_flit[1] = 0.9
+v_flit[2] = 0.6
+v_flit[3] = 0.55
+v_flit[4] = 0.6
+v_flit[5] = 0.9
+v_flit[6] = 0.75
+v_flit[7] = 0.45
+
+# ---------------- Themes ----------------
+# per theme: 8 panel colours, then edge colour, light colour, door colour
+create_array(v_tcol, 33, string)
+def theme_colors {
+    # rusty mine
+    v_tcol[0] = "tan"
+    v_tcol[1] = "wood_brown"
+    v_tcol[2] = "bronze"
+    v_tcol[3] = "dark_brown"
+    v_tcol[4] = "bronze"
+    v_tcol[5] = "wood_brown"
+    v_tcol[6] = "tan"
+    v_tcol[7] = "standard_brown"
+    # blue tech
+    v_tcol[8] = "silver"
+    v_tcol[9] = "gray"
+    v_tcol[10] = "royal_blue"
+    v_tcol[11] = "dark_gray"
+    v_tcol[12] = "royal_blue"
+    v_tcol[13] = "gray"
+    v_tcol[14] = "silver"
+    v_tcol[15] = "navy"
+    # toxic lab
+    v_tcol[16] = "olive"
+    v_tcol[17] = "forest_green"
+    v_tcol[18] = "teal"
+    v_tcol[19] = "dark_gray"
+    v_tcol[20] = "teal"
+    v_tcol[21] = "forest_green"
+    v_tcol[22] = "olive"
+    v_tcol[23] = "dark_gray"
+    # edge / light / door per theme
+    v_tcol[24] = "orange"
+    v_tcol[25] = "yellow"
+    v_tcol[26] = "gray"
+    v_tcol[27] = "cyan"
+    v_tcol[28] = "azure"
+    v_tcol[29] = "silver"
+    v_tcol[30] = "lime"
+    v_tcol[31] = "spring_green"
+    v_tcol[32] = "olive"
+}
+call theme_colors
+create_array(v_tbr, 3, numeric)
+v_tbr[0] = 1
+v_tbr[1] = 0.95
+v_tbr[2] = 0.6
+
+# ---------------- Ring storage (ring buffer) ----------------
+create_array(v_rcx, v_nring, numeric)
+create_array(v_rcy, v_nring, numeric)
+create_array(v_rcz, v_nring, numeric)
+create_array(v_rrx, v_nring, numeric)
+create_array(v_rry, v_nring, numeric)
+create_array(v_rrz, v_nring, numeric)
+create_array(v_rux, v_nring, numeric)
+create_array(v_ruy, v_nring, numeric)
+create_array(v_ruz, v_nring, numeric)
+create_array(v_rtx, v_nring, numeric)
+create_array(v_rty, v_nring, numeric)
+create_array(v_rtz, v_nring, numeric)
+create_array(v_rw, v_nring, numeric)       # size of this ring
+create_array(v_rth, v_nring, numeric)      # theme
+create_array(v_rlt, v_nring, numeric)      # 1 = ceiling light, 2 = flickering
+create_array(v_rdr, v_nring, numeric)      # 1 = blast door at this ring
+# camera-space corners of every ring
+create_array(v_vx, v_nring * 8, numeric)
+create_array(v_vy, v_nring * 8, numeric)
+create_array(v_vz, v_nring * 8, numeric)
+create_array(v_rcz2, v_nring, numeric)     # camera-space depth of ring centre
+
+# travelling frame for generating the shaft
+v_hx = 0
+v_hy = 0
+v_hz = 0
+v_tx = 0
+v_ty = 0
+v_tz = 1
+v_qrx = 1
+v_qry = 0
+v_qrz = 0
+v_qux = 0
+v_quy = 1
+v_quz = 0
+v_yaw = 0
+v_pitch = 0
+v_roll = 0
+v_yawt = 0
+v_pitcht = 0
+v_rollt = 0
+v_wcur = 1
+v_wtgt = 1
+v_theme = 0
+v_gen = 0
+
+# ---------------- Drones ----------------
+create_array(v_dst, v_maxdr, numeric)     # 0 free, 1 alive, 2 exploding
+create_array(v_dring, v_maxdr, numeric)
+create_array(v_dox, v_maxdr, numeric)
+create_array(v_doy, v_maxdr, numeric)
+create_array(v_dtm, v_maxdr, numeric)
+for v_k in (0, v_maxdr - 1, 1)
+    v_dst[v_k] = 0
+endfor v_k
+
+def add_drone {
+    v_slot = -1
+    for v_k in (0, v_maxdr - 1, 1)
+        if v_slot < 0 and v_dst[v_k] == 0 then
+            v_slot = v_k
+        endif
+    endfor v_k
+    if v_slot >= 0 then
+        v_dst[v_slot] = 1
+        v_dring[v_slot] = v_gen
+        v_dox[v_slot] = random(-55, 55, 0) / 100
+        v_doy[v_slot] = random(-45, 45, 0) / 100
+        v_dtm[v_slot] = random(0, 628, 0) / 100
+    endif
+}
+
+def gen_ring {
+    v_g = v_gen % v_nring
+    # new turn targets every so often
+    if v_gen % 12 == 0 then
+        v_yawt = random(-18, 18, 0) / 100
+        v_pitcht = random(-12, 12, 0) / 100
+        v_rollt = random(-8, 8, 0) / 100
+        if random(0, 99, 0) < 25 then
+            v_yawt = 0
+            v_pitcht = 0
+        endif
+    endif
+    v_yaw = v_yaw + (v_yawt - v_yaw) * 0.18
+    v_pitch = v_pitch + (v_pitcht - v_pitch) * 0.18
+    v_roll = v_roll + (v_rollt - v_roll) * 0.18
+    # yaw: turn forward toward right
+    v_ca = cos(v_yaw)
+    v_sa = sin(v_yaw)
+    v_ax = v_tx * v_ca + v_qrx * v_sa
+    v_ay = v_ty * v_ca + v_qry * v_sa
+    v_az = v_tz * v_ca + v_qrz * v_sa
+    v_qrx = v_qrx * v_ca - v_tx * v_sa
+    v_qry = v_qry * v_ca - v_ty * v_sa
+    v_qrz = v_qrz * v_ca - v_tz * v_sa
+    v_tx = v_ax
+    v_ty = v_ay
+    v_tz = v_az
+    # pitch: turn forward toward up
+    v_ca = cos(v_pitch)
+    v_sa = sin(v_pitch)
+    v_ax = v_tx * v_ca + v_qux * v_sa
+    v_ay = v_ty * v_ca + v_quy * v_sa
+    v_az = v_tz * v_ca + v_quz * v_sa
+    v_qux = v_qux * v_ca - v_tx * v_sa
+    v_quy = v_quy * v_ca - v_ty * v_sa
+    v_quz = v_quz * v_ca - v_tz * v_sa
+    v_tx = v_ax
+    v_ty = v_ay
+    v_tz = v_az
+    # roll: twist right toward up
+    v_ca = cos(v_roll)
+    v_sa = sin(v_roll)
+    v_ax = v_qrx * v_ca + v_qux * v_sa
+    v_ay = v_qry * v_ca + v_quy * v_sa
+    v_az = v_qrz * v_ca + v_quz * v_sa
+    v_qux = v_qux * v_ca - v_qrx * v_sa
+    v_quy = v_quy * v_ca - v_qry * v_sa
+    v_quz = v_quz * v_ca - v_qrz * v_sa
+    v_qrx = v_ax
+    v_qry = v_ay
+    v_qrz = v_az
+    # keep the frame square: normalise forward, straighten right, up = forward x right
+    v_l = sqrt(v_tx * v_tx + v_ty * v_ty + v_tz * v_tz)
+    v_tx = v_tx / v_l
+    v_ty = v_ty / v_l
+    v_tz = v_tz / v_l
+    v_d = v_qrx * v_tx + v_qry * v_ty + v_qrz * v_tz
+    v_qrx = v_qrx - v_d * v_tx
+    v_qry = v_qry - v_d * v_ty
+    v_qrz = v_qrz - v_d * v_tz
+    v_l = sqrt(v_qrx * v_qrx + v_qry * v_qry + v_qrz * v_qrz)
+    v_qrx = v_qrx / v_l
+    v_qry = v_qry / v_l
+    v_qrz = v_qrz / v_l
+    v_qux = v_ty * v_qrz - v_tz * v_qry
+    v_quy = v_tz * v_qrx - v_tx * v_qrz
+    v_quz = v_tx * v_qry - v_ty * v_qrx
+    # advance the head
+    v_hx = v_hx + v_tx * v_seglen
+    v_hy = v_hy + v_ty * v_seglen
+    v_hz = v_hz + v_tz * v_seglen
+    # chambers: the shaft widens now and then
+    if v_gen % 34 == 20 then
+        v_wtgt = 1.75
+    endif
+    if v_gen % 34 == 26 then
+        v_wtgt = 1
+    endif
+    v_wcur = v_wcur + (v_wtgt - v_wcur) * 0.4
+    # deeper sections change character
+    if v_gen % 44 == 0 and v_gen > 0 then
+        v_theme = (v_theme + 1 + random(0, 1, 0)) % 3
+    endif
+    v_rcx[v_g] = v_hx
+    v_rcy[v_g] = v_hy
+    v_rcz[v_g] = v_hz
+    v_rrx[v_g] = v_qrx
+    v_rry[v_g] = v_qry
+    v_rrz[v_g] = v_qrz
+    v_rux[v_g] = v_qux
+    v_ruy[v_g] = v_quy
+    v_ruz[v_g] = v_quz
+    v_rtx[v_g] = v_tx
+    v_rty[v_g] = v_ty
+    v_rtz[v_g] = v_tz
+    v_rw[v_g] = v_wcur * v_half
+    v_rth[v_g] = v_theme
+    v_rlt[v_g] = 0
+    if v_gen % 3 == 0 then
+        v_rlt[v_g] = 1
+        if random(0, 99, 0) < 15 then
+            v_rlt[v_g] = 2
+        endif
+    endif
+    v_rdr[v_g] = 0
+    if v_gen % 25 == 0 and v_gen > 14 then
+        v_rdr[v_g] = 1
+    elseif v_gen > 8 and random(0, 99, 0) < 13 then
+        call add_drone
+    endif
+    v_gen = v_gen + 1
+}
+
+# ---------------- Camera ----------------
+v_s = 2.0
+v_cfx = 0
+v_cfy = 0
+v_cfz = 1
+v_cux = 0
+v_cuy = 1
+v_cuz = 0
+v_bank = 0
+v_t = 0
+
+# world (v_wx, v_wy, v_wz) -> camera space (v_cx, v_cy, v_cz)
+def to_cam {
+    v_dx = v_wx - v_ex
+    v_dy = v_wy - v_ey
+    v_dz = v_wz - v_ez
+    v_cx = v_dx * v_rx + v_dy * v_ry + v_dz * v_rz
+    v_cy = v_dx * v_ux + v_dy * v_uy + v_dz * v_uz
+    v_cz = v_dx * v_fx + v_dy * v_fy + v_dz * v_fz
+}
+
+def place_camera {
+    v_i0 = floor(v_s)
+    v_f = v_s - v_i0
+    v_a = v_i0 % v_nring
+    v_b = (v_i0 + 1) % v_nring
+    # weave inside the shaft
+    v_wv = v_rw[v_a] + (v_rw[v_b] - v_rw[v_a]) * v_f
+    v_ox = sin(v_t * 0.021) * 0.38 * v_wv
+    v_oy = sin(v_t * 0.013 + 1) * 0.28 * v_wv - 0.1 * v_wv
+    v_ex = v_rcx[v_a] + (v_rcx[v_b] - v_rcx[v_a]) * v_f
+    v_ey = v_rcy[v_a] + (v_rcy[v_b] - v_rcy[v_a]) * v_f
+    v_ez = v_rcz[v_a] + (v_rcz[v_b] - v_rcz[v_a]) * v_f
+    v_ex = v_ex + v_rrx[v_a] * v_ox + v_rux[v_a] * v_oy
+    v_ey = v_ey + v_rry[v_a] * v_ox + v_ruy[v_a] * v_oy
+    v_ez = v_ez + v_rrz[v_a] * v_ox + v_ruz[v_a] * v_oy
+    # aim a little ahead along the shaft, smoothed
+    v_c = (v_i0 + 2) % v_nring
+    v_gx = v_rtx[v_b] + (v_rtx[v_c] - v_rtx[v_b]) * v_f
+    v_gy = v_rty[v_b] + (v_rty[v_c] - v_rty[v_b]) * v_f
+    v_gz = v_rtz[v_b] + (v_rtz[v_c] - v_rtz[v_b]) * v_f
+    v_hux = v_rux[v_b] + (v_rux[v_c] - v_rux[v_b]) * v_f
+    v_huy = v_ruy[v_b] + (v_ruy[v_c] - v_ruy[v_b]) * v_f
+    v_huz = v_ruz[v_b] + (v_ruz[v_c] - v_ruz[v_b]) * v_f
+    v_sm = 0.2 * 1.7 / v_pace
+    v_cfx = v_cfx + (v_gx - v_cfx) * v_sm
+    v_cfy = v_cfy + (v_gy - v_cfy) * v_sm
+    v_cfz = v_cfz + (v_gz - v_cfz) * v_sm
+    v_cux = v_cux + (v_hux - v_cux) * v_sm
+    v_cuy = v_cuy + (v_huy - v_cuy) * v_sm
+    v_cuz = v_cuz + (v_huz - v_cuz) * v_sm
+    # build an orthonormal camera frame
+    v_l = sqrt(v_cfx * v_cfx + v_cfy * v_cfy + v_cfz * v_cfz)
+    v_fx = v_cfx / v_l
+    v_fy = v_cfy / v_l
+    v_fz = v_cfz / v_l
+    # right = up x forward
+    v_rx = v_cuy * v_fz - v_cuz * v_fy
+    v_ry = v_cuz * v_fx - v_cux * v_fz
+    v_rz = v_cux * v_fy - v_cuy * v_fx
+    v_l = sqrt(v_rx * v_rx + v_ry * v_ry + v_rz * v_rz)
+    v_rx = v_rx / v_l
+    v_ry = v_ry / v_l
+    v_rz = v_rz / v_l
+    # bank into turns: roll the camera with the sideways weave and turn rate
+    v_bt = 0 - cos(v_t * 0.021) * 0.35 - v_yaw * 2
+    v_bank = v_bank + (v_bt - v_bank) * 0.05
+    v_ux = v_fy * v_rz - v_fz * v_ry
+    v_uy = v_fz * v_rx - v_fx * v_rz
+    v_uz = v_fx * v_ry - v_fy * v_rx
+    v_ca = cos(v_bank)
+    v_sa = sin(v_bank)
+    v_ax = v_rx * v_ca + v_ux * v_sa
+    v_ay = v_ry * v_ca + v_uy * v_sa
+    v_az = v_rz * v_ca + v_uz * v_sa
+    v_ux = v_ux * v_ca - v_rx * v_sa
+    v_uy = v_uy * v_ca - v_ry * v_sa
+    v_uz = v_uz * v_ca - v_rz * v_sa
+    v_rx = v_ax
+    v_ry = v_ay
+    v_rz = v_az
+}
+
+def transform_rings {
+    for v_j in (v_i0, v_i0 + v_nring - 2, 1)
+        v_g = v_j % v_nring
+        v_w = v_rw[v_g]
+        for v_k in (0, 7, 1)
+            v_wx = v_rcx[v_g] + (v_rrx[v_g] * v_sx8[v_k] + v_rux[v_g] * v_sy8[v_k]) * v_w
+            v_wy = v_rcy[v_g] + (v_rry[v_g] * v_sx8[v_k] + v_ruy[v_g] * v_sy8[v_k]) * v_w
+            v_wz = v_rcz[v_g] + (v_rrz[v_g] * v_sx8[v_k] + v_ruz[v_g] * v_sy8[v_k]) * v_w
+            call to_cam
+            v_vx[v_g * 8 + v_k] = v_cx
+            v_vy[v_g * 8 + v_k] = v_cy
+            v_vz[v_g * 8 + v_k] = v_cz
+        endfor v_k
+        v_wx = v_rcx[v_g]
+        v_wy = v_rcy[v_g]
+        v_wz = v_rcz[v_g]
+        call to_cam
+        v_rcz2[v_g] = v_cz
+    endfor v_j
+}
+
+# ---------------- Polygon filling ----------------
+# convex polygon in v_px/v_py (v_no points): walk each edge into per-row
+# left/right limits, then draw one line per row
+create_array(v_rowl, 64, numeric)
+create_array(v_rowr, 64, numeric)
+def fill_poly {
+    v_ymn = 99
+    v_ymx = -99
+    for v_k in (0, v_no - 1, 1)
+        v_ymn = min(v_ymn, v_py[v_k])
+        v_ymx = max(v_ymx, v_py[v_k])
+    endfor v_k
+    v_ya = max(int(v_ymn + 0.5), 0)
+    v_yb = min(int(v_ymx + 0.5), 63)
+    if v_ya <= v_yb then
+        for v_yy in (v_ya, v_yb, 1)
+            v_rowl[v_yy] = 999
+            v_rowr[v_yy] = -999
+        endfor v_yy
+        for v_k in (0, v_no - 1, 1)
+            v_k2 = (v_k + 1) % v_no
+            v_x0 = v_px[v_k]
+            v_y0 = v_py[v_k]
+            v_x1 = v_px[v_k2]
+            v_y1 = v_py[v_k2]
+            v_e0 = max(int(min(v_y0, v_y1) + 0.5), v_ya)
+            v_e1 = min(int(max(v_y0, v_y1) + 0.5), v_yb)
+            v_dy = v_y1 - v_y0
+            if abs(v_dy) < 0.0001 then
+                v_dy = 0.0001
+            endif
+            v_sl = (v_x1 - v_x0) / v_dy
+            for v_yy in (v_e0, v_e1, 1)
+                v_xx = v_x0 + v_sl * min(max(v_yy - v_y0, min(0, v_dy)), max(0, v_dy))
+                v_rowl[v_yy] = min(v_rowl[v_yy], v_xx)
+                v_rowr[v_yy] = max(v_rowr[v_yy], v_xx)
+            endfor v_yy
+        endfor v_k
+        for v_yy in (v_ya, v_yb, 1)
+            v_xl = max(int(v_rowl[v_yy] + 0.5), 0)
+            v_xr = min(int(v_rowr[v_yy] + 0.5), 63)
+            if v_xl <= v_xr then
+                draw_line(v_xl, v_yy, v_xr, v_yy, v_tc, v_ti)
+            endif
+        endfor v_yy
+    endif
+}
+
+# quad already in camera space (v_inx/v_iny/v_inz 0-3): clip, cull, fill
+create_array(v_inx, 4, numeric)
+create_array(v_iny, 4, numeric)
+create_array(v_inz, 4, numeric)
+create_array(v_px, 8, numeric)
+create_array(v_py, 8, numeric)
+v_cullsign = -1
+def fill_quad {
+    v_no = 0
+    for v_k in (0, 3, 1)
+        v_k2 = (v_k + 1) % 4
+        v_za = v_inz[v_k]
+        v_zb = v_inz[v_k2]
+        if v_za >= v_near then
+            v_px[v_no] = 31.5 + v_inx[v_k] / v_za * v_focal
+            v_py[v_no] = 31.5 - v_iny[v_k] / v_za * v_focal
+            v_no = v_no + 1
+        endif
+        if (v_za >= v_near) != (v_zb >= v_near) then
+            v_f = (v_near - v_za) / (v_zb - v_za)
+            v_px[v_no] = 31.5 + (v_inx[v_k] + (v_inx[v_k2] - v_inx[v_k]) * v_f) / v_near * v_focal
+            v_py[v_no] = 31.5 - (v_iny[v_k] + (v_iny[v_k2] - v_iny[v_k]) * v_f) / v_near * v_focal
+            v_no = v_no + 1
+        endif
+    endfor v_k
+    if v_no >= 3 then
+        # facing test: signed area of the projected polygon
+        v_area = 0
+        for v_k in (0, v_no - 1, 1)
+            v_k2 = (v_k + 1) % v_no
+            v_area = v_area + v_px[v_k] * v_py[v_k2] - v_px[v_k2] * v_py[v_k]
+        endfor v_k
+        if v_area * v_cullsign > 0 or v_cullsign == 0 then
+            call fill_poly
+        endif
+    endif
+}
+
+# camera-space point on the wall of segment (v_ga -> v_gb): between corners
+# v_ka and v_kb at fraction v_u across, v_v along the shaft
+def wall_point {
+    v_p1 = v_ga * 8 + v_ka
+    v_p2 = v_ga * 8 + v_kb
+    v_p3 = v_gb * 8 + v_ka
+    v_p4 = v_gb * 8 + v_kb
+    v_nx = v_vx[v_p1] + (v_vx[v_p2] - v_vx[v_p1]) * v_u
+    v_ny = v_vy[v_p1] + (v_vy[v_p2] - v_vy[v_p1]) * v_u
+    v_nz = v_vz[v_p1] + (v_vz[v_p2] - v_vz[v_p1]) * v_u
+    v_mx = v_vx[v_p3] + (v_vx[v_p4] - v_vx[v_p3]) * v_u
+    v_my = v_vy[v_p3] + (v_vy[v_p4] - v_vy[v_p3]) * v_u
+    v_mz = v_vz[v_p3] + (v_vz[v_p4] - v_vz[v_p3]) * v_u
+    v_qx = v_nx + (v_mx - v_nx) * v_v
+    v_qy = v_ny + (v_my - v_ny) * v_v
+    v_qz = v_nz + (v_mz - v_nz) * v_v
+}
+
+# ---------------- Drawing the shaft ----------------
+def draw_segment {
+    # segment from ring v_j (slot v_ga) to ring v_j + 1 (slot v_gb)
+    v_zm = (v_rcz2[v_ga] + v_rcz2[v_gb]) * 0.5
+    v_fog = 1 - max(v_zm, 0) / v_fogz
+    if v_fog > 0.03 then
+        v_fog = v_fog * v_fog
+        v_th = v_rth[v_ga] * 8
+        v_lit = 1
+        if v_rlt[v_ga] == 1 then
+            v_lit = 1.25
+        endif
+        if v_rlt[v_ga] == 2 and (v_t * 7 + v_j * 13) % 10 < 4 then
+            v_lit = 1.25
+        endif
+        if v_j % 2 == 0 then
+            v_lit = v_lit * 0.88
+        endif
+        for v_k in (0, 7, 1)
+            v_k2 = (v_k + 1) % 8
+            v_inx[0] = v_vx[v_ga * 8 + v_k]
+            v_iny[0] = v_vy[v_ga * 8 + v_k]
+            v_inz[0] = v_vz[v_ga * 8 + v_k]
+            v_inx[1] = v_vx[v_gb * 8 + v_k]
+            v_iny[1] = v_vy[v_gb * 8 + v_k]
+            v_inz[1] = v_vz[v_gb * 8 + v_k]
+            v_inx[2] = v_vx[v_gb * 8 + v_k2]
+            v_iny[2] = v_vy[v_gb * 8 + v_k2]
+            v_inz[2] = v_vz[v_gb * 8 + v_k2]
+            v_inx[3] = v_vx[v_ga * 8 + v_k2]
+            v_iny[3] = v_vy[v_ga * 8 + v_k2]
+            v_inz[3] = v_vz[v_ga * 8 + v_k2]
+            v_tc = v_tcol[v_th + v_k]
+            v_ti = min(100 * v_flit[v_k] * v_lit * v_fog * v_tbr[v_rth[v_ga]], 100)
+            if v_ti >= 2 then
+                call fill_quad
+            endif
+        endfor v_k
+        # ceiling light strip
+        if v_rlt[v_ga] > 0 and v_lit > 1 then
+            v_ka = 7
+            v_kb = 0
+            v_u = -0.6
+            v_v = 0.1
+            call wall_point
+            v_inx[0] = v_qx
+            v_iny[0] = v_qy
+            v_inz[0] = v_qz
+            v_u = 1.6
+            call wall_point
+            v_inx[1] = v_qx
+            v_iny[1] = v_qy
+            v_inz[1] = v_qz
+            v_v = 0.4
+            call wall_point
+            v_inx[2] = v_qx
+            v_iny[2] = v_qy
+            v_inz[2] = v_qz
+            v_u = -0.6
+            call wall_point
+            v_inx[3] = v_qx
+            v_iny[3] = v_qy
+            v_inz[3] = v_qz
+            v_tc = v_tcol[25 + v_rth[v_ga] * 3]
+            v_ti = min(100 * v_fog + 10, 100)
+            call fill_quad
+        endif
+        # seam where this segment meets the next one
+        if v_fog > 0.12 then
+            v_tc = v_tcol[24 + v_rth[v_gb] * 3]
+            v_ti = 55 * v_fog
+            for v_k in (0, 7, 1)
+                v_p1 = v_gb * 8 + v_k
+                v_p2 = v_gb * 8 + (v_k + 1) % 8
+                if v_vz[v_p1] > v_near and v_vz[v_p2] > v_near then
+                    draw_line(31.5 + v_vx[v_p1] / v_vz[v_p1] * v_focal, 31.5 - v_vy[v_p1] / v_vz[v_p1] * v_focal, 31.5 + v_vx[v_p2] / v_vz[v_p2] * v_focal, 31.5 - v_vy[v_p2] / v_vz[v_p2] * v_focal, v_tc, v_ti)
+                endif
+            endfor v_k
+        endif
+    endif
+}
+
+# blast door at ring v_j + 1 (slot v_gb): two halves slide into floor and ceiling
+def draw_door {
+    v_dd = v_j + 1 - v_s
+    v_open = min(max((3.8 - v_dd) / 2, 0), 1)
+    v_fog = 1 - max(v_rcz2[v_gb], 0) / v_fogz
+    if v_open < 1 and v_fog > 0.03 then
+        v_fog = v_fog * v_fog
+        v_dw = v_rw[v_gb]
+        v_tc = v_tcol[26 + v_rth[v_gb] * 3]
+        for v_h in (0, 1, 1)
+            v_sg = 1 - v_h * 2
+            # half v_h: y from open*w to w (top) or mirrored (bottom)
+            for v_k in (0, 3, 1)
+                if v_k == 0 or v_k == 3 then
+                    v_lx = -1
+                else
+                    v_lx = 1
+                endif
+                if v_k < 2 then
+                    v_ly = v_open * v_sg
+                else
+                    v_ly = (1 + v_open) * v_sg
+                endif
+                v_wx = v_rcx[v_gb] + (v_rrx[v_gb] * v_lx + v_rux[v_gb] * v_ly) * v_dw
+                v_wy = v_rcy[v_gb] + (v_rry[v_gb] * v_lx + v_ruy[v_gb] * v_ly) * v_dw
+                v_wz = v_rcz[v_gb] + (v_rrz[v_gb] * v_lx + v_ruz[v_gb] * v_ly) * v_dw
+                call to_cam
+                v_inx[v_k] = v_cx
+                v_iny[v_k] = v_cy
+                v_inz[v_k] = v_cz
+            endfor v_k
+            v_ti = 70 * v_fog
+            v_cs = v_cullsign
+            v_cullsign = 0
+            call fill_quad
+            v_cullsign = v_cs
+            # hazard stripe along the meeting edge
+            if v_inz[0] > v_near and v_inz[1] > v_near then
+                v_x0 = 31.5 + v_inx[0] / v_inz[0] * v_focal
+                v_y0 = 31.5 - v_iny[0] / v_inz[0] * v_focal
+                v_x1 = 31.5 + v_inx[1] / v_inz[1] * v_focal
+                v_y1 = 31.5 - v_iny[1] / v_inz[1] * v_focal
+                if v_open < 0.05 then
+                    draw_line(v_x0, v_y0, v_x1, v_y1, red, 90 * v_fog + 10)
+                else
+                    draw_line(v_x0, v_y0, v_x1, v_y1, gold, 90 * v_fog + 10)
+                endif
+            endif
+        endfor v_h
+    endif
+}
+
+# drones that live in segment v_j
+def draw_drones {
+    for v_q in (0, v_maxdr - 1, 1)
+        if v_dst[v_q] > 0 and v_dring[v_q] == v_j then
+            call drone_pos
+            if v_cz > v_near * 2 then
+                v_dsx = 31.5 + v_cx / v_cz * v_focal
+                v_dsy = 31.5 - v_cy / v_cz * v_focal
+                v_dr = 0.42 * v_focal / v_cz
+                v_dfog = max(1 - v_cz / v_fogz, 0.15)
+                if v_dst[v_q] == 1 then
+                    v_bl = v_t * 0.35 + v_q
+                    draw_line(v_dsx - cos(v_bl) * v_dr * 1.7, v_dsy - sin(v_bl) * v_dr * 0.6, v_dsx + cos(v_bl) * v_dr * 1.7, v_dsy + sin(v_bl) * v_dr * 0.6, silver, 70 * v_dfog)
+                    if v_dr >= 1 then
+                        draw_circle(v_dsx, v_dsy, v_dr, dark_gray, 90 * v_dfog, true)
+                        draw_circle(v_dsx, v_dsy, v_dr, gray, 80 * v_dfog, false)
+                    endif
+                    if v_dr * 0.4 >= 1 then
+                        draw_circle(v_dsx, v_dsy, v_dr * 0.4, red, 100, true)
+                    else
+                        mplot(v_dsx, v_dsy, red, 100)
+                    endif
+                else
+                    v_e = v_dtm[v_q] / 26
+                    v_er = v_dr * (0.6 + v_e * 2.6)
+                    if v_er >= 1 then
+                        draw_circle(v_dsx, v_dsy, v_er, orange, 85 * (1 - v_e), true)
+                    endif
+                    if v_er * 0.55 >= 1 then
+                        draw_circle(v_dsx, v_dsy, v_er * 0.55, yellow, 95 * (1 - v_e), true)
+                    endif
+                    if v_e < 0.2 and v_er * 0.3 >= 1 then
+                        draw_circle(v_dsx, v_dsy, v_er * 0.3, white, 100, true)
+                    endif
+                    for v_d in (0, 7, 1)
+                        v_da = v_d * 0.785 + v_q
+                        mplot(v_dsx + cos(v_da) * v_er * 1.5, v_dsy + sin(v_da) * v_er * 1.5, gold, 90 * (1 - v_e))
+                    endfor v_d
+                endif
+            endif
+        endif
+    endfor v_q
+}
+
+def drone_pos {
+    v_g = v_dring[v_q] % v_nring
+    v_g2 = (v_dring[v_q] + 1) % v_nring
+    v_dw = v_rw[v_g]
+    v_bob = sin(v_t * 0.05 + v_dtm[v_q] * 3) * 0.12
+    v_lx = v_dox[v_q] * v_dw
+    v_ly = (v_doy[v_q] + v_bob) * v_dw
+    v_wx = (v_rcx[v_g] + v_rcx[v_g2]) * 0.5 + v_rrx[v_g] * v_lx + v_rux[v_g] * v_ly
+    v_wy = (v_rcy[v_g] + v_rcy[v_g2]) * 0.5 + v_rry[v_g] * v_lx + v_ruy[v_g] * v_ly
+    v_wz = (v_rcz[v_g] + v_rcz[v_g2]) * 0.5 + v_rrz[v_g] * v_lx + v_ruz[v_g] * v_ly
+    call to_cam
+}
+
+# ---------------- Weapons ----------------
+v_fire = 0
+v_lk = -1
+v_score = 0
+v_flash = 0
+
+def weapons {
+    for v_q in (0, v_maxdr - 1, 1)
+        if v_dst[v_q] == 2 then
+            v_dtm[v_q] = v_dtm[v_q] + 1.7 / v_pace
+            if v_dtm[v_q] > 26 then
+                v_dst[v_q] = 0
+            endif
+        endif
+        # drones left behind are recycled
+        if v_dst[v_q] > 0 and v_dring[v_q] < v_i0 - 1 then
+            v_dst[v_q] = 0
+        endif
+    endfor v_q
+    if v_fire > 0 then
+        v_fire = v_fire - 1.7 / v_pace
+        if v_fire <= 0 then
+            if v_dst[v_lk] == 1 then
+                v_dst[v_lk] = 2
+                v_dtm[v_lk] = 0
+                v_score = v_score + 150
+                v_flash = 5
+            endif
+            v_lk = -1
+        endif
+    else
+        # look for a drone ahead and near the centre of view
+        for v_q in (0, v_maxdr - 1, 1)
+            if v_lk < 0 and v_dst[v_q] == 1 then
+                call drone_pos
+                if v_cz > 4 and v_cz < 20 and abs(v_cx) < v_cz * 0.45 and abs(v_cy) < v_cz * 0.45 then
+                    v_lk = v_q
+                    v_fire = 8
+                endif
+            endif
+        endfor v_q
+    endif
+}
+
+def draw_hud {
+    if v_lk >= 0 and v_fire > 0 then
+        v_q = v_lk
+        call drone_pos
+        if v_cz > v_near then
+            v_dsx = 31.5 + v_cx / v_cz * v_focal
+            v_dsy = 31.5 - v_cy / v_cz * v_focal
+            v_lc = "lime"
+            if int(v_fire) % 2 == 0 then
+                v_lc = "spring_green"
+            endif
+            draw_line(6, 63, v_dsx, v_dsy, v_lc, 95)
+            draw_line(57, 63, v_dsx, v_dsy, v_lc, 95)
+            draw_rectangle(v_dsx - 3, v_dsy - 3, 7, 7, red, 80, false)
+        endif
+    endif
+    # reticle
+    draw_line(29, 31, 30, 31, lime, 45)
+    draw_line(33, 31, 34, 31, lime, 45)
+    draw_line(31.5, 28, 31.5, 29, lime, 45)
+    draw_line(31.5, 33, 31.5, 34, lime, 45)
+    if v_flash > 0 then
+        draw_rectangle(0, 0, 64, 64, orange, v_flash * 8, false)
+        v_flash = v_flash - 1
+    endif
+    draw_text(1, 1, "" & v_score, tiny64_font, 5, white, 55)
+}
+
+# ---------------- Main loop ----------------
+while v_gen < v_nring then
+    call gen_ring
+endwhile
+
+while true then
+    v_t = v_t + 1.7 / v_pace
+    v_s = v_s + v_speed
+    while v_gen < floor(v_s) + v_nring - 1 then
+        call gen_ring
+    endwhile
+    call place_camera
+    call transform_rings
+    call weapons
+    begin_frame
+        for v_j in (v_i0 + v_nring - 3, v_i0, -1)
+            v_ga = v_j % v_nring
+            v_gb = (v_j + 1) % v_nring
+            if v_rdr[v_gb] == 1 then
+                call draw_door
+            endif
+            call draw_segment
+            call draw_drones
+        endfor v_j
+        call draw_hud
+    end_frame
+endwhile

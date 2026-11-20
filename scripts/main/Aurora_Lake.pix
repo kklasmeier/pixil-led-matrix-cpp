@@ -1,0 +1,242 @@
+# Aurora Lake - northern lights over a frozen lake in the mountains
+#
+# Curtains of green light fold and ripple across a starry sky, fringed with
+# violet at their tops, brightening and fading as the night goes on.
+# Below, dark mountains ring a frozen lake whose ice faintly mirrors the
+# glow. A cabin on the snowy shore has a warm lit window and a wisp of
+# chimney smoke, pines stand along the shore, the ice glints here and
+# there, and now and then a shooting star streaks over.
+#
+# How it is built:
+#   - Each aurora curtain is a wavy line across the sky. Every column of it
+#     is drawn as a short vertical stack: a bright green lower edge, a
+#     fading green body and a faint violet top. Its height and brightness
+#     ripple with moving waves, which makes the drifting rays.
+#   - The lake reflects the curtains upside down about the shoreline,
+#     dimmed and broken up by the ice.
+#   - Overall aurora activity rises and falls slowly, so some minutes are
+#     quiet and some have bright displays.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_hz = 38                    # shoreline row (the lake starts below it)
+v_shore = 56                 # near shore (snow) starts at this row
+
+# ---------------- Scenery ----------------
+create_array(v_mtn, 64, numeric)        # mountain top row per column
+v_p1 = random(0, 628, 0) / 100
+v_p2 = random(0, 628, 0) / 100
+for v_x in (0, 63, 1)
+    v_m = 5 + sin(v_x * 0.11 + v_p1) * 3 + sin(v_x * 0.27 + v_p2) * 1.5 + abs(sin(v_x * 0.05 + v_p1 * 2)) * 4
+    v_mtn[v_x] = v_hz - max(v_m, 2)
+endfor v_x
+
+v_nstar = 55
+create_array(v_stx, v_nstar, numeric)
+create_array(v_sty, v_nstar, numeric)
+create_array(v_stb, v_nstar, numeric)
+for v_i in (0, v_nstar - 1, 1)
+    v_stx[v_i] = random(0, 63, 0)
+    v_sty[v_i] = random(0, 30, 0)
+    v_stb[v_i] = random(10, 60, 0)
+endfor v_i
+
+v_nglint = 10
+create_array(v_glx, v_nglint, numeric)
+create_array(v_gly, v_nglint, numeric)
+for v_i in (0, v_nglint - 1, 1)
+    v_glx[v_i] = random(2, 61, 0)
+    v_gly[v_i] = random(v_hz + 3, v_shore - 2, 0)
+endfor v_i
+
+# ---------------- Aurora curtains ----------------
+v_ncur = 3
+create_array(v_cbase, v_ncur, numeric)    # typical row of the lower edge
+create_array(v_chgt, v_ncur, numeric)     # typical height
+create_array(v_cph, v_ncur, numeric)
+create_array(v_cbri, v_ncur, numeric)     # brightness of this curtain
+v_cbase[0] = 12
+v_chgt[0] = 9
+v_cbri[0] = 0.45
+v_cbase[1] = 17
+v_chgt[1] = 12
+v_cbri[1] = 0.8
+v_cbase[2] = 21
+v_chgt[2] = 11
+v_cbri[2] = 1.0
+for v_i in (0, v_ncur - 1, 1)
+    v_cph[v_i] = random(0, 628, 0) / 100
+endfor v_i
+
+# lower edge and height of curtain v_c at column v_x, time v_t -> v_ab, v_ah, v_ai
+def curtain_at {
+    v_ph = v_cph[v_c]
+    v_ab = v_cbase[v_c] + sin(v_x * 0.07 + v_t * 0.006 + v_ph) * 5 + sin(v_x * 0.19 - v_t * 0.011 + v_ph * 2) * 2
+    v_ah = v_chgt[v_c] * (0.55 + 0.45 * sin(v_x * 0.045 - v_t * 0.004 + v_ph * 3))
+    # rays drifting along the curtain, and an overall swell
+    v_ray = 0.55 + 0.45 * sin(v_x * 0.85 + v_t * 0.035 + v_ph) * sin(v_x * 0.13 - v_t * 0.012)
+    v_fold = 0.6 + 0.4 * sin(v_x * 0.09 - v_t * 0.007 + v_ph * 1.7)
+    v_ai = v_cbri[v_c] * v_ray * v_fold * v_activity
+}
+
+def draw_sky {
+    for v_y in (0, v_hz, 1)
+        draw_line(0, v_y, 63, v_y, navy, 7 + v_y * 0.3)
+    endfor v_y
+    for v_i in (0, v_nstar - 1, 1)
+        v_b = v_stb[v_i] * (0.7 + sin(v_t * 0.05 + v_i * 2.3) * 0.3) * (1 - v_activity * 0.35)
+        mplot(v_stx[v_i], v_sty[v_i], white, v_b)
+    endfor v_i
+}
+
+def draw_aurora {
+    for v_c in (0, v_ncur - 1, 1)
+        for v_x in (0, 63, 1)
+            call curtain_at
+            if v_ai > 0.05 then
+                v_top = v_ab - v_ah
+                # faint violet fringe on top
+                draw_line(v_x, v_top - v_ah * 0.35, v_x, v_top, 76, min(v_ai * 22, 100))
+                # green body, brightening downwards
+                draw_line(v_x, v_top, v_x, v_ab - 2, 33, min(v_ai * 38, 100))
+                draw_line(v_x, v_ab - 2, v_x, v_ab - 1, 31, min(v_ai * 62, 100))
+                # bright lower edge
+                mplot(v_x, v_ab, spring_green, min(v_ai * 85, 100))
+            endif
+        endfor v_x
+    endfor v_c
+}
+
+def draw_mountains {
+    for v_x in (0, 63, 1)
+        v_top = v_mtn[v_x]
+        draw_line(v_x, v_top, v_x, v_hz, navy, 6)
+        # snow on the peaks, tinted by the aurora glow
+        if v_top < v_hz - 8 and v_top <= v_mtn[max(v_x - 1, 0)] and v_top <= v_mtn[min(v_x + 1, 63)] then
+            draw_line(v_x, v_top, v_x, v_top + 1, light_gray, 14 + v_activity * 14)
+        endif
+    endfor v_x
+}
+
+def draw_lake {
+    # dark ice with the mountains mirrored in it
+    for v_y in (v_hz + 1, v_shore - 1, 1)
+        draw_line(0, v_y, 63, v_y, sky_blue, 7 + (v_y - v_hz) * 0.25 + v_activity * 3)
+    endfor v_y
+    for v_x in (0, 63, 1)
+        v_rd = v_hz - v_mtn[v_x]
+        draw_line(v_x, v_hz + 1, v_x, min(v_hz + v_rd * 0.6, v_shore - 1), navy, 5)
+    endfor v_x
+    # the aurora's reflection, upside down and broken up by the ice
+    for v_c in (1, v_ncur - 1, 1)
+        for v_x in (0, 63, 1)
+            if (v_x * 7 + v_c) % 5 != 0 then
+                call curtain_at
+                if v_ai > 0.1 then
+                    # mirrored about the shoreline, squashed by the low view across the ice
+                    v_ry0 = v_hz + (v_hz - v_ab) * 0.55
+                    v_ry1 = v_ry0 + v_ah * 0.5
+                    if v_ry0 < v_shore - 1 then
+                        draw_line(v_x, max(v_ry0, v_hz + 1), v_x, min(v_ry1, v_shore - 1), 33, min(v_ai * 24, 100))
+                    endif
+                endif
+            endif
+        endfor v_x
+    endfor v_c
+    # cracks in the ice
+    draw_line(8, 47, 19, 49, light_gray, 10)
+    draw_line(19, 49, 25, 48, light_gray, 9)
+    draw_line(37, 52, 50, 50, light_gray, 10)
+    draw_line(44, 44, 52, 45, light_gray, 8)
+    # glints
+    for v_i in (0, v_nglint - 1, 1)
+        v_g = sin(v_t * 0.03 + v_i * 2.1)
+        if v_g > 0.85 then
+            mplot(v_glx[v_i], v_gly[v_i], white, (v_g - 0.85) * 500)
+        endif
+    endfor v_i
+}
+
+def draw_shore {
+    # snowy near shore with soft drifts
+    for v_x in (0, 63, 1)
+        v_sy = v_shore + sin(v_x * 0.2) * 1.2 + sin(v_x * 0.07 + 1) * 1.5
+        draw_line(v_x, v_sy, v_x, 63, light_gray, 26 + v_activity * 10)
+        mplot(v_x, v_sy, white, 36 + v_activity * 12)
+    endfor v_x
+    # pines along the shore
+    for v_p in (0, 4, 1)
+        if v_p < 2 then
+            v_px = 2 + v_p * 6
+            v_ph2 = 16 + v_p * 3
+        else
+            v_px = 47 + (v_p - 2) * 7
+            v_ph2 = 14 + (v_p - 2) * 4
+        endif
+        v_pb = v_shore + 2
+        for v_r in (0, v_ph2, 1)
+            v_w = (v_r / v_ph2) * 4 * (0.7 + ((v_r % 5) / 5) * 0.5)
+            draw_line(v_px - v_w, v_pb - v_ph2 + v_r, v_px + v_w, v_pb - v_ph2 + v_r, black, 100)
+        endfor v_r
+        mplot(v_px, v_pb - v_ph2, mint, 10 + v_activity * 10)
+    endfor v_p
+    # cabin with a lit window and chimney smoke
+    draw_rectangle(18, 52, 9, 6, dark_brown, 30, true)
+    for v_r in (0, 4, 1)
+        draw_line(17 + v_r, 52 - v_r, 27 - v_r, 52 - v_r, light_gray, 30 + v_r * 2)
+    endfor v_r
+    v_wf = 0.85 + sin(v_t * 0.3) * 0.08 + sin(v_t * 0.71) * 0.07
+    draw_rectangle(20, 54, 2, 2, gold, 80 * v_wf, true)
+    draw_rectangle(24, 54, 2, 3, dark_brown, 10, true)
+    draw_line(19, 58, 23, 58, orange, 18 * v_wf)
+    draw_line(25, 47, 25, 49, dark_brown, 40)
+    for v_i in (0, 4, 1)
+        v_sa = (v_t * 0.25 + v_i * 6) % 30
+        v_sx = 25 + v_sa * 0.25 + sin(v_sa * 0.4 + v_i) * 0.8
+        v_sy = 46 - v_sa * 0.5
+        mplot(v_sx, v_sy, light_gray, 18 * (1 - v_sa / 30))
+    endfor v_i
+}
+
+# shooting star
+v_ss_t = -1
+v_ss_clock = 400
+def draw_shooting_star {
+    v_ss_clock = v_ss_clock - v_k
+    if v_ss_clock <= 0 and v_ss_t < 0 then
+        v_ss_t = 0
+        v_ssx = random(10, 50, 0)
+        v_ssy = random(2, 12, 0)
+        v_ssd = random(0, 1, 0) * 2 - 1
+        v_ss_clock = random(600, 1500, 0)
+    endif
+    if v_ss_t >= 0 then
+        v_ss_t = v_ss_t + v_k
+        v_hx = v_ssx + v_ssd * v_ss_t * 1.2
+        v_hy = v_ssy + v_ss_t * 0.5
+        draw_line(v_hx - v_ssd * 5, v_hy - 2, v_hx, v_hy, white, max(40 * (1 - v_ss_t / 22), 0))
+        mplot(v_hx, v_hy, white, 100)
+        if v_ss_t > 22 then
+            v_ss_t = -1
+        endif
+    endif
+}
+
+# ---------------- Main loop ----------------
+v_t = random(0, 2000, 0)
+while true then
+    v_t = v_t + v_k
+    # the display swells and fades over a few minutes
+    v_activity = min(max(0.55 + sin(v_t * 0.0016) * 0.35 + sin(v_t * 0.0047 + 1) * 0.2, 0.15), 1)
+    begin_frame
+        call draw_sky
+        call draw_shooting_star
+        call draw_aurora
+        call draw_mountains
+        call draw_lake
+        call draw_shore
+    end_frame
+endwhile

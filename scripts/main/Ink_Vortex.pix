@@ -1,0 +1,223 @@
+# Ink Vortex - real-time fluid simulation, written entirely in Pixil
+#
+# Three glowing inks swirl and marble through water. This is a full
+# "stable fluids" solver (Jos Stam's method, the one behind most real-time
+# smoke and liquid effects) with no grid_program, field_program or ink_*
+# primitives - just loops and arrays. Every frame:
+#
+#   1. Advection  - every cell traces backward along the flow and picks up
+#                   velocity and ink from where the water came from.
+#   2. Forces     - three jets orbit the tank, pushing water and injecting ink.
+#   3. Vorticity confinement - finds where the water is spinning and adds a
+#                   little extra spin, so swirls curl up instead of smearing out.
+#   4. Projection - a pressure solve removes any compression, which is what
+#                   makes the motion look like a real liquid.
+#   5. Render     - the three inks mix like light (red + blue = magenta,
+#                   blue + green = cyan...) and the 32x32 simulation is
+#                   smoothed up to 64x64 pixels.
+#
+# About 60,000 interpreted statements of physics per frame.
+
+fps(30)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_n = 32                 # simulation cells per side
+v_jet_power = 1.7        # push from each jet (cells per frame)
+v_jet_ink = 7            # ink injected per frame
+v_vort = 0.35            # vorticity confinement strength
+v_fade = 0.982           # ink fade per frame
+v_drag = 0.995           # velocity damping per frame
+v_iters = 3              # pressure solver iterations (over-relaxed)
+v_glow = 24              # brightness scale for ink
+v_hue_speed = 0.06       # how fast the three ink colors drift around the wheel
+
+# ---------------- Grid ----------------
+v_w = v_n + 2            # one-cell wall all around
+v_cells = v_w * v_w
+create_array(v_u, v_cells, numeric)
+create_array(v_v, v_cells, numeric)
+create_array(v_u0, v_cells, numeric)
+create_array(v_v0, v_cells, numeric)
+create_array(v_a1, v_cells, numeric)
+create_array(v_a2, v_cells, numeric)
+create_array(v_a3, v_cells, numeric)
+create_array(v_b1, v_cells, numeric)
+create_array(v_b2, v_cells, numeric)
+create_array(v_b3, v_cells, numeric)
+create_array(v_sum, v_cells, numeric)
+create_array(v_p, v_cells, numeric)
+create_array(v_div, v_cells, numeric)
+create_array(v_curl, v_cells, numeric)
+
+v_t = 0
+v_spin = 1
+v_hue_base = random(0, 99, 0)
+
+# ---------------- Steps ----------------
+
+# Semi-Lagrangian advection: read last frame (u0, v0, b1-b3), write u, v, a1-a3
+def advect {
+    v_hi = v_n + 0.5
+    for v_j in (1, v_n, 1)
+        for v_i in (1, v_n, 1)
+            v_x = v_i + v_j * v_w
+            v_bx = min(max(v_i - v_u0[v_x], 0.5), v_hi)
+            v_by = min(max(v_j - v_v0[v_x], 0.5), v_hi)
+            v_i0 = int(v_bx)
+            v_j0 = int(v_by)
+            v_s1 = v_bx - v_i0
+            v_t1 = v_by - v_j0
+            v_s0 = 1 - v_s1
+            v_t0 = 1 - v_t1
+            v_k = v_i0 + v_j0 * v_w
+            v_k2 = v_k + v_w
+            v_u[v_x] = (v_t0 * (v_s0 * v_u0[v_k] + v_s1 * v_u0[v_k + 1]) + v_t1 * (v_s0 * v_u0[v_k2] + v_s1 * v_u0[v_k2 + 1])) * v_drag
+            v_v[v_x] = (v_t0 * (v_s0 * v_v0[v_k] + v_s1 * v_v0[v_k + 1]) + v_t1 * (v_s0 * v_v0[v_k2] + v_s1 * v_v0[v_k2 + 1])) * v_drag
+            v_a1[v_x] = (v_t0 * (v_s0 * v_b1[v_k] + v_s1 * v_b1[v_k + 1]) + v_t1 * (v_s0 * v_b1[v_k2] + v_s1 * v_b1[v_k2 + 1])) * v_fade
+            v_a2[v_x] = (v_t0 * (v_s0 * v_b2[v_k] + v_s1 * v_b2[v_k + 1]) + v_t1 * (v_s0 * v_b2[v_k2] + v_s1 * v_b2[v_k2 + 1])) * v_fade
+            v_a3[v_x] = (v_t0 * (v_s0 * v_b3[v_k] + v_s1 * v_b3[v_k + 1]) + v_t1 * (v_s0 * v_b3[v_k2] + v_s1 * v_b3[v_k2 + 1])) * v_fade
+        endfor v_i
+    endfor v_j
+}
+
+# One jet: position from its orbit angle, pushes water and adds its own ink
+def jet {
+    # input: v_k (1-3)
+    v_a = v_orbit + v_k * 2.0944
+    v_px = 16.5 + cos(v_a) * 11
+    v_py = 16.5 + sin(v_a) * 11
+    # aim at the center, then twist sideways; wobble over time
+    v_aim = v_a + 3.14159 + 0.75 * v_spin + sin(v_t * 0.046 + v_k * 2) * 0.5
+    v_pulse = 0.65 + sin(v_t * 0.062 + v_k * 1.9) * 0.35
+    v_fx = cos(v_aim) * v_jet_power * v_pulse
+    v_fy = sin(v_aim) * v_jet_power * v_pulse
+    v_ink = v_jet_ink * v_pulse
+    v_ci = int(v_px)
+    v_cj = int(v_py)
+    for v_j in (v_cj - 1, v_cj + 1, 1)
+        for v_i in (v_ci - 1, v_ci + 1, 1)
+            v_x = v_i + v_j * v_w
+            v_u[v_x] = v_u[v_x] * 0.5 + v_fx
+            v_v[v_x] = v_v[v_x] * 0.5 + v_fy
+            if v_k == 1 then
+                v_a1[v_x] = v_a1[v_x] + v_ink
+            elseif v_k == 2 then
+                v_a2[v_x] = v_a2[v_x] + v_ink
+            else
+                v_a3[v_x] = v_a3[v_x] + v_ink
+            endif
+        endfor v_i
+    endfor v_j
+}
+
+def add_forces {
+    v_orbit = v_t * 0.012 * v_spin
+    for v_k in (1, 3, 1)
+        call jet
+    endfor v_k
+}
+
+def vorticity {
+    for v_j in (1, v_n, 1)
+        for v_i in (1, v_n, 1)
+            v_x = v_i + v_j * v_w
+            v_curl[v_x] = (v_v[v_x + 1] - v_v[v_x - 1] - v_u[v_x + v_w] + v_u[v_x - v_w]) * 0.5
+        endfor v_i
+    endfor v_j
+    for v_j in (2, v_n - 1, 1)
+        for v_i in (2, v_n - 1, 1)
+            v_x = v_i + v_j * v_w
+            v_gx = abs(v_curl[v_x + 1]) - abs(v_curl[v_x - 1])
+            v_gy = abs(v_curl[v_x + v_w]) - abs(v_curl[v_x - v_w])
+            v_c = v_curl[v_x] * v_vort / (sqrt(v_gx * v_gx + v_gy * v_gy) + 0.0001)
+            v_u[v_x] = v_u[v_x] + v_gy * v_c
+            v_v[v_x] = v_v[v_x] - v_gx * v_c
+        endfor v_i
+    endfor v_j
+}
+
+# Pressure projection: make the velocity field divergence-free.
+# The final pass also saves the velocity for next frame's advection.
+def project {
+    for v_j in (1, v_n, 1)
+        for v_i in (1, v_n, 1)
+            v_x = v_i + v_j * v_w
+            v_div[v_x] = (v_u[v_x + 1] - v_u[v_x - 1] + v_v[v_x + v_w] - v_v[v_x - v_w]) * -0.5
+        endfor v_i
+    endfor v_j
+    # Gauss-Seidel with over-relaxation (factor 1.7); last frame's pressure is
+    # a good first guess, so a few iterations are enough
+    for v_k in (1, v_iters, 1)
+        for v_j in (1, v_n, 1)
+            for v_i in (1, v_n, 1)
+                v_x = v_i + v_j * v_w
+                v_p[v_x] = v_p[v_x] * -0.7 + (v_div[v_x] + v_p[v_x - 1] + v_p[v_x + 1] + v_p[v_x - v_w] + v_p[v_x + v_w]) * 0.425
+            endfor v_i
+        endfor v_j
+    endfor v_k
+    for v_j in (1, v_n, 1)
+        for v_i in (1, v_n, 1)
+            v_x = v_i + v_j * v_w
+            v_u0[v_x] = v_u[v_x] - (v_p[v_x + 1] - v_p[v_x - 1]) * 0.5
+            v_v0[v_x] = v_v[v_x] - (v_p[v_x + v_w] - v_p[v_x - v_w]) * 0.5
+        endfor v_i
+    endfor v_j
+    # walls stay still: u0/v0 border cells are never written, so they stay 0
+}
+
+# Mix the three inks like light, then draw each cell as a smoothed 2x2 block.
+# Also saves the ink for next frame's advection.
+def render {
+    v_h1 = v_hue_base + v_t * v_hue_speed
+    v_c1 = cos(v_h1 * 0.0628319)
+    v_s1 = sin(v_h1 * 0.0628319)
+    v_c2 = cos((v_h1 + 33.3) * 0.0628319)
+    v_s2 = sin((v_h1 + 33.3) * 0.0628319)
+    v_c3 = cos((v_h1 + 66.7) * 0.0628319)
+    v_s3 = sin((v_h1 + 66.7) * 0.0628319)
+    for v_j in (1, v_n, 1)
+        for v_i in (1, v_n, 1)
+            v_x = v_i + v_j * v_w
+            v_b1[v_x] = v_a1[v_x]
+            v_b2[v_x] = v_a2[v_x]
+            v_b3[v_x] = v_a3[v_x]
+            v_sum[v_x] = v_a1[v_x] + v_a2[v_x] + v_a3[v_x]
+        endfor v_i
+    endfor v_j
+    for v_j in (1, v_n, 1)
+        v_py = v_j * 2 - 2
+        for v_i in (1, v_n, 1)
+            v_x = v_i + v_j * v_w
+            v_c = v_sum[v_x]
+            if v_c > 0.02 then
+                v_hx = v_a1[v_x] * v_c1 + v_a2[v_x] * v_c2 + v_a3[v_x] * v_c3
+                v_hy = v_a1[v_x] * v_s1 + v_a2[v_x] * v_s2 + v_a3[v_x] * v_s3
+                v_hue = (atan2(v_hy, v_hx) * 15.91549 + 100) % 100
+                v_px = v_i * 2 - 2
+                v_r = v_sum[v_x + 1]
+                v_dn = v_sum[v_x + v_w]
+                mplot(v_px, v_py, v_hue, min(sqrt(v_c) * v_glow, 100))
+                mplot(v_px + 1, v_py, v_hue, min(sqrt((v_c + v_r) * 0.5) * v_glow, 100))
+                mplot(v_px, v_py + 1, v_hue, min(sqrt((v_c + v_dn) * 0.5) * v_glow, 100))
+                mplot(v_px + 1, v_py + 1, v_hue, min(sqrt((v_c + v_r + v_dn + v_sum[v_x + v_w + 1]) * 0.25) * v_glow, 100))
+            endif
+        endfor v_i
+    endfor v_j
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1
+    # every ~25 seconds the jets reverse and the whole tank turns the other way
+    if v_t % 750 == 0 then
+        v_spin = 0 - v_spin
+    endif
+    call advect
+    call add_forces
+    call vorticity
+    call project
+    begin_frame
+        call render
+    end_frame
+endwhile

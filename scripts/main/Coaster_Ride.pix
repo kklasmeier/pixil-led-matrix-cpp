@@ -1,0 +1,708 @@
+# Coaster Ride - a first-person rollercoaster through the countryside
+#
+# You ride in the front seat. The train leaves the station, clanks up the
+# lift hill, hangs at the crest, then plunges into a random run of
+# elements: vertical loops, banked turns, airtime camelback hills,
+# corkscrew rolls and helixes, before braking back to a stop. Halfway round, a
+# second lift hill tops the train up for the rest of the run. Every ride
+# is a new layout.
+#
+# How it is built:
+#   - The track is a list of points one unit apart. Each point has a
+#     heading, pitch and bank; the elements are built by changing these
+#     steadily over a run of points (a loop is the pitch going all the way
+#     round).
+#   - Speed comes from energy: the train is pulled up the lift hill at a
+#     steady crawl, then speeds up as it falls and slows as it climbs, with
+#     a little friction.
+#   - You see from just above the rails, looking along the track and tilted
+#     with it, so you go upside down in loops and lean into turns.
+#   - Sky and ground are split along the true horizon, which tilts and flips
+#     with the camera. The ground grid, trees, track and supports are 3D
+#     lines clipped at the near plane.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_focal = 30
+v_near = 0.3
+v_view = 70            # draw track and scenery out to this distance
+v_maxp = 2000          # most track points in one layout
+
+create_array(v_px, v_maxp, numeric)
+create_array(v_py, v_maxp, numeric)
+create_array(v_pz, v_maxp, numeric)
+create_array(v_ph, v_maxp, numeric)    # heading
+create_array(v_pp, v_maxp, numeric)    # pitch
+create_array(v_pb, v_maxp, numeric)    # bank
+create_array(v_pk, v_maxp, numeric)    # 0 normal, 1 lift chain, 2 brakes, 3 station
+v_np = 0
+
+# ---------------- Track building ----------------
+v_gx = 0
+v_gy = 2
+v_gz = 0
+v_gh = 0
+v_gp = 0
+v_gb = 0
+v_gk = 0
+
+def add_point {
+    if v_np < v_maxp then
+        v_px[v_np] = v_gx
+        v_py[v_np] = v_gy
+        v_pz[v_np] = v_gz
+        v_ph[v_np] = v_gh
+        v_pp[v_np] = v_gp
+        v_pb[v_np] = v_gb
+        v_pk[v_np] = v_gk
+        v_np = v_np + 1
+    endif
+    v_gx = v_gx + sin(v_gh) * cos(v_gp)
+    v_gy = v_gy + sin(v_gp)
+    v_gz = v_gz + cos(v_gh) * cos(v_gp)
+}
+
+def run {
+    # v_n points, changing heading / pitch / bank by v_dh, v_dp, v_db in total
+    for v_i in (1, v_n, 1)
+        v_gh = v_gh + v_dh / v_n
+        v_gp = v_gp + v_dp / v_n
+        v_gb = v_gb + v_db / v_n
+        call add_point
+    endfor v_i
+}
+
+def straight {
+    v_dh = 0
+    v_dp = 0
+    v_db = 0
+    call run
+}
+
+def level_to {
+    # bring the track to height v_target and pitch 0
+    v_dh = 0
+    v_db = 0 - v_gb
+    v_dp = 0 - v_gp
+    v_n = 8
+    call run
+    if v_gy > v_target + 3 then
+        v_dp = -0.6
+        v_n = 8
+        call run
+        while v_gy > v_target + 4 and v_np < v_maxp then
+            call add_point
+        endwhile
+        v_dp = 0.6
+        v_n = 8
+        call run
+    elseif v_gy < v_target - 3 then
+        v_dp = 0.5
+        v_n = 8
+        call run
+        while v_gy < v_target - 4 and v_np < v_maxp then
+            call add_point
+        endwhile
+        v_dp = -0.5
+        v_n = 8
+        call run
+    endif
+    v_gp = 0
+}
+
+def el_loop {
+    v_target = 3
+    call level_to
+    v_n = 10
+    call straight
+    # pitch all the way round, drifting sideways so the exit clears the entry
+    v_dh = 0.35 * v_side
+    v_dp = 6.2832
+    v_db = 0
+    v_n = 46
+    call run
+    v_gp = 0
+    v_dh = 0 - 0.35 * v_side
+    v_dp = 0
+    v_n = 10
+    call run
+}
+
+def el_turn {
+    v_target = random(5, 12, 0)
+    call level_to
+    v_dh = 0
+    v_dp = 0
+    v_db = -1.0 * v_side
+    v_n = 8
+    call run
+    v_dh = 3.1416 * v_side
+    v_db = 0
+    v_n = 34
+    call run
+    v_dh = 0
+    v_db = 1.0 * v_side
+    v_n = 8
+    call run
+    v_gb = 0
+}
+
+def el_camels {
+    v_target = 4
+    call level_to
+    for v_c in (1, 3, 1)
+        v_hh = random(5, 8, 0) / 10
+        v_dh = 0
+        v_db = 0
+        v_dp = v_hh
+        v_n = 7
+        call run
+        v_dp = 0 - v_hh * 2
+        v_n = 14
+        call run
+        v_dp = v_hh
+        v_n = 7
+        call run
+        v_gp = 0
+    endfor v_c
+}
+
+def el_roll {
+    v_target = random(6, 10, 0)
+    call level_to
+    v_n = 6
+    call straight
+    v_dh = 0.6 * v_side
+    v_dp = 0
+    v_db = 6.2832 * v_side
+    v_n = 32
+    call run
+    v_gb = 0
+    v_n = 6
+    call straight
+}
+
+def el_helix {
+    v_target = 16
+    call level_to
+    v_dh = 0
+    v_dp = 0
+    v_db = -1.1 * v_side
+    v_n = 8
+    call run
+    v_dh = 6.2832 * v_side
+    v_dp = 0
+    v_n = 70
+    call run
+    # descend while still turning
+    v_dh = 3.1416 * v_side
+    v_dp = -0.25
+    v_n = 34
+    call run
+    v_dp = 0.25
+    v_db = 1.1 * v_side
+    v_dh = 0
+    v_n = 10
+    call run
+    v_gb = 0
+    v_gp = 0
+}
+
+def mid_lift {
+    v_target = 3
+    call level_to
+    v_gk = 1
+    v_dh = 0
+    v_db = 0
+    v_dp = 0.55
+    v_n = 8
+    call run
+    while v_gy < 24 then
+        call add_point
+    endwhile
+    v_gk = 0
+    v_dp = -0.55
+    v_n = 6
+    call run
+    v_n = 3
+    call straight
+    v_dp = -0.95
+    v_n = 10
+    call run
+    while v_gy > 8 then
+        call add_point
+    endwhile
+    v_dp = 0.95
+    v_n = 12
+    call run
+    v_gp = 0
+}
+
+def build_layout {
+    v_np = 0
+    v_gx = 0
+    v_gy = 2
+    v_gz = 0
+    v_gh = random(0, 628, 0) / 100
+    v_gp = 0
+    v_gb = 0
+    # station and lift hill
+    v_gk = 3
+    v_n = 18
+    call straight
+    v_gk = 1
+    v_dh = 0
+    v_db = 0
+    v_dp = 0.62
+    v_n = 8
+    call run
+    while v_gy < 30 then
+        call add_point
+    endwhile
+    # crest and first drop
+    v_gk = 0
+    v_dp = -0.62
+    v_n = 6
+    call run
+    v_n = 4
+    call straight
+    v_dp = -1.05
+    v_n = 10
+    call run
+    while v_gy > 8 then
+        call add_point
+    endwhile
+    v_dp = 1.05
+    v_n = 12
+    call run
+    v_gp = 0
+    # a random run of elements, with a second lift hill halfway through
+    v_ne = random(8, 10, 0)
+    for v_e in (1, v_ne, 1)
+        if v_e == int(v_ne / 2) + 1 then
+            call mid_lift
+        endif
+        v_side = random(0, 1, 0) * 2 - 1
+        v_r = random(0, 4, 0)
+        if v_r == 0 then
+            call el_loop
+        elseif v_r == 1 then
+            call el_turn
+        elseif v_r == 2 then
+            call el_camels
+        elseif v_r == 3 then
+            call el_roll
+        else
+            call el_helix
+        endif
+    endfor v_e
+    # brake run
+    v_target = 2
+    call level_to
+    v_gk = 2
+    v_n = 40
+    call straight
+    print(f"New layout: {v_np} track points")
+}
+
+# ---------------- Scenery ----------------
+v_ntree = 90
+create_array(v_tx, v_ntree, numeric)
+create_array(v_tz, v_ntree, numeric)
+create_array(v_th, v_ntree, numeric)
+def place_trees {
+    # scatter trees around the area the layout covers
+    v_mnx = 999
+    v_mxx = -999
+    v_mnz = 999
+    v_mxz = -999
+    for v_i in (0, v_np - 1, 4)
+        v_mnx = min(v_mnx, v_px[v_i])
+        v_mxx = max(v_mxx, v_px[v_i])
+        v_mnz = min(v_mnz, v_pz[v_i])
+        v_mxz = max(v_mxz, v_pz[v_i])
+    endfor v_i
+    for v_k in (0, v_ntree - 1, 1)
+        v_tx[v_k] = random(int(v_mnx) - 40, int(v_mxx) + 40, 0)
+        v_tz[v_k] = random(int(v_mnz) - 40, int(v_mxz) + 40, 0)
+        v_th[v_k] = random(30, 60, 0) / 10
+    endfor v_k
+}
+
+# ---------------- Camera and 3D lines ----------------
+def to_cam {
+    v_dx = v_wx - v_ex
+    v_dy = v_wy - v_ey
+    v_dz = v_wz - v_ez
+    v_cx = v_dx * v_rx + v_dy * v_ry + v_dz * v_rz
+    v_cy = v_dx * v_ux + v_dy * v_uy + v_dz * v_uz
+    v_cz = v_dx * v_fx + v_dy * v_fy + v_dz * v_fz
+}
+
+# world line (v_ax3..v_az3) -> (v_bx3..v_bz3), colour v_lc, intensity v_li
+def line3 {
+    v_wx = v_ax3
+    v_wy = v_ay3
+    v_wz = v_az3
+    call to_cam
+    v_c1x = v_cx
+    v_c1y = v_cy
+    v_c1z = v_cz
+    v_wx = v_bx3
+    v_wy = v_by3
+    v_wz = v_bz3
+    call to_cam
+    if v_c1z >= v_near or v_cz >= v_near then
+        if v_c1z < v_near then
+            v_f = (v_near - v_c1z) / (v_cz - v_c1z)
+            v_c1x = v_c1x + (v_cx - v_c1x) * v_f
+            v_c1y = v_c1y + (v_cy - v_c1y) * v_f
+            v_c1z = v_near
+        elseif v_cz < v_near then
+            v_f = (v_near - v_cz) / (v_c1z - v_cz)
+            v_cx = v_cx + (v_c1x - v_cx) * v_f
+            v_cy = v_cy + (v_c1y - v_cy) * v_f
+            v_cz = v_near
+        endif
+        v_x1 = 31.5 + v_c1x / v_c1z * v_focal
+        v_y1 = 31.5 - v_c1y / v_c1z * v_focal
+        v_x2 = 31.5 + v_cx / v_cz * v_focal
+        v_y2 = 31.5 - v_cy / v_cz * v_focal
+        if max(v_x1, v_x2) >= -2 and min(v_x1, v_x2) <= 66 and max(v_y1, v_y2) >= -2 and min(v_y1, v_y2) <= 66 then
+            if abs(v_x1) < 400 and abs(v_x2) < 400 and abs(v_y1) < 400 and abs(v_y2) < 400 then
+                draw_line(v_x1, v_y1, v_x2, v_y2, v_lc, v_li * v_fade)
+            endif
+        endif
+    endif
+}
+
+# frame of track point v_i: forward (v_kfx..), up (v_kux..), right (v_krx..)
+def point_frame {
+    v_hh = v_ph[v_i]
+    v_pt = v_pp[v_i]
+    v_bk = v_pb[v_i]
+    v_kfx = sin(v_hh) * cos(v_pt)
+    v_kfy = sin(v_pt)
+    v_kfz = cos(v_hh) * cos(v_pt)
+    v_u0x = 0 - sin(v_hh) * sin(v_pt)
+    v_u0y = cos(v_pt)
+    v_u0z = 0 - cos(v_hh) * sin(v_pt)
+    # right = up x forward
+    v_r0x = v_u0y * v_kfz - v_u0z * v_kfy
+    v_r0y = v_u0z * v_kfx - v_u0x * v_kfz
+    v_r0z = v_u0x * v_kfy - v_u0y * v_kfx
+    v_cb = cos(v_bk)
+    v_sb = sin(v_bk)
+    v_krx = v_r0x * v_cb + v_u0x * v_sb
+    v_kry = v_r0y * v_cb + v_u0y * v_sb
+    v_krz = v_r0z * v_cb + v_u0z * v_sb
+    v_kux = v_u0x * v_cb - v_r0x * v_sb
+    v_kuy = v_u0y * v_cb - v_r0y * v_sb
+    v_kuz = v_u0z * v_cb - v_r0z * v_sb
+}
+
+v_cfx = 0
+v_cfy = 0
+v_cfz = 1
+v_cux = 0
+v_cuy = 1
+v_cuz = 0
+def place_camera {
+    v_i0 = min(int(v_s), v_np - 3)
+    v_fr = v_s - v_i0
+    v_i = v_i0
+    call point_frame
+    v_ex = v_px[v_i0] + (v_px[v_i0 + 1] - v_px[v_i0]) * v_fr + v_kux * 1.3
+    v_ey = v_py[v_i0] + (v_py[v_i0 + 1] - v_py[v_i0]) * v_fr + v_kuy * 1.3
+    v_ez = v_pz[v_i0] + (v_pz[v_i0 + 1] - v_pz[v_i0]) * v_fr + v_kuz * 1.3
+    # look a little ahead along the track
+    v_i = min(v_i0 + 2, v_np - 1)
+    call point_frame
+    v_sm = 0.3 * 1.7 / v_pace
+    v_cfx = v_cfx + (v_kfx - v_cfx) * v_sm
+    v_cfy = v_cfy + (v_kfy - v_cfy) * v_sm
+    v_cfz = v_cfz + (v_kfz - v_cfz) * v_sm
+    v_cux = v_cux + (v_kux - v_cux) * v_sm
+    v_cuy = v_cuy + (v_kuy - v_cuy) * v_sm
+    v_cuz = v_cuz + (v_kuz - v_cuz) * v_sm
+    v_l = sqrt(v_cfx * v_cfx + v_cfy * v_cfy + v_cfz * v_cfz)
+    v_fx = v_cfx / v_l
+    v_fy = v_cfy / v_l
+    v_fz = v_cfz / v_l
+    v_rx = v_cuy * v_fz - v_cuz * v_fy
+    v_ry = v_cuz * v_fx - v_cux * v_fz
+    v_rz = v_cux * v_fy - v_cuy * v_fx
+    v_l = sqrt(v_rx * v_rx + v_ry * v_ry + v_rz * v_rz)
+    v_rx = v_rx / v_l
+    v_ry = v_ry / v_l
+    v_rz = v_rz / v_l
+    v_ux = v_fy * v_rz - v_fz * v_ry
+    v_uy = v_fz * v_rx - v_fx * v_rz
+    v_uz = v_fx * v_ry - v_fy * v_rx
+    # a little shake at speed
+    if v_v > 0.8 then
+        v_ey = v_ey + random(-10, 10, 0) / 400 * v_v
+    endif
+}
+
+# ---------------- Drawing ----------------
+def draw_sky_ground {
+    # world up seen from the camera; a screen direction is sky if it points up
+    v_wux = v_ry
+    v_wuy = v_uy
+    v_wuz = v_fy
+    for v_sy in (0, 63, 1)
+        v_yy = 0 - (v_sy - 31.5) / v_focal
+        # along this row: up-ness = v_wux * xx + v_wuy * yy + v_wuz, xx = (sx-31.5)/focal
+        v_base = v_wuy * v_yy + v_wuz
+        v_elev = v_base / sqrt(1 + v_yy * v_yy)
+        v_si = (68 - min(max(v_elev, 0), 1) * 30) * v_fade
+        v_gi = (30 + min(max(0 - v_elev, 0), 1) * 25) * v_fade
+        if abs(v_wux) < 0.0001 then
+            if v_base > 0 then
+                draw_line(0, v_sy, 63, v_sy, sky_blue, v_si)
+            else
+                draw_line(0, v_sy, 63, v_sy, forest_green, v_gi)
+            endif
+        else
+            v_sx0 = 31.5 - v_base / v_wux * v_focal
+            v_xs = min(max(int(v_sx0 + 0.5), 0), 64)
+            # left of the horizon point is sky if moving left increases up-ness
+            if v_wux < 0 then
+                if v_xs > 0 then
+                    draw_line(0, v_sy, v_xs - 1, v_sy, sky_blue, v_si)
+                endif
+                if v_xs < 64 then
+                    draw_line(v_xs, v_sy, 63, v_sy, forest_green, v_gi)
+                endif
+            else
+                if v_xs > 0 then
+                    draw_line(0, v_sy, v_xs - 1, v_sy, forest_green, v_gi)
+                endif
+                if v_xs < 64 then
+                    draw_line(v_xs, v_sy, 63, v_sy, sky_blue, v_si)
+                endif
+            endif
+        endif
+    endfor v_sy
+}
+
+def draw_ground_grid {
+    v_lc = "lime"
+    v_li = 30
+    v_gx0 = floor(v_ex / 12) * 12
+    v_gz0 = floor(v_ez / 12) * 12
+    for v_k in (-4, 4, 1)
+        v_ax3 = v_gx0 + v_k * 12
+        v_ay3 = 0
+        v_az3 = v_gz0 - 60
+        v_bx3 = v_ax3
+        v_by3 = 0
+        v_bz3 = v_gz0 + 60
+        call line3
+        v_ax3 = v_gx0 - 60
+        v_az3 = v_gz0 + v_k * 12
+        v_bx3 = v_gx0 + 60
+        v_bz3 = v_az3
+        call line3
+    endfor v_k
+}
+
+def draw_trees {
+    for v_k in (0, v_ntree - 1, 1)
+        v_dx = v_tx[v_k] - v_ex
+        v_dz = v_tz[v_k] - v_ez
+        if v_dx * v_dx + v_dz * v_dz < v_view * v_view then
+            v_wx = v_tx[v_k]
+            v_wy = v_th[v_k]
+            v_wz = v_tz[v_k]
+            call to_cam
+            if v_cz > 1 then
+                v_lc = "wood_brown"
+                v_li = 55
+                v_ax3 = v_tx[v_k]
+                v_ay3 = 0
+                v_az3 = v_tz[v_k]
+                v_bx3 = v_ax3
+                v_by3 = v_th[v_k] * 0.6
+                v_bz3 = v_az3
+                call line3
+                v_wx = v_tx[v_k]
+                v_wy = v_th[v_k] * 0.75
+                v_wz = v_tz[v_k]
+                call to_cam
+                if v_cz > 1 then
+                    v_tr = v_th[v_k] * 0.35 * v_focal / v_cz
+                    v_tsx = 31.5 + v_cx / v_cz * v_focal
+                    v_tsy = 31.5 - v_cy / v_cz * v_focal
+                    if v_tr >= 1 then
+                        draw_circle(v_tsx, v_tsy, v_tr, green, 60 * v_fade, true)
+                    else
+                        mplot(v_tsx, v_tsy, green, 60 * v_fade)
+                    endif
+                endif
+            endif
+        endif
+    endfor v_k
+}
+
+def draw_track {
+    v_i0d = max(int(v_s) - 60, 0)
+    v_i1d = min(int(v_s) + 90, v_np - 2)
+    for v_i in (v_i0d, v_i1d, 1)
+        v_dx = v_px[v_i] - v_ex
+        v_dy = v_py[v_i] - v_ey
+        v_dz = v_pz[v_i] - v_ez
+        if v_dx * v_dx + v_dy * v_dy + v_dz * v_dz < v_view * v_view then
+            call point_frame
+            v_ox = v_kfx
+            v_oy = v_kfy
+            v_oz = v_kfz
+            v_qx = v_krx * 0.55
+            v_qy = v_kry * 0.55
+            v_qz = v_krz * 0.55
+            # supports down to the ground (upright parts of the track only)
+            if v_i % 5 == 0 and v_kuy > 0.3 and v_py[v_i] > 1 then
+                v_lc = "silver"
+                v_li = 40
+                v_ax3 = v_px[v_i]
+                v_ay3 = v_py[v_i] - 0.3
+                v_az3 = v_pz[v_i]
+                v_bx3 = v_ax3
+                v_by3 = 0
+                v_bz3 = v_az3
+                call line3
+            endif
+            # rails to the next point
+            v_lc = "red"
+            if v_pk[v_i] == 3 then
+                v_lc = "gray"
+            endif
+            v_li = 85
+            for v_sd in (-1, 1, 2)
+                v_ax3 = v_px[v_i] + v_qx * v_sd
+                v_ay3 = v_py[v_i] + v_qy * v_sd
+                v_az3 = v_pz[v_i] + v_qz * v_sd
+                v_bx3 = v_px[v_i + 1] + v_qx * v_sd
+                v_by3 = v_py[v_i + 1] + v_qy * v_sd
+                v_bz3 = v_pz[v_i + 1] + v_qz * v_sd
+                call line3
+            endfor v_sd
+            # cross ties; the lift hill shows its chain, brakes their fins
+            if v_i % 2 == 0 then
+                v_lc = "white"
+                v_li = 50
+                v_ax3 = v_px[v_i] - v_qx
+                v_ay3 = v_py[v_i] - v_qy
+                v_az3 = v_pz[v_i] - v_qz
+                v_bx3 = v_px[v_i] + v_qx
+                v_by3 = v_py[v_i] + v_qy
+                v_bz3 = v_pz[v_i] + v_qz
+                call line3
+            endif
+            if v_pk[v_i] == 1 or v_pk[v_i] == 2 then
+                v_lc = "yellow"
+                if v_pk[v_i] == 2 then
+                    v_lc = "gold"
+                endif
+                v_li = 60
+                v_ax3 = v_px[v_i]
+                v_ay3 = v_py[v_i]
+                v_az3 = v_pz[v_i]
+                v_bx3 = v_px[v_i + 1]
+                v_by3 = v_py[v_i + 1]
+                v_bz3 = v_pz[v_i + 1]
+                call line3
+            endif
+        endif
+    endfor v_i
+}
+
+def draw_car {
+    # the nose of your car and the lap bar, fixed in front of you
+    v_cf = v_fade
+    draw_rectangle(14, 58, 36, 6, crimson, 70 * v_cf, true)
+    draw_line(14, 58, 49, 58, red, 95 * v_cf)
+    draw_rectangle(20, 55, 24, 3, maroon, 70 * v_cf, true)
+    draw_line(18, 61, 45, 61, silver, 40 * v_cf)
+    draw_line(24, 52, 39, 52, gray, 70 * v_cf)
+    draw_line(24, 52, 22, 58, gray, 70 * v_cf)
+    draw_line(39, 52, 41, 58, gray, 70 * v_cf)
+    # speed readout (one track unit = half a metre)
+    draw_text(1, 1, "" & int(v_v * 60 * 2.237 / v_pace * 1.7 * 0.5) & " MPH", tiny64_font, 5, white, 55 * v_cf)
+}
+
+# ---------------- Ride logic ----------------
+v_g = 0.026
+v_s = 2
+v_v = 0
+v_E = 0
+v_fade = 0
+v_phase = 0        # 0 riding, 1 fading out
+v_t = 0
+
+def new_ride {
+    call build_layout
+    call place_trees
+    v_s = 2
+    v_v = 0.05
+    v_E = 0
+    v_fade = 0
+    v_phase = 0
+    v_cfx = sin(v_ph[2])
+    v_cfy = 0
+    v_cfz = cos(v_ph[2])
+    v_cux = 0
+    v_cuy = 1
+    v_cuz = 0
+}
+
+def move_train {
+    v_k = v_pk[min(int(v_s), v_np - 1)]
+    v_y = v_py[min(int(v_s), v_np - 1)]
+    if v_k == 3 then
+        # leaving the station
+        v_v = min(v_v + 0.004, 0.18)
+        v_E = 0.5 * v_v * v_v + v_g * v_y
+    elseif v_k == 1 then
+        # the chain pulls at a steady crawl
+        v_v = v_v + (0.16 - v_v) * 0.05
+        v_E = 0.5 * v_v * v_v + v_g * v_y
+    elseif v_k == 2 then
+        # brakes
+        v_v = max(v_v * 0.985, 0.06)
+        v_E = 0.5 * v_v * v_v + v_g * v_y
+    else
+        v_E = v_E * 0.9998
+        v_v = sqrt(max(2 * (v_E - v_g * v_y), 0.0064))
+    endif
+    v_s = v_s + v_v * 1.7 / v_pace
+}
+
+call new_ride
+while true then
+    v_t = v_t + 1
+    call move_train
+    if v_phase == 0 then
+        v_fade = min(v_fade + 0.03, 1)
+        if v_s > v_np - 12 then
+            v_phase = 1
+        endif
+    else
+        v_fade = max(v_fade - 0.025, 0)
+        if v_fade <= 0 then
+            call new_ride
+        endif
+    endif
+    v_s = min(v_s, v_np - 3)
+    call place_camera
+    begin_frame
+        call draw_sky_ground
+        call draw_ground_grid
+        call draw_trees
+        call draw_track
+        call draw_car
+    end_frame
+endwhile

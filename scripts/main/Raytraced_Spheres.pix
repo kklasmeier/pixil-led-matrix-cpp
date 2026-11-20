@@ -1,0 +1,438 @@
+# Raytraced Spheres - a real ray tracer, written entirely in Pixil
+#
+# A chrome sphere sits on an endless checkerboard while two glossy balls
+# bounce around it. The camera slowly circles the scene.
+#
+# Every pixel fires a ray from the camera:
+#   - Ray/sphere and ray/floor intersection decide what the pixel sees.
+#   - The floor is a checkerboard with soft shadows: each floor point checks
+#     how close the line toward the sun passes to every sphere.
+#   - Glossy balls get diffuse light plus a specular highlight.
+#   - The chrome sphere is a mirror: a second ray bounces off its surface and
+#     is traced again, so it reflects the floor, the sky, the shadows and the
+#     other balls.
+#   - Distance fog fades the checkerboard toward the horizon.
+#
+# v_interlace = 2 traces half the pixels each frame in a checkerboard pattern
+# (the other half keep their last value), which doubles the frame rate.
+# Set it to 1 to trace every pixel every frame.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_interlace = 2
+v_fov = 0.62             # tan of half the field of view
+v_orbit_r = 4.9          # camera distance from the centre
+v_orbit_speed = 0.0035   # camera orbit, radians per frame
+v_fog_dist = 30          # floor fades out by this distance
+
+# Sun direction (unit vector pointing toward the light)
+v_lx = -0.48
+v_ly = 0.78
+v_lz = 0.40
+
+# Spheres: 1 = chrome (fixed), 2 and 3 = bouncing glossy balls
+v_c1x = 0
+v_c1y = 1.05
+v_c1z = 0
+v_r1 = 1.05
+v_r2 = 0.48
+v_r3 = 0.40
+
+# Per-column ray offsets (rebuilt each frame from the camera's right vector)
+create_array(v_colx, 64, numeric)
+create_array(v_coly, 64, numeric)
+create_array(v_colz, 64, numeric)
+
+v_t = 0
+v_phase = 0
+v_hue2 = random(0, 99, 0)
+
+# ---------------- Shading helpers ----------------
+
+# Floor colour at (v_qx, 0, v_qz): checkerboard, soft shadows, fog.
+# v_qdist is the distance from the eye. Output: v_oc (colour), v_oi (intensity)
+# Each shadow is only computed when the point is near that sphere's shadow
+# (v_sNx, v_sNz with radius squared v_sNr2, worked out once per frame).
+def shade_floor {
+    v_fog = 1 - v_qdist / v_fog_dist
+    if v_fog <= 0.03 then
+        v_oc = "black"
+        v_oi = 100
+    else
+        v_sh = 1
+        if (v_qx - v_s1x) * (v_qx - v_s1x) + (v_qz - v_s1z) * (v_qz - v_s1z) < v_s1r2 then
+            v_wx = v_c1x - v_qx
+            v_wz = v_c1z - v_qz
+            v_pr = v_wx * v_lx + v_c1y * v_ly + v_wz * v_lz
+            v_d2 = v_wx * v_wx + v_c1y * v_c1y + v_wz * v_wz - v_pr * v_pr
+            v_sh = min(max((v_d2 - v_r1 * v_r1 * 0.55) / (v_r1 * v_r1 * 0.9), 0.25), 1)
+        endif
+        if (v_qx - v_s2x) * (v_qx - v_s2x) + (v_qz - v_s2z) * (v_qz - v_s2z) < v_s2r2 then
+            v_wx = v_c2x - v_qx
+            v_wz = v_c2z - v_qz
+            v_pr = v_wx * v_lx + v_c2y * v_ly + v_wz * v_lz
+            v_d2 = v_wx * v_wx + v_c2y * v_c2y + v_wz * v_wz - v_pr * v_pr
+            v_sh = v_sh * min(max((v_d2 - v_r2 * v_r2 * 0.55) / (v_r2 * v_r2 * 0.9), 0.25), 1)
+        endif
+        if (v_qx - v_s3x) * (v_qx - v_s3x) + (v_qz - v_s3z) * (v_qz - v_s3z) < v_s3r2 then
+            v_wx = v_c3x - v_qx
+            v_wz = v_c3z - v_qz
+            v_pr = v_wx * v_lx + v_c3y * v_ly + v_wz * v_lz
+            v_d2 = v_wx * v_wx + v_c3y * v_c3y + v_wz * v_wz - v_pr * v_pr
+            v_sh = v_sh * min(max((v_d2 - v_r3 * v_r3 * 0.55) / (v_r3 * v_r3 * 0.9), 0.25), 1)
+        endif
+        v_fog = v_fog * v_fog * v_sh
+        if (floor(v_qx) + floor(v_qz)) % 2 == 0 then
+            v_oc = "white"
+            v_oi = 4 + 68 * v_fog
+        else
+            v_oc = 0
+            v_oi = 4 + 76 * v_fog
+        endif
+    endif
+}
+
+# Sky colour for a ray with vertical component v_qy (unit length ray)
+def shade_sky {
+    v_oc = 56 + v_qy * 10
+    v_oi = 70 - v_qy * 40
+}
+
+# Glossy ball colour at hit point (v_hx, v_hy, v_hz) on a sphere centred at
+# (v_scx, v_scy, v_scz) radius v_sr, hue v_shue, seen along unit ray (v_ux, v_uy, v_uz)
+def shade_ball {
+    v_nx = (v_hx - v_scx) / v_sr
+    v_ny = (v_hy - v_scy) / v_sr
+    v_nz = (v_hz - v_scz) / v_sr
+    v_dif = max(v_nx * v_lx + v_ny * v_ly + v_nz * v_lz, 0)
+    v_dn = v_ux * v_nx + v_uy * v_ny + v_uz * v_nz
+    v_rl = (v_ux - 2 * v_dn * v_nx) * v_lx + (v_uy - 2 * v_dn * v_ny) * v_ly + (v_uz - 2 * v_dn * v_nz) * v_lz
+    if v_rl > 0.93 then
+        v_oc = "white"
+        v_oi = 100
+    else
+        v_oc = v_shue
+        v_oi = 12 + v_dif * 80
+    endif
+}
+
+# ---------------- Per-frame setup ----------------
+
+# Screen-space box around a sphere (v_bx_, v_by_, v_bz_, radius v_br_)
+# -> v_bxa..v_bxb, v_bya..v_byb (generous, so nothing is ever clipped)
+def sphere_box {
+    v_wx = v_bx_ - v_ox
+    v_wy = v_by_ - v_oy
+    v_wz = v_bz_ - v_oz
+    v_cz = v_wx * v_fx + v_wy * v_fy + v_wz * v_fz
+    v_cxs = v_wx * v_rx + v_wz * v_rz
+    v_cys = v_wx * v_ux2 + v_wy * v_uy2 + v_wz * v_uz2
+    v_scl = 31.5 / (v_fov * v_cz)
+    v_mx = 31.5 + v_cxs * v_scl
+    v_my = 31.5 - v_cys * v_scl
+    v_mr = v_br_ * v_scl * 1.35 + 2
+    v_bxa = v_mx - v_mr
+    v_bxb = v_mx + v_mr
+    v_bya = v_my - v_mr
+    v_byb = v_my + v_mr
+}
+def setup_frame {
+    # bouncing balls: |sin| gives a hard bounce off the floor
+    v_a2 = v_t * 0.011
+    v_c2x = cos(v_a2) * 2.3
+    v_c2z = sin(v_a2) * 2.3
+    v_c2y = v_r2 + abs(sin(v_t * 0.045)) * 1.6
+    v_a3 = v_t * -0.008 + 2.4
+    v_c3x = cos(v_a3) * 2.0
+    v_c3z = sin(v_a3) * 2.0
+    v_c3y = v_r3 + abs(sin(v_t * 0.058 + 1)) * 1.3
+    v_hue3 = (v_hue2 + 40) % 100
+
+    # camera on a slow orbit, bobbing gently, looking at the chrome sphere
+    v_ca = v_t * v_orbit_speed
+    v_ox = sin(v_ca) * v_orbit_r
+    v_oz = cos(v_ca) * v_orbit_r
+    v_oy = 1.45 + sin(v_t * 0.004) * 0.4
+    v_fx = 0 - v_ox
+    v_fy = 0.9 - v_oy
+    v_fz = 0 - v_oz
+    v_fl = sqrt(v_fx * v_fx + v_fy * v_fy + v_fz * v_fz)
+    v_fx = v_fx / v_fl
+    v_fy = v_fy / v_fl
+    v_fz = v_fz / v_fl
+    # right = forward x up(0,1,0); up = right x forward
+    v_rx = 0 - v_fz
+    v_rz = v_fx
+    v_rl = sqrt(v_rx * v_rx + v_rz * v_rz)
+    v_rx = v_rx / v_rl
+    v_rz = v_rz / v_rl
+    v_ux2 = 0 - v_rz * v_fy
+    v_uy2 = v_rz * v_fx - v_rx * v_fz
+    v_uz2 = v_rx * v_fy
+    for v_x in (0, 63, 1)
+        v_sx = (v_x - 31.5) / 31.5 * v_fov
+        v_colx[v_x] = v_rx * v_sx
+        v_coly[v_x] = 0
+        v_colz[v_x] = v_rz * v_sx
+    endfor v_x
+
+    # where each sphere's shadow lands on the floor, and how far it can reach
+    v_s1x = v_c1x - v_lx * v_c1y / v_ly
+    v_s1z = v_c1z - v_lz * v_c1y / v_ly
+    v_s1r2 = (v_r1 * 1.75) * (v_r1 * 1.75)
+    v_s2x = v_c2x - v_lx * v_c2y / v_ly
+    v_s2z = v_c2z - v_lz * v_c2y / v_ly
+    v_s2r2 = (v_r2 * 1.75) * (v_r2 * 1.75)
+    v_s3x = v_c3x - v_lx * v_c3y / v_ly
+    v_s3z = v_c3z - v_lz * v_c3y / v_ly
+    v_s3r2 = (v_r3 * 1.75) * (v_r3 * 1.75)
+
+    # on-screen box around each sphere: pixels outside it skip that sphere
+    v_bc = 1
+    v_bx_ = v_c1x
+    v_by_ = v_c1y
+    v_bz_ = v_c1z
+    v_br_ = v_r1
+    call sphere_box
+    v_b1x0 = v_bxa
+    v_b1x1 = v_bxb
+    v_b1y0 = v_bya
+    v_b1y1 = v_byb
+    v_bx_ = v_c2x
+    v_by_ = v_c2y
+    v_bz_ = v_c2z
+    v_br_ = v_r2
+    call sphere_box
+    v_b2x0 = v_bxa
+    v_b2x1 = v_bxb
+    v_b2y0 = v_bya
+    v_b2y1 = v_byb
+    v_bx_ = v_c3x
+    v_by_ = v_c3y
+    v_bz_ = v_c3z
+    v_br_ = v_r3
+    call sphere_box
+    v_b3x0 = v_bxa
+    v_b3x1 = v_bxb
+    v_b3y0 = v_bya
+    v_b3y1 = v_byb
+
+    # ray/sphere constants that only depend on the camera position
+    v_o1x = v_ox - v_c1x
+    v_o1y = v_oy - v_c1y
+    v_o1z = v_oz - v_c1z
+    v_k1 = v_o1x * v_o1x + v_o1y * v_o1y + v_o1z * v_o1z - v_r1 * v_r1
+    v_o2x = v_ox - v_c2x
+    v_o2y = v_oy - v_c2y
+    v_o2z = v_oz - v_c2z
+    v_k2 = v_o2x * v_o2x + v_o2y * v_o2y + v_o2z * v_o2z - v_r2 * v_r2
+    v_o3x = v_ox - v_c3x
+    v_o3y = v_oy - v_c3y
+    v_o3z = v_oz - v_c3z
+    v_k3 = v_o3x * v_o3x + v_o3y * v_o3y + v_o3z * v_o3z - v_r3 * v_r3
+}
+
+# ---------------- Mirror bounce off the chrome sphere ----------------
+# From hit point (v_hx, v_hy, v_hz) along unit direction (v_bx, v_by, v_bz)
+def trace_bounce {
+    v_best = 999
+    v_what = 0
+    # ball 2
+    v_px2 = v_hx - v_c2x
+    v_py2 = v_hy - v_c2y
+    v_pz2 = v_hz - v_c2z
+    v_b = v_px2 * v_bx + v_py2 * v_by + v_pz2 * v_bz
+    v_disc = v_b * v_b - (v_px2 * v_px2 + v_py2 * v_py2 + v_pz2 * v_pz2 - v_r2 * v_r2)
+    if v_disc > 0 and v_b < 0 then
+        v_best = 0 - v_b - sqrt(v_disc)
+        v_what = 2
+    endif
+    # ball 3
+    v_px2 = v_hx - v_c3x
+    v_py2 = v_hy - v_c3y
+    v_pz2 = v_hz - v_c3z
+    v_b = v_px2 * v_bx + v_py2 * v_by + v_pz2 * v_bz
+    v_disc = v_b * v_b - (v_px2 * v_px2 + v_py2 * v_py2 + v_pz2 * v_pz2 - v_r3 * v_r3)
+    if v_disc > 0 and v_b < 0 then
+        v_tt = 0 - v_b - sqrt(v_disc)
+        if v_tt < v_best then
+            v_best = v_tt
+            v_what = 3
+        endif
+    endif
+    # floor
+    if v_by < 0 then
+        v_tt = (0 - v_hy) / v_by
+        if v_tt < v_best then
+            v_best = v_tt
+            v_what = 4
+        endif
+    endif
+    if v_what == 0 then
+        v_qy = v_by
+        call shade_sky
+    elseif v_what == 4 then
+        v_qx = v_hx + v_bx * v_best
+        v_qz = v_hz + v_bz * v_best
+        v_qdist = v_hit_dist + v_best
+        call shade_floor
+    else
+        v_hx = v_hx + v_bx * v_best
+        v_hy = v_hy + v_by * v_best
+        v_hz = v_hz + v_bz * v_best
+        v_ux = v_bx
+        v_uy = v_by
+        v_uz = v_bz
+        if v_what == 2 then
+            v_scx = v_c2x
+            v_scy = v_c2y
+            v_scz = v_c2z
+            v_sr = v_r2
+            v_shue = v_hue2
+        else
+            v_scx = v_c3x
+            v_scy = v_c3y
+            v_scz = v_c3z
+            v_sr = v_r3
+            v_shue = v_hue3
+        endif
+        call shade_ball
+    endif
+    # sun glint on the chrome itself
+    if v_bx * v_lx + v_by * v_ly + v_bz * v_lz > 0.985 then
+        v_oc = "white"
+        v_oi = 100
+    else
+        v_oi = v_oi * 0.8
+    endif
+}
+
+# ---------------- The tracer ----------------
+def render {
+    for v_y in (0, 63, 1)
+        v_sy = (31.5 - v_y) / 31.5 * v_fov
+        v_rowx = v_fx + v_ux2 * v_sy
+        v_dy = v_fy + v_uy2 * v_sy
+        v_rowz = v_fz + v_uz2 * v_sy
+        v_x0 = (v_y + v_phase) % v_interlace
+        v_in1 = v_y >= v_b1y0 and v_y <= v_b1y1
+        v_in2 = v_y >= v_b2y0 and v_y <= v_b2y1
+        v_in3 = v_y >= v_b3y0 and v_y <= v_b3y1
+        # Without spheres, a whole row is either floor or sky, and the floor
+        # distance along the ray depends only on the row
+        if v_dy < 0 then
+            v_row_hit = 4
+            v_row_t = (0 - v_oy) / v_dy
+        else
+            v_row_hit = 0
+            v_row_t = 999
+        endif
+        for v_x in (v_x0, 63, v_interlace)
+            v_dx = v_rowx + v_colx[v_x]
+            v_dz = v_rowz + v_colz[v_x]
+            v_hit = v_row_hit
+            v_tbest = v_row_t
+            if (v_in1 and v_x >= v_b1x0 and v_x <= v_b1x1) or (v_in2 and v_x >= v_b2x0 and v_x <= v_b2x1) or (v_in3 and v_x >= v_b3x0 and v_x <= v_b3x1) then
+                v_a = v_dx * v_dx + v_dy * v_dy + v_dz * v_dz
+                # chrome sphere
+                if v_in1 and v_x >= v_b1x0 and v_x <= v_b1x1 then
+                    v_b = v_dx * v_o1x + v_dy * v_o1y + v_dz * v_o1z
+                    v_disc = v_b * v_b - v_a * v_k1
+                    if v_disc > 0 then
+                        v_tt = (0 - v_b - sqrt(v_disc)) / v_a
+                        if v_tt < v_tbest then
+                            v_tbest = v_tt
+                            v_hit = 1
+                        endif
+                    endif
+                endif
+                # ball 2
+                if v_in2 and v_x >= v_b2x0 and v_x <= v_b2x1 then
+                    v_b = v_dx * v_o2x + v_dy * v_o2y + v_dz * v_o2z
+                    v_disc = v_b * v_b - v_a * v_k2
+                    if v_disc > 0 then
+                        v_tt = (0 - v_b - sqrt(v_disc)) / v_a
+                        if v_tt < v_tbest then
+                            v_tbest = v_tt
+                            v_hit = 2
+                        endif
+                    endif
+                endif
+                # ball 3
+                if v_in3 and v_x >= v_b3x0 and v_x <= v_b3x1 then
+                    v_b = v_dx * v_o3x + v_dy * v_o3y + v_dz * v_o3z
+                    v_disc = v_b * v_b - v_a * v_k3
+                    if v_disc > 0 then
+                        v_tt = (0 - v_b - sqrt(v_disc)) / v_a
+                        if v_tt < v_tbest then
+                            v_tbest = v_tt
+                            v_hit = 3
+                        endif
+                    endif
+                endif
+            endif
+
+            if v_hit == 4 then
+                v_qx = v_ox + v_dx * v_tbest
+                v_qz = v_oz + v_dz * v_tbest
+                v_qdist = v_tbest * sqrt(v_dx * v_dx + v_dy * v_dy + v_dz * v_dz)
+                call shade_floor
+            elseif v_hit == 0 then
+                v_qy = v_dy / sqrt(v_dx * v_dx + v_dy * v_dy + v_dz * v_dz)
+                call shade_sky
+            else
+                v_len = sqrt(v_a)
+                v_hx = v_ox + v_dx * v_tbest
+                v_hy = v_oy + v_dy * v_tbest
+                v_hz = v_oz + v_dz * v_tbest
+                v_ux = v_dx / v_len
+                v_uy = v_dy / v_len
+                v_uz = v_dz / v_len
+                if v_hit == 1 then
+                    # mirror: reflect the view ray about the surface normal
+                    v_nx = (v_hx - v_c1x) / v_r1
+                    v_ny = (v_hy - v_c1y) / v_r1
+                    v_nz = (v_hz - v_c1z) / v_r1
+                    v_dn = v_ux * v_nx + v_uy * v_ny + v_uz * v_nz
+                    v_bx = v_ux - 2 * v_dn * v_nx
+                    v_by = v_uy - 2 * v_dn * v_ny
+                    v_bz = v_uz - 2 * v_dn * v_nz
+                    v_hit_dist = v_tbest * v_len
+                    call trace_bounce
+                    # darker toward the rim, so the mirror reads as a ball
+                    v_oi = v_oi * (0.35 + 0.65 * abs(v_dn))
+                elseif v_hit == 2 then
+                    v_scx = v_c2x
+                    v_scy = v_c2y
+                    v_scz = v_c2z
+                    v_sr = v_r2
+                    v_shue = v_hue2
+                    call shade_ball
+                else
+                    v_scx = v_c3x
+                    v_scy = v_c3y
+                    v_scz = v_c3z
+                    v_sr = v_r3
+                    v_shue = v_hue3
+                    call shade_ball
+                endif
+            endif
+            mplot(v_x, v_y, v_oc, v_oi)
+        endfor v_x
+    endfor v_y
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1
+    if v_t % 600 == 0 then
+        v_hue2 = (v_hue2 + 23) % 100
+    endif
+    call setup_frame
+    begin_frame(true)
+        call render
+    end_frame
+    v_phase = (v_phase + 1) % v_interlace
+endwhile

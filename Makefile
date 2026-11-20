@@ -63,7 +63,7 @@ CONSUMER_LIB_OBJS := $(CONSUMER_SRCS:%.cpp=$(BUILD)/%.o)
 CONSUMER_OBJS := $(CONSUMER_LIB_OBJS) $(BUILD)/src/consumer/main.o
 
 .PHONY: all test crosscheck crosscheck-negative goldens check-docs \
-        hello-headless hello-native-headless consumer-parity c5-ops clean
+        hello-headless c5-ops clean
 all: $(PIXIL) $(PIXIL_CONSUMER) $(PIXIL_EXPR) $(UNIT)
 
 $(BUILD)/libpixil.a: $(LIB_OBJS)
@@ -103,7 +103,7 @@ crosscheck: $(PIXIL_EXPR)
 crosscheck-negative: $(PIXIL_EXPR)
 	$(PYTHON) tools/expr_crosscheck.py --native $(PIXIL_EXPR) --native-arg=--inject-fault=c_mod --expect-failure
 
-# Regenerate oracle-derived artifacts from the legacy tree (Pi 4).
+# Regenerate checked-in dialect / golden artifacts (Pi).
 goldens:
 	$(PYTHON) tools/gen_expr_cases.py > tests/expr/cases.jsonl
 	$(PYTHON) tools/gen_draw_batch_goldens.py > tests/golden/draw_batch.jsonl
@@ -112,16 +112,8 @@ goldens:
 check-docs:
 	$(PYTHON) tools/gen_command_dialect.py --check
 
-hello-headless: $(PIXIL)
+hello-headless: $(PIXIL) $(PIXIL_CONSUMER)
 	$(PIXIL) --hello --headless --seconds 3
-
-hello-native-headless: $(PIXIL) $(PIXIL_CONSUMER)
-	$(PIXIL) --hello --headless --consumer native --seconds 3
-
-# Phase 2 C5: Python vs native drawing-buffer fingerprints (Pi 4, headless).
-consumer-parity: $(PIXIL) $(PIXIL_CONSUMER)
-	$(PYTHON) -c 'import os,sys; print("parity via shell")' >/dev/null
-	PIXIL=$(PIXIL) bash tools/consumer_parity_compare.sh
 
 c5-ops: $(PIXIL) $(PIXIL_CONSUMER)
 	PIXIL=$(PIXIL) bash tools/verify_c5_ops.sh

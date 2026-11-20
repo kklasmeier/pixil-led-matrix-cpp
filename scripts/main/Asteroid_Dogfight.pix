@@ -1,0 +1,1282 @@
+# Asteroid Dogfight - chasing an enemy fighter through an asteroid belt
+#
+# The camera rides just behind your starfighter as you chase a red raider
+# through a field of tumbling, flat-shaded asteroids. The raider jinks and
+# weaves; you bank after it, swerve around rocks and fire twin lasers. It
+# shoots back now and then, and your shield flares when a shot comes close.
+# Wear down its shield and it blows apart in a fireball and spinning
+# debris, then the next raider comes in from the distance.
+#
+# How it is built:
+#   - Asteroids are 20-sided rocks, each with its own lumpy shape and tumble.
+#     The ships are small hand-built meshes (original designs).
+#   - Every face is lit by a distant sun and faces turned away are skipped.
+#     Faraway rocks are drawn as simple shaded discs to save time.
+#   - Everything (faces, discs, laser bolts, debris, dust) goes into one
+#     list sorted by distance into buckets, then drawn far to near.
+#   - Stars and a distant gas giant sit at infinity, so they only turn with
+#     the camera; space dust streams past to show your speed.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace          # time step relative to the design speed
+v_focal = 34
+v_near = 0.6
+v_speed = 0.32 * v_k        # forward speed (units per frame)
+v_nast = 26
+v_view = 95                 # how far ahead asteroids live
+
+# sun direction (towards the sun)
+v_lx = 0.55
+v_ly = 0.6
+v_lz = -0.58
+
+# ---------------- Meshes ----------------
+# icosahedron for asteroids
+create_array(v_ivx, 12, numeric)
+create_array(v_ivy, 12, numeric)
+create_array(v_ivz, 12, numeric)
+v_ph = 1.618
+create_array(v_tmp3, 36, numeric)
+v_tmp3[0] = -1
+v_tmp3[1] = v_ph
+v_tmp3[2] = 0
+v_tmp3[3] = 1
+v_tmp3[4] = v_ph
+v_tmp3[5] = 0
+v_tmp3[6] = -1
+v_tmp3[7] = 0 - v_ph
+v_tmp3[8] = 0
+v_tmp3[9] = 1
+v_tmp3[10] = 0 - v_ph
+v_tmp3[11] = 0
+v_tmp3[12] = 0
+v_tmp3[13] = -1
+v_tmp3[14] = v_ph
+v_tmp3[15] = 0
+v_tmp3[16] = 1
+v_tmp3[17] = v_ph
+v_tmp3[18] = 0
+v_tmp3[19] = -1
+v_tmp3[20] = 0 - v_ph
+v_tmp3[21] = 0
+v_tmp3[22] = 1
+v_tmp3[23] = 0 - v_ph
+v_tmp3[24] = v_ph
+v_tmp3[25] = 0
+v_tmp3[26] = -1
+v_tmp3[27] = v_ph
+v_tmp3[28] = 0
+v_tmp3[29] = 1
+v_tmp3[30] = 0 - v_ph
+v_tmp3[31] = 0
+v_tmp3[32] = -1
+v_tmp3[33] = 0 - v_ph
+v_tmp3[34] = 0
+v_tmp3[35] = 1
+for v_i in (0, 11, 1)
+    v_l = sqrt(v_tmp3[v_i * 3] * v_tmp3[v_i * 3] + v_tmp3[v_i * 3 + 1] * v_tmp3[v_i * 3 + 1] + v_tmp3[v_i * 3 + 2] * v_tmp3[v_i * 3 + 2])
+    v_ivx[v_i] = v_tmp3[v_i * 3] / v_l
+    v_ivy[v_i] = v_tmp3[v_i * 3 + 1] / v_l
+    v_ivz[v_i] = v_tmp3[v_i * 3 + 2] / v_l
+endfor v_i
+create_array(v_ifc, 60, numeric)
+v_fl = 0
+def fc {
+    v_ifc[v_fl] = v_fa
+    v_ifc[v_fl + 1] = v_fb
+    v_ifc[v_fl + 2] = v_fcc
+    v_fl = v_fl + 3
+}
+# the 20 faces
+for v_q in (0, 19, 1)
+    if v_q == 0 then
+        v_fa = 0
+        v_fb = 11
+        v_fcc = 5
+    elseif v_q == 1 then
+        v_fa = 0
+        v_fb = 5
+        v_fcc = 1
+    elseif v_q == 2 then
+        v_fa = 0
+        v_fb = 1
+        v_fcc = 7
+    elseif v_q == 3 then
+        v_fa = 0
+        v_fb = 7
+        v_fcc = 10
+    elseif v_q == 4 then
+        v_fa = 0
+        v_fb = 10
+        v_fcc = 11
+    elseif v_q == 5 then
+        v_fa = 1
+        v_fb = 5
+        v_fcc = 9
+    elseif v_q == 6 then
+        v_fa = 5
+        v_fb = 11
+        v_fcc = 4
+    elseif v_q == 7 then
+        v_fa = 11
+        v_fb = 10
+        v_fcc = 2
+    elseif v_q == 8 then
+        v_fa = 10
+        v_fb = 7
+        v_fcc = 6
+    elseif v_q == 9 then
+        v_fa = 7
+        v_fb = 1
+        v_fcc = 8
+    elseif v_q == 10 then
+        v_fa = 3
+        v_fb = 9
+        v_fcc = 4
+    elseif v_q == 11 then
+        v_fa = 3
+        v_fb = 4
+        v_fcc = 2
+    elseif v_q == 12 then
+        v_fa = 3
+        v_fb = 2
+        v_fcc = 6
+    elseif v_q == 13 then
+        v_fa = 3
+        v_fb = 6
+        v_fcc = 8
+    elseif v_q == 14 then
+        v_fa = 3
+        v_fb = 8
+        v_fcc = 9
+    elseif v_q == 15 then
+        v_fa = 4
+        v_fb = 9
+        v_fcc = 5
+    elseif v_q == 16 then
+        v_fa = 2
+        v_fb = 4
+        v_fcc = 11
+    elseif v_q == 17 then
+        v_fa = 6
+        v_fb = 2
+        v_fcc = 10
+    elseif v_q == 18 then
+        v_fa = 8
+        v_fb = 6
+        v_fcc = 7
+    else
+        v_fa = 9
+        v_fb = 8
+        v_fcc = 1
+    endif
+    call fc
+endfor v_q
+
+# ship meshes: vertex lists and triangle lists (indices), original designs
+# player: an arrow-head hull with a dorsal fin and two wing blades
+create_array(v_pvx, 9, numeric)
+create_array(v_pvy, 9, numeric)
+create_array(v_pvz, 9, numeric)
+create_array(v_ptri, 30, numeric)
+create_array(v_ptc, 10, string)
+def pv {
+    v_pvx[v_vi] = v_ax
+    v_pvy[v_vi] = v_ay
+    v_pvz[v_vi] = v_az
+}
+v_vi = 0
+v_ax = 0
+v_ay = 0
+v_az = 1.8
+call pv
+v_vi = 1
+v_ax = -0.45
+v_ay = 0
+v_az = -0.9
+call pv
+v_vi = 2
+v_ax = 0.45
+v_ay = 0
+v_az = -0.9
+call pv
+v_vi = 3
+v_ax = 0
+v_ay = 0.4
+v_az = -0.8
+call pv
+v_vi = 4
+v_ax = 0
+v_ay = -0.3
+v_az = -0.8
+call pv
+v_vi = 5
+v_ax = -1.7
+v_ay = -0.15
+v_az = -1.1
+call pv
+v_vi = 6
+v_ax = 1.7
+v_ay = -0.15
+v_az = -1.1
+call pv
+v_vi = 7
+v_ax = 0
+v_ay = 0.95
+v_az = -1.2
+call pv
+v_vi = 8
+v_ax = 0
+v_ay = 0.1
+v_az = 0.3
+call pv
+v_np = 0
+def ptri {
+    v_ptri[v_np * 3] = v_fa
+    v_ptri[v_np * 3 + 1] = v_fb
+    v_ptri[v_np * 3 + 2] = v_fcc
+    v_ptc[v_np] = v_tcol
+    v_np = v_np + 1
+}
+v_fa = 0
+v_fb = 1
+v_fcc = 3
+v_tcol = "silver"
+call ptri
+v_fa = 0
+v_fb = 3
+v_fcc = 2
+call ptri
+v_fa = 0
+v_fb = 4
+v_fcc = 1
+v_tcol = "gray"
+call ptri
+v_fa = 0
+v_fb = 2
+v_fcc = 4
+call ptri
+v_fa = 1
+v_fb = 3
+v_fcc = 4
+v_tcol = "dark_gray"
+call ptri
+v_fa = 2
+v_fb = 4
+v_fcc = 3
+call ptri
+v_fa = 8
+v_fb = 1
+v_fcc = 5
+v_tcol = "royal_blue"
+call ptri
+v_fa = 8
+v_fb = 6
+v_fcc = 2
+call ptri
+v_fa = 3
+v_fb = 7
+v_fcc = 8
+v_tcol = "sky_blue"
+call ptri
+v_nptri = v_np
+
+# raider: a stubby body with forward-swept wings and twin rear pods
+create_array(v_evx, 9, numeric)
+create_array(v_evy, 9, numeric)
+create_array(v_evz, 9, numeric)
+create_array(v_etri, 30, numeric)
+create_array(v_etc, 10, string)
+def ev {
+    v_evx[v_vi] = v_ax
+    v_evy[v_vi] = v_ay
+    v_evz[v_vi] = v_az
+}
+v_vi = 0
+v_ax = 0
+v_ay = 0
+v_az = 1.3
+call ev
+v_vi = 1
+v_ax = -0.55
+v_ay = 0
+v_az = -0.9
+call ev
+v_vi = 2
+v_ax = 0.55
+v_ay = 0
+v_az = -0.9
+call ev
+v_vi = 3
+v_ax = 0
+v_ay = 0.5
+v_az = -0.7
+call ev
+v_vi = 4
+v_ax = 0
+v_ay = -0.45
+v_az = -0.7
+call ev
+v_vi = 5
+v_ax = -2.1
+v_ay = 0.1
+v_az = 0.8
+call ev
+v_vi = 6
+v_ax = 2.1
+v_ay = 0.1
+v_az = 0.8
+call ev
+v_vi = 7
+v_ax = -0.4
+v_ay = 0
+v_az = 0.1
+call ev
+v_vi = 8
+v_ax = 0.4
+v_ay = 0
+v_az = 0.1
+call ev
+v_np = 0
+def etri {
+    v_etri[v_np * 3] = v_fa
+    v_etri[v_np * 3 + 1] = v_fb
+    v_etri[v_np * 3 + 2] = v_fcc
+    v_etc[v_np] = v_tcol
+    v_np = v_np + 1
+}
+v_fa = 0
+v_fb = 1
+v_fcc = 3
+v_tcol = "crimson"
+call etri
+v_fa = 0
+v_fb = 3
+v_fcc = 2
+call etri
+v_fa = 0
+v_fb = 4
+v_fcc = 1
+v_tcol = "maroon"
+call etri
+v_fa = 0
+v_fb = 2
+v_fcc = 4
+call etri
+v_fa = 1
+v_fb = 3
+v_fcc = 4
+v_tcol = "dark_gray"
+call etri
+v_fa = 2
+v_fb = 4
+v_fcc = 3
+call etri
+v_fa = 7
+v_fb = 1
+v_fcc = 5
+v_tcol = "orange"
+call etri
+v_fa = 8
+v_fb = 6
+v_fcc = 2
+call etri
+v_netri = v_np
+
+# ---------------- Asteroids ----------------
+create_array(v_ax0, v_nast, numeric)
+create_array(v_ay0, v_nast, numeric)
+create_array(v_az0, v_nast, numeric)
+create_array(v_ar, v_nast, numeric)
+create_array(v_aa, v_nast, numeric)
+create_array(v_ab, v_nast, numeric)
+create_array(v_aspa, v_nast, numeric)
+create_array(v_aspb, v_nast, numeric)
+create_array(v_abump, v_nast * 12, numeric)
+create_array(v_acol, v_nast, string)
+
+def respawn_ast {
+    # asteroid v_q placed ahead at distance v_rz0
+    v_ax0[v_q] = v_px + random(-220, 220, 0) / 10
+    v_ay0[v_q] = v_py + random(-130, 130, 0) / 10
+    v_az0[v_q] = v_pz + v_rz0
+    v_ar[v_q] = random(8, 30, 0) / 10
+    if random(0, 99, 0) < 12 then
+        v_ar[v_q] = random(40, 60, 0) / 10
+    endif
+    v_aa[v_q] = random(0, 628, 0) / 100
+    v_ab[v_q] = random(0, 628, 0) / 100
+    v_aspa[v_q] = random(-20, 20, 0) / 1000
+    v_aspb[v_q] = random(-20, 20, 0) / 1000
+    for v_i in (0, 11, 1)
+        v_abump[v_q * 12 + v_i] = random(72, 118, 0) / 100
+    endfor v_i
+    v_r = random(0, 3, 0)
+    if v_r == 0 then
+        v_acol[v_q] = "gray"
+    elseif v_r == 1 then
+        v_acol[v_q] = "wood_brown"
+    elseif v_r == 2 then
+        v_acol[v_q] = "tan"
+    else
+        v_acol[v_q] = "bronze"
+    endif
+}
+
+# ---------------- Draw list (bucketed by depth) ----------------
+v_nb = 80
+v_maxq = 320
+create_array(v_bhead, v_nb, numeric)
+create_array(v_qnext, v_maxq, numeric)
+create_array(v_qt, v_maxq, numeric)       # 1 tri, 2 disc, 3 line, 4 dot
+create_array(v_q0, v_maxq, numeric)
+create_array(v_q1, v_maxq, numeric)
+create_array(v_q2, v_maxq, numeric)
+create_array(v_q3, v_maxq, numeric)
+create_array(v_q4, v_maxq, numeric)
+create_array(v_q5, v_maxq, numeric)
+create_array(v_qc, v_maxq, string)
+create_array(v_qi, v_maxq, numeric)
+v_nq = 0
+
+def clear_list {
+    for v_b in (0, v_nb - 1, 1)
+        v_bhead[v_b] = -1
+    endfor v_b
+    v_nq = 0
+}
+
+def push_item {
+    # uses v_it (type), v_idep (depth), v_i0..v_i5, v_icol, v_iint
+    if v_nq < v_maxq then
+        v_b = min(max(int(v_idep * 0.75), 0), v_nb - 1)
+        v_qt[v_nq] = v_it
+        v_q0[v_nq] = v_i0
+        v_q1[v_nq] = v_i1
+        v_q2[v_nq] = v_i2
+        v_q3[v_nq] = v_i3
+        v_q4[v_nq] = v_i4
+        v_q5[v_nq] = v_i5
+        v_qc[v_nq] = v_icol
+        v_qi[v_nq] = min(max(v_iint, 0), 100)
+        v_qnext[v_nq] = v_bhead[v_b]
+        v_bhead[v_b] = v_nq
+        v_nq = v_nq + 1
+    endif
+}
+
+# ---------------- Camera ----------------
+def to_cam {
+    v_dx = v_wx - v_ex
+    v_dy = v_wy - v_ey
+    v_dz = v_wz - v_ez
+    v_cx = v_dx * v_rx + v_dy * v_ry + v_dz * v_rz
+    v_cy = v_dx * v_ux + v_dy * v_uy + v_dz * v_uz
+    v_cz = v_dx * v_fx + v_dy * v_fy + v_dz * v_fz
+}
+
+def set_camera {
+    # eye (v_ex..), target (v_gx..), roll v_croll
+    v_fx = v_gx - v_ex
+    v_fy = v_gy - v_ey
+    v_fz = v_gz - v_ez
+    v_l = sqrt(v_fx * v_fx + v_fy * v_fy + v_fz * v_fz)
+    v_fx = v_fx / v_l
+    v_fy = v_fy / v_l
+    v_fz = v_fz / v_l
+    # right = worldup x forward
+    v_rx = v_fz
+    v_ry = 0
+    v_rz = 0 - v_fx
+    v_l = sqrt(v_rx * v_rx + v_rz * v_rz)
+    v_rx = v_rx / v_l
+    v_rz = v_rz / v_l
+    v_ux = v_fy * v_rz - v_fz * v_ry
+    v_uy = v_fz * v_rx - v_fx * v_rz
+    v_uz = v_fx * v_ry - v_fy * v_rx
+    v_cr = cos(v_croll)
+    v_sr = sin(v_croll)
+    v_tx = v_rx * v_cr + v_ux * v_sr
+    v_ty = v_ry * v_cr + v_uy * v_sr
+    v_tz = v_rz * v_cr + v_uz * v_sr
+    v_ux = v_ux * v_cr - v_rx * v_sr
+    v_uy = v_uy * v_cr - v_ry * v_sr
+    v_uz = v_uz * v_cr - v_rz * v_sr
+    v_rx = v_tx
+    v_ry = v_ty
+    v_rz = v_tz
+}
+
+# rotation matrix from yaw v_ra, pitch v_rb, roll v_rc
+def make_rot {
+    v_c1 = cos(v_ra)
+    v_s1 = sin(v_ra)
+    v_c2 = cos(v_rb)
+    v_s2 = sin(v_rb)
+    v_c3 = cos(v_rc)
+    v_s3 = sin(v_rc)
+    # M = Ry(yaw) * Rx(pitch) * Rz(roll)
+    v_m00 = v_c1 * v_c3 + v_s1 * v_s2 * v_s3
+    v_m01 = 0 - v_c1 * v_s3 + v_s1 * v_s2 * v_c3
+    v_m02 = v_s1 * v_c2
+    v_m10 = v_c2 * v_s3
+    v_m11 = v_c2 * v_c3
+    v_m12 = 0 - v_s2
+    v_m20 = 0 - v_s1 * v_c3 + v_c1 * v_s2 * v_s3
+    v_m21 = v_s1 * v_s3 + v_c1 * v_s2 * v_c3
+    v_m22 = v_c1 * v_c2
+}
+
+# transformed vertices of the current object
+create_array(v_owx, 12, numeric)
+create_array(v_owy, 12, numeric)
+create_array(v_owz, 12, numeric)
+create_array(v_ocx, 12, numeric)
+create_array(v_ocy, 12, numeric)
+create_array(v_ocz, 12, numeric)
+
+def xform_vertex {
+    # local (v_lx0, v_ly0, v_lz0) scaled by v_osc -> world and camera, slot v_vi
+    v_wx = v_opx + (v_m00 * v_lx0 + v_m01 * v_ly0 + v_m02 * v_lz0) * v_osc
+    v_wy = v_opy + (v_m10 * v_lx0 + v_m11 * v_ly0 + v_m12 * v_lz0) * v_osc
+    v_wz = v_opz + (v_m20 * v_lx0 + v_m21 * v_ly0 + v_m22 * v_lz0) * v_osc
+    v_owx[v_vi] = v_wx
+    v_owy[v_vi] = v_wy
+    v_owz[v_vi] = v_wz
+    call to_cam
+    v_ocx[v_vi] = v_cx
+    v_ocy[v_vi] = v_cy
+    v_ocz[v_vi] = v_cz
+}
+
+def emit_face {
+    # face with vertex slots v_fa, v_fb, v_fcc; base colour v_tcol; cull if v_cull
+    if v_ocz[v_fa] > v_near and v_ocz[v_fb] > v_near and v_ocz[v_fcc] > v_near then
+        v_e1x = v_owx[v_fb] - v_owx[v_fa]
+        v_e1y = v_owy[v_fb] - v_owy[v_fa]
+        v_e1z = v_owz[v_fb] - v_owz[v_fa]
+        v_e2x = v_owx[v_fcc] - v_owx[v_fa]
+        v_e2y = v_owy[v_fcc] - v_owy[v_fa]
+        v_e2z = v_owz[v_fcc] - v_owz[v_fa]
+        v_nx = v_e1y * v_e2z - v_e1z * v_e2y
+        v_ny = v_e1z * v_e2x - v_e1x * v_e2z
+        v_nz = v_e1x * v_e2y - v_e1y * v_e2x
+        v_mx = (v_owx[v_fa] + v_owx[v_fb] + v_owx[v_fcc]) / 3
+        v_my = (v_owy[v_fa] + v_owy[v_fb] + v_owy[v_fcc]) / 3
+        v_mz = (v_owz[v_fa] + v_owz[v_fb] + v_owz[v_fcc]) / 3
+        # make the normal point outward from the object centre
+        if v_nx * (v_mx - v_opx) + v_ny * (v_my - v_opy) + v_nz * (v_mz - v_opz) < 0 then
+            v_nx = 0 - v_nx
+            v_ny = 0 - v_ny
+            v_nz = 0 - v_nz
+        endif
+        v_vis = 1
+        if v_cull == 1 and v_nx * (v_mx - v_ex) + v_ny * (v_my - v_ey) + v_nz * (v_mz - v_ez) > 0 then
+            v_vis = 0
+        endif
+        if v_vis == 1 then
+            v_nl = sqrt(v_nx * v_nx + v_ny * v_ny + v_nz * v_nz) + 0.0001
+            v_dl = (v_nx * v_lx + v_ny * v_ly + v_nz * v_lz) / v_nl
+            if v_cull == 0 then
+                v_dl = abs(v_dl)
+            endif
+            v_it = 1
+            v_idep = (v_ocz[v_fa] + v_ocz[v_fb] + v_ocz[v_fcc]) / 3
+            v_i0 = 31.5 + v_ocx[v_fa] / v_ocz[v_fa] * v_focal
+            v_i1 = 31.5 - v_ocy[v_fa] / v_ocz[v_fa] * v_focal
+            v_i2 = 31.5 + v_ocx[v_fb] / v_ocz[v_fb] * v_focal
+            v_i3 = 31.5 - v_ocy[v_fb] / v_ocz[v_fb] * v_focal
+            v_i4 = 31.5 + v_ocx[v_fcc] / v_ocz[v_fcc] * v_focal
+            v_i5 = 31.5 - v_ocy[v_fcc] / v_ocz[v_fcc] * v_focal
+            v_icol = v_tcol
+            v_iint = (12 + max(v_dl, 0) * 78) * v_ofade
+            call push_item
+        endif
+    endif
+}
+
+def emit_asteroid {
+    v_opx = v_ax0[v_q]
+    v_opy = v_ay0[v_q]
+    v_opz = v_az0[v_q]
+    v_wx = v_opx
+    v_wy = v_opy
+    v_wz = v_opz
+    call to_cam
+    v_dep = v_cz
+    v_rr = v_ar[v_q]
+    if v_dep > v_near + v_rr and v_dep < v_view then
+        v_ofade = min(max(1.25 - v_dep / v_view, 0.15), 1)
+        v_ssx = 31.5 + v_cx / v_dep * v_focal
+        v_ssy = 31.5 - v_cy / v_dep * v_focal
+        v_srr = v_rr * v_focal / v_dep
+        if v_ssx + v_srr > -2 and v_ssx - v_srr < 66 and v_ssy + v_srr > -2 and v_ssy - v_srr < 66 then
+            if v_srr < 2.5 then
+                # far away: a shaded disc (lit side toward the sun)
+                v_it = 2
+                v_idep = v_dep
+                v_i0 = v_ssx
+                v_i1 = v_ssy
+                v_i2 = max(v_srr, 0.6)
+                v_i3 = (v_lx * v_rx + v_ly * v_ry + v_lz * v_rz) * v_srr * 0.35
+                v_i4 = 0 - (v_lx * v_ux + v_ly * v_uy + v_lz * v_uz) * v_srr * 0.35
+                v_i5 = 0
+                v_icol = v_acol[v_q]
+                v_iint = 55 * v_ofade
+                call push_item
+            else
+                v_ra = v_aa[v_q]
+                v_rb = v_ab[v_q]
+                v_rc = 0
+                call make_rot
+                v_osc = v_rr
+                for v_vi in (0, 11, 1)
+                    v_bm = v_abump[v_q * 12 + v_vi]
+                    v_lx0 = v_ivx[v_vi] * v_bm
+                    v_ly0 = v_ivy[v_vi] * v_bm
+                    v_lz0 = v_ivz[v_vi] * v_bm
+                    call xform_vertex
+                endfor v_vi
+                v_cull = 1
+                v_tcol = v_acol[v_q]
+                for v_f in (0, 19, 1)
+                    v_fa = v_ifc[v_f * 3]
+                    v_fb = v_ifc[v_f * 3 + 1]
+                    v_fcc = v_ifc[v_f * 3 + 2]
+                    call emit_face
+                endfor v_f
+            endif
+        endif
+    endif
+}
+
+def emit_player {
+    v_opx = v_px
+    v_opy = v_py
+    v_opz = v_pz
+    v_ra = v_pyaw
+    v_rb = v_ppitch
+    v_rc = v_pbank
+    call make_rot
+    v_osc = 1.35
+    for v_vi in (0, 8, 1)
+        v_lx0 = v_pvx[v_vi]
+        v_ly0 = v_pvy[v_vi]
+        v_lz0 = v_pvz[v_vi]
+        call xform_vertex
+    endfor v_vi
+    v_cull = 0
+    v_ofade = 1
+    for v_f in (0, v_nptri - 1, 1)
+        v_fa = v_ptri[v_f * 3]
+        v_fb = v_ptri[v_f * 3 + 1]
+        v_fcc = v_ptri[v_f * 3 + 2]
+        v_tcol = v_ptc[v_f]
+        call emit_face
+    endfor v_f
+    # engine glow behind the hull
+    v_lx0 = 0
+    v_ly0 = 0.05
+    v_lz0 = -1.05 * 1.35
+    v_vi = 9
+    call xform_vertex
+    if v_cz > v_near then
+        v_it = 2
+        v_idep = v_cz + 0.3
+        v_i0 = 31.5 + v_cx / v_cz * v_focal
+        v_i1 = 31.5 - v_cy / v_cz * v_focal
+        v_i2 = 1.1 + sin(v_t * 0.9) * 0.3
+        v_i3 = 0
+        v_i4 = 0
+        v_i5 = 1
+        v_icol = "cyan"
+        v_iint = 95
+        call push_item
+    endif
+}
+
+def emit_enemy {
+    v_opx = v_enx
+    v_opy = v_eny
+    v_opz = v_enz
+    v_ra = v_eyaw
+    v_rb = 0
+    v_rc = v_ebank
+    call make_rot
+    v_osc = 1.7
+    for v_vi in (0, 8, 1)
+        v_lx0 = v_evx[v_vi]
+        v_ly0 = v_evy[v_vi]
+        v_lz0 = v_evz[v_vi]
+        call xform_vertex
+    endfor v_vi
+    v_cull = 0
+    v_ofade = 1
+    for v_f in (0, v_netri - 1, 1)
+        v_fa = v_etri[v_f * 3]
+        v_fb = v_etri[v_f * 3 + 1]
+        v_fcc = v_etri[v_f * 3 + 2]
+        v_tcol = v_etc[v_f]
+        if v_ehit > 0 then
+            v_tcol = "white"
+        endif
+        call emit_face
+    endfor v_f
+}
+
+# ---------------- Combat ----------------
+v_maxbolt = 16
+create_array(v_bx, v_maxbolt, numeric)
+create_array(v_by, v_maxbolt, numeric)
+create_array(v_bz, v_maxbolt, numeric)
+create_array(v_bvx, v_maxbolt, numeric)
+create_array(v_bvy, v_maxbolt, numeric)
+create_array(v_bvz, v_maxbolt, numeric)
+create_array(v_blife, v_maxbolt, numeric)
+create_array(v_bown, v_maxbolt, numeric)    # 1 player, 2 enemy
+for v_i in (0, v_maxbolt - 1, 1)
+    v_blife[v_i] = 0
+endfor v_i
+
+def fire_bolt {
+    # from (v_sx0, v_sy0, v_sz0) toward (v_tx0, v_ty0, v_tz0), owner v_own
+    v_slot = -1
+    for v_i in (0, v_maxbolt - 1, 1)
+        if v_slot < 0 and v_blife[v_i] <= 0 then
+            v_slot = v_i
+        endif
+    endfor v_i
+    if v_slot >= 0 then
+        v_dx = v_tx0 - v_sx0
+        v_dy = v_ty0 - v_sy0
+        v_dz = v_tz0 - v_sz0
+        v_l = sqrt(v_dx * v_dx + v_dy * v_dy + v_dz * v_dz) + 0.001
+        v_bs = 1.6 * v_k
+        v_bx[v_slot] = v_sx0
+        v_by[v_slot] = v_sy0
+        v_bz[v_slot] = v_sz0
+        v_bvx[v_slot] = v_dx / v_l * v_bs
+        v_bvy[v_slot] = v_dy / v_l * v_bs
+        v_bvz[v_slot] = v_dz / v_l * v_bs + v_speed
+        v_blife[v_slot] = 45
+        v_bown[v_slot] = v_own
+    endif
+}
+
+v_ndeb = 26
+create_array(v_dbx, v_ndeb, numeric)
+create_array(v_dby, v_ndeb, numeric)
+create_array(v_dbz, v_ndeb, numeric)
+create_array(v_dvx, v_ndeb, numeric)
+create_array(v_dvy, v_ndeb, numeric)
+create_array(v_dvz, v_ndeb, numeric)
+v_boom = 0          # explosion timer
+v_bmx = 0
+v_bmy = 0
+v_bmz = 0
+
+v_ndust = 24
+create_array(v_dux, v_ndust, numeric)
+create_array(v_duy, v_ndust, numeric)
+create_array(v_duz, v_ndust, numeric)
+
+# ---------------- State ----------------
+v_px = 0
+v_py = 0
+v_pz = 0
+v_plvx = 0
+v_plvy = 0
+v_pyaw = 0
+v_ppitch = 0
+v_pbank = 0
+v_enx = 0
+v_eny = 0
+v_enz = 16
+v_eyaw = 0
+v_ebank = 0
+v_ehp = 6
+v_ehit = 0
+v_alive = 1
+v_respawn = 0
+v_t = 0
+v_score = 0
+v_fire_cd = 30
+v_efire_cd = 90
+v_shield = 0
+v_croll = 0
+v_aimx = 0
+v_aimy = 0
+v_eph = random(0, 628, 0) / 100
+
+for v_q in (0, v_nast - 1, 1)
+    v_rz0 = random(10, v_view, 0)
+    call respawn_ast
+endfor v_q
+for v_i in (0, v_ndust - 1, 1)
+    v_dux[v_i] = random(-80, 80, 0) / 10
+    v_duy[v_i] = random(-50, 50, 0) / 10
+    v_duz[v_i] = random(0, 300, 0) / 10
+endfor v_i
+
+v_nstar = 60
+create_array(v_stx, v_nstar, numeric)
+create_array(v_sty, v_nstar, numeric)
+create_array(v_stz, v_nstar, numeric)
+create_array(v_stb, v_nstar, numeric)
+for v_i in (0, v_nstar - 1, 1)
+    v_a1 = random(0, 628, 0) / 100
+    v_a2 = random(-140, 140, 0) / 100
+    v_stx[v_i] = cos(v_a2) * sin(v_a1)
+    v_sty[v_i] = sin(v_a2)
+    v_stz[v_i] = cos(v_a2) * cos(v_a1)
+    v_stb[v_i] = random(15, 70, 0)
+endfor v_i
+
+def update {
+    v_t = v_t + v_k
+    v_pz = v_pz + v_speed
+    # the raider jinks: layered waves give unpredictable weaving
+    v_eph = v_eph + 0.01 * v_k
+    # the raider's flight path keeps running even while no raider is
+    # present, so nothing jumps when the next one arrives
+    v_ox = v_enx
+    v_enx = sin(v_eph * 1.3) * 7 + sin(v_eph * 3.1) * 2.5
+    v_eny = sin(v_eph * 0.9 + 1) * 3.5 + cos(v_eph * 2.3) * 1.2
+    v_evel = (v_enx - v_ox) / v_k
+    v_ebank = v_ebank + (min(max((0 - v_evel) * 7, -1.0), 1.0) - v_ebank) * 0.1
+    v_eyaw = v_evel * 1.5
+    if v_alive == 1 then
+        v_tdist = 11 + sin(v_t * 0.007) * 3
+        v_enz = v_enz + ((v_pz + v_tdist) - v_enz) * 0.03 * v_k
+    else
+        v_enz = v_pz + 80
+        v_respawn = v_respawn - v_k
+        if v_respawn <= 0 then
+            v_alive = 1
+            v_ehp = 6
+        endif
+    endif
+    # the player follows the raider, swerving around rocks in the way
+    v_tgx = v_enx
+    v_tgy = v_eny
+    for v_q in (0, v_nast - 1, 1)
+        v_dz = v_az0[v_q] - v_pz
+        if v_dz > 0 and v_dz < 14 then
+            v_ddx = v_px - v_ax0[v_q]
+            v_ddy = v_py - v_ay0[v_q]
+            v_dd = sqrt(v_ddx * v_ddx + v_ddy * v_ddy) + 0.01
+            v_need = v_ar[v_q] + 2.2
+            if v_dd < v_need then
+                v_tgx = v_tgx + v_ddx / v_dd * (v_need - v_dd) * 4
+                v_tgy = v_tgy + v_ddy / v_dd * (v_need - v_dd) * 4
+            endif
+        endif
+    endfor v_q
+    v_plvx = v_plvx + ((v_tgx - v_px) * 0.006 - v_plvx * 0.08) * v_k
+    v_plvy = v_plvy + ((v_tgy - v_py) * 0.006 - v_plvy * 0.08) * v_k
+    v_px = v_px + v_plvx * v_k
+    v_py = v_py + v_plvy * v_k
+    v_pbank = v_pbank + (min(max((0 - v_plvx) * 6, -0.85), 0.85) - v_pbank) * 0.08
+    v_pyaw = v_plvx * 1.6
+    v_ppitch = 0 - v_plvy * 1.6
+    # recycle rocks and dust that have passed
+    for v_q in (0, v_nast - 1, 1)
+        v_aa[v_q] = v_aa[v_q] + v_aspa[v_q] * v_k
+        v_ab[v_q] = v_ab[v_q] + v_aspb[v_q] * v_k
+        if v_az0[v_q] < v_pz - 10 then
+            v_rz0 = v_view - 5 + random(0, 10, 0)
+            call respawn_ast
+        endif
+    endfor v_q
+    for v_i in (0, v_ndust - 1, 1)
+        if v_duz[v_i] + 0 < v_pz - 8 then
+            v_dux[v_i] = v_px + random(-80, 80, 0) / 10
+            v_duy[v_i] = v_py + random(-50, 50, 0) / 10
+            v_duz[v_i] = v_pz + 22 + random(0, 80, 0) / 10
+        endif
+    endfor v_i
+    # firing
+    v_fire_cd = v_fire_cd - v_k
+    if v_alive == 1 and v_fire_cd <= 0 and abs(v_enx - v_px) < 3 and abs(v_eny - v_py) < 2.5 then
+        v_fire_cd = 14
+        v_own = 1
+        v_tx0 = v_enx + random(-6, 6, 0) / 10
+        v_ty0 = v_eny + random(-6, 6, 0) / 10
+        v_tz0 = v_enz
+        for v_sd in (-1, 1, 2)
+            v_sx0 = v_px + v_sd * 1.4 * cos(v_pbank)
+            v_sy0 = v_py - 0.1 + v_sd * 1.4 * sin(v_pbank)
+            v_sz0 = v_pz - 0.6
+            call fire_bolt
+        endfor v_sd
+    endif
+    v_efire_cd = v_efire_cd - v_k
+    if v_alive == 1 and v_efire_cd <= 0 then
+        v_efire_cd = random(70, 130, 0)
+        v_own = 2
+        v_sx0 = v_enx
+        v_sy0 = v_eny
+        v_sz0 = v_enz - 1
+        v_tx0 = v_px + random(-20, 20, 0) / 10
+        v_ty0 = v_py + random(-15, 15, 0) / 10
+        v_tz0 = v_pz - 5
+        call fire_bolt
+        v_bvz[v_slot] = v_bvz[v_slot] - v_speed * 2
+    endif
+    # move bolts and check hits
+    for v_i in (0, v_maxbolt - 1, 1)
+        if v_blife[v_i] > 0 then
+            v_blife[v_i] = v_blife[v_i] - v_k
+            v_bx[v_i] = v_bx[v_i] + v_bvx[v_i]
+            v_by[v_i] = v_by[v_i] + v_bvy[v_i]
+            v_bz[v_i] = v_bz[v_i] + v_bvz[v_i]
+            if v_bown[v_i] == 1 and v_alive == 1 then
+                v_ddx = v_bx[v_i] - v_enx
+                v_ddy = v_by[v_i] - v_eny
+                v_ddz = v_bz[v_i] - v_enz
+                if v_ddx * v_ddx + v_ddy * v_ddy + v_ddz * v_ddz < 4.5 then
+                    v_blife[v_i] = 0
+                    v_ehp = v_ehp - 1
+                    v_ehit = 4
+                    if v_ehp <= 0 then
+                        call explode
+                    endif
+                endif
+            endif
+            if v_bown[v_i] == 2 then
+                v_ddx = v_bx[v_i] - v_px
+                v_ddy = v_by[v_i] - v_py
+                v_ddz = v_bz[v_i] - v_pz
+                if v_ddx * v_ddx + v_ddy * v_ddy + v_ddz * v_ddz < 6 then
+                    v_blife[v_i] = 0
+                    v_shield = 10
+                endif
+            endif
+        endif
+    endfor v_i
+    if v_ehit > 0 then
+        v_ehit = v_ehit - 1
+    endif
+    if v_boom > 0 then
+        v_boom = v_boom + v_k
+        if v_boom > 60 then
+            v_boom = 0
+        endif
+        for v_i in (0, v_ndeb - 1, 1)
+            v_dbx[v_i] = v_dbx[v_i] + v_dvx[v_i] * v_k
+            v_dby[v_i] = v_dby[v_i] + v_dvy[v_i] * v_k
+            v_dbz[v_i] = v_dbz[v_i] + v_dvz[v_i] * v_k
+        endfor v_i
+    endif
+}
+
+def explode {
+    v_alive = 0
+    v_respawn = 150
+    v_score = v_score + 1
+    v_boom = 1
+    v_bmx = v_enx
+    v_bmy = v_eny
+    v_bmz = v_enz
+    for v_j2 in (0, v_ndeb - 1, 1)
+        v_dbx[v_j2] = v_enx
+        v_dby[v_j2] = v_eny
+        v_dbz[v_j2] = v_enz
+        v_dvx[v_j2] = random(-100, 100, 0) / 400
+        v_dvy[v_j2] = random(-100, 100, 0) / 400
+        v_dvz[v_j2] = random(-100, 100, 0) / 400 + v_speed * 0.8
+    endfor v_j2
+}
+
+# ---------------- Rendering ----------------
+create_array(v_px8, 8, numeric)
+create_array(v_py8, 8, numeric)
+create_array(v_rowl, 64, numeric)
+create_array(v_rowr, 64, numeric)
+def fill_poly {
+    v_ymn = 99
+    v_ymx = -99
+    for v_kk in (0, v_no - 1, 1)
+        v_ymn = min(v_ymn, v_py8[v_kk])
+        v_ymx = max(v_ymx, v_py8[v_kk])
+    endfor v_kk
+    v_ya = max(int(v_ymn + 0.5), 0)
+    v_yb = min(int(v_ymx + 0.5), 63)
+    if v_ya <= v_yb then
+        for v_yy in (v_ya, v_yb, 1)
+            v_rowl[v_yy] = 999
+            v_rowr[v_yy] = -999
+        endfor v_yy
+        for v_kk in (0, v_no - 1, 1)
+            v_k2 = (v_kk + 1) % v_no
+            v_x0 = v_px8[v_kk]
+            v_y0 = v_py8[v_kk]
+            v_x1 = v_px8[v_k2]
+            v_y1 = v_py8[v_k2]
+            v_e0 = max(int(min(v_y0, v_y1) + 0.5), v_ya)
+            v_e1 = min(int(max(v_y0, v_y1) + 0.5), v_yb)
+            v_dyy = v_y1 - v_y0
+            if abs(v_dyy) < 0.0001 then
+                v_dyy = 0.0001
+            endif
+            v_sl = (v_x1 - v_x0) / v_dyy
+            for v_yy in (v_e0, v_e1, 1)
+                v_xx = v_x0 + v_sl * min(max(v_yy - v_y0, min(0, v_dyy)), max(0, v_dyy))
+                v_rowl[v_yy] = min(v_rowl[v_yy], v_xx)
+                v_rowr[v_yy] = max(v_rowr[v_yy], v_xx)
+            endfor v_yy
+        endfor v_kk
+        for v_yy in (v_ya, v_yb, 1)
+            v_xl = max(int(v_rowl[v_yy] + 0.5), 0)
+            v_xr = min(int(v_rowr[v_yy] + 0.5), 63)
+            if v_xl <= v_xr then
+                draw_line(v_xl, v_yy, v_xr, v_yy, v_dc, v_di)
+            endif
+        endfor v_yy
+    endif
+}
+
+def draw_list {
+    for v_b in (v_nb - 1, 0, -1)
+        v_n = v_bhead[v_b]
+        while v_n >= 0 then
+            v_dc = v_qc[v_n]
+            v_di = v_qi[v_n]
+            v_ty = v_qt[v_n]
+            if v_ty == 1 then
+                v_px8[0] = v_q0[v_n]
+                v_py8[0] = v_q1[v_n]
+                v_px8[1] = v_q2[v_n]
+                v_py8[1] = v_q3[v_n]
+                v_px8[2] = v_q4[v_n]
+                v_py8[2] = v_q5[v_n]
+                v_no = 3
+                call fill_poly
+            elseif v_ty == 2 then
+                if v_q5[v_n] == 1 then
+                    # glow: plain disc
+                    if v_q2[v_n] >= 1 then
+                        draw_circle(v_q0[v_n], v_q1[v_n], v_q2[v_n], v_dc, v_di, true)
+                    else
+                        mplot(v_q0[v_n], v_q1[v_n], v_dc, v_di)
+                    endif
+                elseif v_q2[v_n] >= 1 then
+                    # rock disc: dark body with a lit cap toward the sun
+                    draw_circle(v_q0[v_n], v_q1[v_n], v_q2[v_n], v_dc, v_di * 0.35, true)
+                    draw_circle(v_q0[v_n] + v_q3[v_n], v_q1[v_n] + v_q4[v_n], v_q2[v_n] * 0.65, v_dc, v_di, true)
+                else
+                    mplot(v_q0[v_n], v_q1[v_n], v_dc, v_di)
+                endif
+            elseif v_ty == 3 then
+                draw_line(v_q0[v_n], v_q1[v_n], v_q2[v_n], v_q3[v_n], v_dc, v_di)
+            else
+                mplot(v_q0[v_n], v_q1[v_n], v_dc, v_di)
+            endif
+            v_n = v_qnext[v_n]
+        endwhile
+    endfor v_b
+}
+
+def draw_background {
+    # stars and a distant gas giant only turn with the camera
+    for v_i in (0, v_nstar - 1, 1)
+        v_cz = v_stx[v_i] * v_fx + v_sty[v_i] * v_fy + v_stz[v_i] * v_fz
+        if v_cz > 0.3 then
+            v_cx = v_stx[v_i] * v_rx + v_sty[v_i] * v_ry + v_stz[v_i] * v_rz
+            v_cy = v_stx[v_i] * v_ux + v_sty[v_i] * v_uy + v_stz[v_i] * v_uz
+            mplot(31.5 + v_cx / v_cz * v_focal, 31.5 - v_cy / v_cz * v_focal, white, v_stb[v_i])
+        endif
+    endfor v_i
+    v_gx0 = 0.55
+    v_gy0 = 0.25
+    v_gz0 = 0.8
+    v_cz = v_gx0 * v_fx + v_gy0 * v_fy + v_gz0 * v_fz
+    if v_cz > 0.3 then
+        v_cx = v_gx0 * v_rx + v_gy0 * v_ry + v_gz0 * v_rz
+        v_cy = v_gx0 * v_ux + v_gy0 * v_uy + v_gz0 * v_uz
+        v_gsx = 31.5 + v_cx / v_cz * v_focal
+        v_gsy = 31.5 - v_cy / v_cz * v_focal
+        draw_circle(v_gsx, v_gsy, 9, purple, 22, true)
+        draw_circle(v_gsx + 2, v_gsy - 2, 7, violet, 22, true)
+        draw_line(v_gsx - 8, v_gsy + 1, v_gsx + 8, v_gsy - 2, lavender, 25)
+        draw_line(v_gsx - 7, v_gsy + 4, v_gsx + 7, v_gsy + 1, lavender, 18)
+    endif
+}
+
+def build_list {
+    call clear_list
+    for v_q in (0, v_nast - 1, 1)
+        call emit_asteroid
+    endfor v_q
+    if v_alive == 1 then
+        call emit_enemy
+    endif
+    call emit_player
+    # laser bolts
+    for v_i in (0, v_maxbolt - 1, 1)
+        if v_blife[v_i] > 0 then
+            v_wx = v_bx[v_i]
+            v_wy = v_by[v_i]
+            v_wz = v_bz[v_i]
+            call to_cam
+            v_c1x = v_cx
+            v_c1y = v_cy
+            v_c1z = v_cz
+            v_wx = v_bx[v_i] - v_bvx[v_i] * 0.9
+            v_wy = v_by[v_i] - v_bvy[v_i] * 0.9
+            v_wz = v_bz[v_i] - v_bvz[v_i] * 0.9
+            call to_cam
+            if v_c1z > v_near and v_cz > v_near then
+                v_it = 3
+                v_idep = v_c1z
+                v_i0 = 31.5 + v_c1x / v_c1z * v_focal
+                v_i1 = 31.5 - v_c1y / v_c1z * v_focal
+                v_i2 = 31.5 + v_cx / v_cz * v_focal
+                v_i3 = 31.5 - v_cy / v_cz * v_focal
+                if v_bown[v_i] == 1 then
+                    v_icol = "lime"
+                else
+                    v_icol = "red"
+                endif
+                v_iint = 100
+                call push_item
+            endif
+        endif
+    endfor v_i
+    # explosion: fireball and tumbling debris
+    if v_boom > 0 then
+        v_wx = v_bmx
+        v_wy = v_bmy
+        v_wz = v_bmz
+        call to_cam
+        if v_cz > v_near and v_boom < 30 then
+            v_e = v_boom / 30
+            v_it = 2
+            v_idep = v_cz
+            v_i0 = 31.5 + v_cx / v_cz * v_focal
+            v_i1 = 31.5 - v_cy / v_cz * v_focal
+            v_i2 = (0.8 + v_e * 3.2) * v_focal / v_cz
+            v_i3 = 0
+            v_i4 = 0
+            v_i5 = 1
+            v_icol = "orange"
+            v_iint = 90 * (1 - v_e)
+            call push_item
+            v_i2 = v_i2 * 0.55
+            v_icol = "yellow"
+            v_idep = v_cz - 0.1
+            call push_item
+            if v_e < 0.2 then
+                v_i2 = v_i2 * 0.5
+                v_icol = "white"
+                v_idep = v_cz - 0.2
+                v_iint = 100
+                call push_item
+            endif
+        endif
+        for v_i in (0, v_ndeb - 1, 1)
+            v_wx = v_dbx[v_i]
+            v_wy = v_dby[v_i]
+            v_wz = v_dbz[v_i]
+            call to_cam
+            if v_cz > v_near then
+                v_it = 4
+                v_idep = v_cz
+                v_i0 = 31.5 + v_cx / v_cz * v_focal
+                v_i1 = 31.5 - v_cy / v_cz * v_focal
+                if v_i % 3 == 0 then
+                    v_icol = "gold"
+                else
+                    v_icol = "crimson"
+                endif
+                v_iint = 100 - v_boom
+                call push_item
+            endif
+        endfor v_i
+    endif
+    # space dust streaming past
+    for v_i in (0, v_ndust - 1, 1)
+        v_wx = v_dux[v_i]
+        v_wy = v_duy[v_i]
+        v_wz = v_duz[v_i]
+        call to_cam
+        if v_cz > v_near then
+            v_c1x = v_cx
+            v_c1y = v_cy
+            v_c1z = v_cz
+            v_wz = v_duz[v_i] - v_speed * 3
+            call to_cam
+            if v_cz > v_near then
+                v_it = 3
+                v_idep = v_c1z
+                v_i0 = 31.5 + v_c1x / v_c1z * v_focal
+                v_i1 = 31.5 - v_c1y / v_c1z * v_focal
+                v_i2 = 31.5 + v_cx / v_cz * v_focal
+                v_i3 = 31.5 - v_cy / v_cz * v_focal
+                v_icol = "gray"
+                v_iint = min(60, 160 / v_c1z)
+                call push_item
+            endif
+        endif
+    endfor v_i
+}
+
+def draw_hud {
+    # target brackets around the raider
+    if v_alive == 1 then
+        v_wx = v_enx
+        v_wy = v_eny
+        v_wz = v_enz
+        call to_cam
+        if v_cz > v_near then
+            v_hx = 31.5 + v_cx / v_cz * v_focal
+            v_hy = 31.5 - v_cy / v_cz * v_focal
+            v_hs = max(3, 2.6 * v_focal / v_cz)
+            v_hc = "lime"
+            if abs(v_enx - v_px) < 3 and abs(v_eny - v_py) < 2.5 then
+                v_hc = "red"
+            endif
+            draw_line(v_hx - v_hs, v_hy - v_hs, v_hx - v_hs + 2, v_hy - v_hs, v_hc, 70)
+            draw_line(v_hx - v_hs, v_hy - v_hs, v_hx - v_hs, v_hy - v_hs + 2, v_hc, 70)
+            draw_line(v_hx + v_hs, v_hy - v_hs, v_hx + v_hs - 2, v_hy - v_hs, v_hc, 70)
+            draw_line(v_hx + v_hs, v_hy - v_hs, v_hx + v_hs, v_hy - v_hs + 2, v_hc, 70)
+            draw_line(v_hx - v_hs, v_hy + v_hs, v_hx - v_hs + 2, v_hy + v_hs, v_hc, 70)
+            draw_line(v_hx - v_hs, v_hy + v_hs, v_hx - v_hs, v_hy + v_hs - 2, v_hc, 70)
+            draw_line(v_hx + v_hs, v_hy + v_hs, v_hx + v_hs - 2, v_hy + v_hs, v_hc, 70)
+            draw_line(v_hx + v_hs, v_hy + v_hs, v_hx + v_hs, v_hy + v_hs - 2, v_hc, 70)
+            # raider shield bar
+            draw_line(v_hx - 3, v_hy - v_hs - 2, v_hx - 3 + v_ehp - 1, v_hy - v_hs - 2, v_hc, 60)
+        endif
+    endif
+    # your shield flaring when a shot comes close
+    if v_shield > 0 then
+        draw_ellipse(31.5, 40, 22 - v_shield, 14 - v_shield * 0.5, cyan, v_shield * 6, false, 0)
+        v_shield = v_shield - 1
+    endif
+    draw_text(1, 1, "" & v_score, tiny64_font, 5, white, 55)
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call update
+    # chase camera: behind and above, rolling part way with the ship
+    v_ex = v_px * 0.85
+    v_ey = v_py * 0.85 + 2.1
+    v_ez = v_pz - 5.5
+    v_aimx = v_aimx + ((v_px * 0.6 + v_enx * 0.4) - v_aimx) * 0.08 * v_k
+    v_aimy = v_aimy + ((v_py * 0.6 + v_eny * 0.4 + 0.4) - v_aimy) * 0.08 * v_k
+    v_gx = v_aimx
+    v_gy = v_aimy
+    v_gz = v_pz + 12
+    v_croll = v_croll + (v_pbank * 0.45 - v_croll) * 0.08
+    call set_camera
+    call build_list
+    begin_frame
+        call draw_background
+        call draw_list
+        call draw_hud
+    end_frame
+endwhile

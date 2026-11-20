@@ -1,17 +1,15 @@
-# ADR-001 — IPC between the native producer and the legacy consumer
+# ADR-001 — IPC between the native producer and consumer
 
-* **Status:** Accepted (Phase 1)
+* **Status:** Accepted (Phase 1; child is `pixil-consumer` after C6)
 * **Date:** 2026-11-14
 * **Charter:** `docs/Native_Pixil_Runtime_Phase1_Plan.md` §6.1 (option B recommended), §6.5 (pacing)
 
 ## Context
 
-Phase 1 replaces the Pixil *producer* (language, playlist, timers) with native
-code while the LED *consumer* stays the legacy Python `rgb_matrix_lib`
-(`RGB_Api` + `CommandExecutor`). Today the two halves talk through
-`shared/command_queue.py`: a `multiprocessing.Queue` of `(command, delay)` tuples
-plus `multiprocessing` events for drain, shutdown, script reset and test
-snapshots. That transport is Python-shaped; C++ cannot join it.
+The Pixil *producer* (language, playlist, timers) is native C++. The LED
+*consumer* is also native (`pixil-consumer`, ADR-002). The wire protocol below
+was introduced in Phase 1 to replace Python `multiprocessing.Queue` transport
+(`shared/command_queue.py`) and is unchanged after the C6 cutover.
 
 Options considered (charter §6.1):
 
@@ -23,13 +21,13 @@ Options considered (charter §6.1):
 
 ## Decision
 
-The native `pixil` binary spawns `bridge/pixil_consumer_bridge.py` (lives in
-this repo; **no legacy edits**), which imports the legacy `rgb_matrix_lib` from
-`--legacy-root` and runs a loop equivalent to `MatrixCommandQueue._consumer_loop`.
+The native `pixil` binary spawns `pixil-consumer` (same build tree) with the
+pipe fds below. (Phase 1 temporarily used `bridge/pixil_consumer_bridge.py`;
+that path was removed at C6.)
 
 ### Channels
 
-Three anonymous pipes, inherited as fixed fds in the bridge:
+Three anonymous pipes, inherited as fixed fds in the consumer:
 
 | fd | Direction | Purpose |
 |---|---|---|

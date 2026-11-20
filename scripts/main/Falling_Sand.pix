@@ -1,0 +1,521 @@
+# Falling Sand - a little world of sand, water, fire and smoke
+#
+# Spouts along the top pour coloured sand and water into a box of stone
+# ramps and wooden beams. Sand piles into striped dunes and slides off the
+# ramps, water runs down and pools, sand sinks through the water, and now
+# and then embers rain down and set the wood alight. Fire spreads along the
+# beams, smoke curls up, and water that meets fire hisses into steam that
+# rises and falls again as drops. When the box is full, the floor opens,
+# everything pours out, and a new arrangement of ramps and beams begins.
+#
+# How it is built:
+#   - The whole screen is a grid of cells, one per pixel: empty, sand,
+#     water, stone, wood, fire, smoke or steam. Each kind follows a few
+#     simple rules (sand falls and slides, water falls and spreads, fire
+#     burns and rises, smoke and steam drift up).
+#   - The picture is kept between frames, and only cells that change are
+#     redrawn. Rows where nothing happened are skipped, so settled sand and
+#     still water cost almost nothing.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+
+# kinds of cell
+v_EMPTY = 0
+v_SAND = 1
+v_WATER = 2
+v_STONE = 3
+v_FIRE = 4
+v_WOOD = 5
+v_SMOKE = 6
+v_STEAM = 7
+
+create_array(v_g, 4096, numeric)      # kind
+create_array(v_gc, 4096, numeric)     # colour index
+create_array(v_gi, 4096, numeric)     # brightness
+create_array(v_gl, 4096, numeric)     # life (fire, smoke, steam)
+create_array(v_gs, 4096, numeric)     # tick when last moved
+# the grid is watched in blocks of 8 cells: only blocks where something
+# changed (or next to a change) are updated on the next tick
+create_array(v_ract, 512, numeric)
+create_array(v_rnext, 512, numeric)
+
+create_array(v_cname, 16, string)
+v_cname[0] = "black"
+v_cname[1] = "tan"
+v_cname[2] = "gold"
+v_cname[3] = "peach"
+v_cname[4] = "bronze"
+v_cname[5] = "orange"
+v_cname[6] = "coral"
+v_cname[7] = "lavender"
+v_cname[8] = "royal_blue"
+v_cname[9] = "gray"
+v_cname[10] = "wood_brown"
+v_cname[11] = "red"
+v_cname[12] = "yellow"
+v_cname[13] = "light_gray"
+v_cname[14] = "dark_brown"
+v_cname[15] = "sky_blue"
+
+def mark_rows {
+    # cell (v_mx, v_my) changed: wake its block and the blocks around it
+    v_mb = int(v_mx / 8)
+    v_mb0 = max(v_mb - 1, 0)
+    v_mb1 = min(v_mb + 1, 7)
+    for v_mr in (max(v_my - 1, 0), min(v_my + 1, 63), 1)
+        for v_mc in (v_mb0, v_mb1, 1)
+            v_rnext[v_mr * 8 + v_mc] = 1
+        endfor v_mc
+    endfor v_mr
+}
+
+def wake_all {
+    for v_mr in (0, 511, 1)
+        v_rnext[v_mr] = 1
+    endfor v_mr
+}
+
+def show_cell {
+    # draw cell v_ci
+    v_cx = v_ci % 64
+    v_cy = int(v_ci / 64)
+    if v_g[v_ci] == 0 then
+        mplot(v_cx, v_cy, black, 100)
+    else
+        mplot(v_cx, v_cy, v_cname[v_gc[v_ci]], v_gi[v_ci])
+    endif
+    v_mx = v_cx
+    v_my = v_cy
+    call mark_rows
+}
+
+def set_cell {
+    # put kind v_nk (colour v_nc, brightness v_ni, life v_nl) into cell v_ci
+    v_g[v_ci] = v_nk
+    v_gc[v_ci] = v_nc
+    v_gi[v_ci] = v_ni
+    v_gl[v_ci] = v_nl
+    v_gs[v_ci] = v_tick
+    call show_cell
+}
+
+def swap_cells {
+    # swap cells v_sa and v_sb
+    v_t1 = v_g[v_sa]
+    v_g[v_sa] = v_g[v_sb]
+    v_g[v_sb] = v_t1
+    v_t1 = v_gc[v_sa]
+    v_gc[v_sa] = v_gc[v_sb]
+    v_gc[v_sb] = v_t1
+    v_t1 = v_gi[v_sa]
+    v_gi[v_sa] = v_gi[v_sb]
+    v_gi[v_sb] = v_t1
+    v_t1 = v_gl[v_sa]
+    v_gl[v_sa] = v_gl[v_sb]
+    v_gl[v_sb] = v_t1
+    v_gs[v_sa] = v_tick
+    v_gs[v_sb] = v_tick
+    v_ci = v_sa
+    call show_cell
+    v_ci = v_sb
+    call show_cell
+}
+
+def kind_at {
+    # kind at (v_qx, v_qy) -> v_qk (stone outside the box; the floor is open while draining)
+    if v_qx < 0 or v_qx > 63 or v_qy < 0 then
+        v_qk = v_STONE
+    elseif v_qy > 63 then
+        v_qk = v_STONE
+        if v_drain == 1 then
+            v_qk = -1
+        endif
+    else
+        v_qk = v_g[v_qy * 64 + v_qx]
+    endif
+}
+
+# ---------------- Layout ----------------
+def stone_line {
+    # a ramp of stone from (v_lx0, v_ly0) to (v_lx1, v_ly1), v_lw thick
+    v_steps = max(abs(v_lx1 - v_lx0), abs(v_ly1 - v_ly0))
+    for v_s in (0, v_steps, 1)
+        v_px = int(v_lx0 + (v_lx1 - v_lx0) * v_s / v_steps + 0.5)
+        v_py = int(v_ly0 + (v_ly1 - v_ly0) * v_s / v_steps + 0.5)
+        for v_w in (0, v_lw - 1, 1)
+            if v_px >= 0 and v_px <= 63 and v_py + v_w >= 0 and v_py + v_w <= 62 then
+                v_ci = (v_py + v_w) * 64 + v_px
+                v_nk = v_lk
+                v_nc = v_lc
+                v_ni = v_li + random(-5, 5, 0)
+                v_nl = 0
+                call set_cell
+            endif
+        endfor v_w
+    endfor v_s
+}
+
+def new_layout {
+    for v_i in (0, 4095, 1)
+        v_g[v_i] = 0
+        v_gs[v_i] = -1
+    endfor v_i
+    for v_y in (0, 63, 1)
+        draw_line(0, v_y, 63, v_y, black, 100)
+    endfor v_y
+    call wake_all
+    # two or three stone ramps tilted alternately
+    v_nramp = random(2, 3, 0)
+    for v_r in (1, v_nramp, 1)
+        v_ly0 = 14 + v_r * 13 + random(-3, 3, 0)
+        if v_r % 2 == 1 then
+            v_lx0 = random(2, 8, 0)
+            v_lx1 = random(28, 40, 0)
+            v_ly1 = v_ly0 + random(4, 8, 0)
+        else
+            v_lx0 = random(56, 61, 0)
+            v_lx1 = random(24, 36, 0)
+            v_ly1 = v_ly0 + random(4, 8, 0)
+        endif
+        v_lw = 2
+        v_lk = v_STONE
+        v_lc = 9
+        v_li = 45
+        call stone_line
+    endfor v_r
+    # wooden beams
+    for v_r in (1, 2, 1)
+        v_lx0 = random(6, 44, 0)
+        v_lx1 = v_lx0 + random(8, 14, 0)
+        v_ly0 = random(30, 54, 0)
+        v_ly1 = v_ly0
+        v_lw = 2
+        v_lk = v_WOOD
+        v_lc = 10
+        v_li = 55
+        call stone_line
+    endfor v_r
+    # a stone cup to catch things
+    v_cupx = random(14, 46, 0)
+    v_lx0 = v_cupx - 6
+    v_lx1 = v_cupx - 6
+    v_ly0 = 52
+    v_ly1 = 60
+    v_lw = 1
+    v_lk = v_STONE
+    v_lc = 9
+    v_li = 45
+    call stone_line
+    v_lx0 = v_cupx + 6
+    v_lx1 = v_cupx + 6
+    call stone_line
+    v_lx0 = v_cupx - 6
+    v_lx1 = v_cupx + 6
+    v_ly0 = 60
+    v_ly1 = 60
+    call stone_line
+    v_filled = 0
+    v_blocked = 0
+    v_drain = 0
+    v_phase_t = 0
+}
+
+# ---------------- Rules ----------------
+def try_move {
+    # move the cell at v_i to (v_qx, v_qy) if that holds kind v_want1 or v_want2
+    v_moved = 0
+    call kind_at
+    if v_qk == -1 then
+        # falling out through the open floor
+        v_ci = v_i
+        v_nk = 0
+        v_nc = 0
+        v_ni = 0
+        v_nl = 0
+        call set_cell
+        v_moved = 1
+    elseif v_qk == v_want1 or v_qk == v_want2 then
+        v_sa = v_i
+        v_sb = v_qy * 64 + v_qx
+        if v_gs[v_sb] != v_tick then
+            call swap_cells
+            v_moved = 1
+        endif
+    endif
+}
+
+def update_cell {
+    v_kd = v_g[v_i]
+    v_x = v_i % 64
+    v_y = int(v_i / 64)
+    if v_kd == v_SAND then
+        # fall, sink through water, or slide off a pile
+        v_want1 = v_EMPTY
+        v_want2 = v_WATER
+        v_qx = v_x
+        v_qy = v_y + 1
+        call try_move
+        if v_moved == 0 then
+            v_d = random(0, 1, 0) * 2 - 1
+            v_qx = v_x + v_d
+            v_qy = v_y + 1
+            call try_move
+            if v_moved == 0 then
+                v_qx = v_x - v_d
+                call try_move
+            endif
+        endif
+    elseif v_kd == v_WATER then
+        # fall; otherwise flow along in the direction this drop is heading
+        # (kept in its life value) and turn back when blocked
+        v_want1 = v_EMPTY
+        v_want2 = -9
+        v_qx = v_x
+        v_qy = v_y + 1
+        call try_move
+        if v_moved == 0 then
+            v_d = v_gl[v_i]
+            if v_d == 0 then
+                v_d = random(0, 1, 0) * 2 - 1
+                v_gl[v_i] = v_d
+            endif
+            v_qx = v_x + v_d
+            v_qy = v_y + 1
+            call try_move
+            if v_moved == 0 then
+                v_qx = v_x + v_d
+                v_qy = v_y
+                call try_move
+                if v_moved == 0 then
+                    v_gl[v_i] = 0 - v_d
+                endif
+            endif
+        endif
+    elseif v_kd == v_FIRE then
+        v_gl[v_i] = v_gl[v_i] - 1
+        # set nearby wood alight; water puts the flame out as steam
+        for v_n in (0, 3, 1)
+            v_qx = v_x
+            v_qy = v_y
+            if v_n == 0 then
+                v_qx = v_x - 1
+            elseif v_n == 1 then
+                v_qx = v_x + 1
+            elseif v_n == 2 then
+                v_qy = v_y - 1
+            else
+                v_qy = v_y + 1
+            endif
+            call kind_at
+            if v_qk == v_WOOD and random(0, 99, 0) < 4 then
+                v_ci = v_qy * 64 + v_qx
+                v_nk = v_FIRE
+                v_nc = 11
+                v_ni = 90
+                v_nl = random(40, 90, 0)
+                call set_cell
+            elseif v_qk == v_WATER then
+                v_ci = v_qy * 64 + v_qx
+                v_nk = v_STEAM
+                v_nc = 13
+                v_ni = 40
+                v_nl = random(60, 140, 0)
+                call set_cell
+                v_gl[v_i] = 0
+            endif
+        endfor v_n
+        if v_gl[v_i] <= 0 then
+            v_ci = v_i
+            if random(0, 99, 0) < 60 then
+                v_nk = v_SMOKE
+                v_nc = 9
+                v_ni = 35
+                v_nl = random(30, 70, 0)
+            else
+                v_nk = 0
+                v_nc = 0
+                v_ni = 0
+                v_nl = 0
+            endif
+            call set_cell
+        else
+            # flicker
+            v_r = random(0, 9, 0)
+            if v_r < 4 then
+                v_gc[v_i] = 11
+            elseif v_r < 8 then
+                v_gc[v_i] = 5
+            else
+                v_gc[v_i] = 12
+            endif
+            v_gi[v_i] = random(70, 100, 0)
+            v_ci = v_i
+            call show_cell
+            # loose embers fall; burning wood stays put
+            if v_gl[v_i] < 30 and random(0, 99, 0) < 30 then
+                v_want1 = v_EMPTY
+                v_want2 = -9
+                v_qx = v_x + random(-1, 1, 0)
+                v_qy = v_y + 1
+                call try_move
+            endif
+        endif
+    elseif v_kd == v_SMOKE or v_kd == v_STEAM then
+        v_gl[v_i] = v_gl[v_i] - 1
+        if v_gl[v_i] <= 0 or (v_y == 0 and random(0, 99, 0) < 20) then
+            v_ci = v_i
+            if v_kd == v_STEAM and random(0, 99, 0) < 70 then
+                # steam condenses into a falling drop
+                v_nk = v_WATER
+                v_nc = 8
+                v_ni = 60
+            else
+                v_nk = 0
+                v_nc = 0
+                v_ni = 0
+            endif
+            v_nl = 0
+            call set_cell
+        else
+            v_want1 = v_EMPTY
+            v_want2 = -9
+            v_qx = v_x + random(-1, 1, 0)
+            v_qy = v_y - 1
+            call try_move
+            if v_moved == 0 then
+                v_qx = v_x + random(0, 1, 0) * 2 - 1
+                v_qy = v_y
+                call try_move
+            endif
+            if v_kd == v_SMOKE and v_moved == 1 then
+                v_gi[v_qy * 64 + v_qx] = max(v_gl[v_qy * 64 + v_qx] * 0.6, 4)
+            endif
+            v_mx = v_x
+            v_my = v_y
+            call mark_rows
+        endif
+    endif
+}
+
+def simulate {
+    v_tick = v_tick + 1
+    for v_mr in (0, 511, 1)
+        v_ract[v_mr] = v_rnext[v_mr]
+        v_rnext[v_mr] = 0
+    endfor v_mr
+    v_dir = v_tick % 2
+    for v_yy in (0, 63, 1)
+        v_row = 63 - v_yy
+        for v_bb in (0, 7, 1)
+            if v_dir == 0 then
+                v_blk = v_bb
+            else
+                v_blk = 7 - v_bb
+            endif
+            if v_ract[v_row * 8 + v_blk] == 1 then
+                for v_xx in (0, 7, 1)
+                    if v_dir == 0 then
+                        v_i = v_row * 64 + v_blk * 8 + v_xx
+                    else
+                        v_i = v_row * 64 + v_blk * 8 + 7 - v_xx
+                    endif
+                    v_kd0 = v_g[v_i]
+                    if v_kd0 != 0 and v_kd0 != v_STONE and v_kd0 != v_WOOD and v_gs[v_i] != v_tick then
+                        call update_cell
+                    endif
+                endfor v_xx
+            endif
+        endfor v_bb
+    endfor v_yy
+}
+
+# ---------------- Spouts ----------------
+v_band = 1
+def pour {
+    v_phase_t = v_phase_t + 1
+    if v_drain == 0 then
+        # the sand spout slowly sweeps back and forth, changing colour in bands
+        if v_phase_t % 160 == 0 then
+            v_band = 1 + (v_band % 7)
+        endif
+        v_spx = int(32 + sin(v_phase_t * 0.006) * 24)
+        # the spout is blocked when the sand below it has piled right up
+        if v_g[v_spx] != 0 and v_g[v_spx + 64] != 0 and v_g[v_spx + 128] != 0 then
+            v_blocked = v_blocked + 1
+        else
+            v_blocked = 0
+        endif
+        if v_g[v_spx] == 0 then
+            v_ci = v_spx
+            v_nk = v_SAND
+            v_nc = v_band
+            v_ni = random(70, 92, 0)
+            v_nl = 0
+            call set_cell
+            v_filled = v_filled + 1
+        endif
+        # water comes in bursts from either side
+        if (v_phase_t % 900) < 330 then
+            v_wpx = 10
+            if (v_phase_t % 1800) >= 900 then
+                v_wpx = 53
+            endif
+            if v_g[v_wpx] == 0 then
+                v_ci = v_wpx
+                v_nk = v_WATER
+                v_nc = 8
+                v_ni = 55 + random(0, 10, 0)
+                v_nl = 0
+                call set_cell
+                v_filled = v_filled + 1
+            endif
+        endif
+        # embers now and then
+        if v_phase_t % 1300 > 1200 and random(0, 99, 0) < 25 then
+            v_ex = random(8, 55, 0)
+            if v_g[v_ex] == 0 then
+                v_ci = v_ex
+                v_nk = v_FIRE
+                v_nc = 5
+                v_ni = 95
+                v_nl = random(20, 29, 0)
+                call set_cell
+            endif
+        endif
+        # when the box is about full, open the floor
+        if v_filled > 2600 or v_blocked > 30 then
+            v_drain = 1
+            v_phase_t = 0
+            call wake_all
+        endif
+    else
+        # draining: keep the bottom row open so everything pours out
+        for v_mr in (504, 511, 1)
+            v_rnext[v_mr] = 1
+        endfor v_mr
+        if v_phase_t > 1000 then
+            call new_layout
+        endif
+    endif
+}
+
+# ---------------- Main loop ----------------
+v_tick = 0
+v_acc = 0
+begin_frame
+    call new_layout
+end_frame
+while true then
+    begin_frame(true)
+        v_acc = v_acc + v_k
+        while v_acc >= 1 then
+            v_acc = v_acc - 1
+            call pour
+            call simulate
+        endwhile
+    end_frame
+endwhile

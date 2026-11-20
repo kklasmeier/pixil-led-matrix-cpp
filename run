@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Show launcher for the native producer. The LED consumer is still the legacy
-# Python library, started by the pixil binary. See docs/OPS.md.
+# Show launcher for the native producer + pixil-consumer. See docs/OPS.md.
 set -euo pipefail
 
 cd "$(dirname "$0")"

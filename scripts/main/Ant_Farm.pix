@@ -1,0 +1,898 @@
+# Ant Farm - a colony digging its home behind glass
+#
+# A wooden-framed ant farm, seen side on. Layers of soil, clay and sand
+# with a few stones fill the glass; above it is the surface and a strip of
+# sky. A small colony starts with a queen and a handful of workers and
+# builds from nothing: workers dig winding tunnels and round chambers,
+# carry every grain of dug soil up to the surface and pile it into a
+# growing mound, fetch seeds that drop onto the surface and store them deep
+# underground. The queen lays eggs that hatch into new workers, so the
+# colony grows over time. Every run digs a different nest.
+#
+# How it is built:
+#   - The soil is a grid, one cell per pixel. Each cell is soil, stone,
+#     tunnel, stored food or an egg.
+#   - The picture is drawn once in full, then kept between frames (preserved
+#     frames). Each frame only repaints what changed: dug cells, the mound,
+#     and the pixels the ants left and moved into.
+#   - Ants find their way to the surface by a distance map of the tunnels,
+#     worked out a few hundred cells at a time across frames so there is
+#     never a pause, then switched in when complete.
+#   - Diggers keep going in the direction they are heading and avoid
+#     breaking into neighbouring tunnels, which gives long winding galleries;
+#     now and then they mark out a chamber and hollow it out.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_y0 = 13                   # first soil row (the surface is the row above)
+v_H = 63 - v_y0             # soil rows (y0 .. 62)
+v_W = 64
+v_ncell = v_H * v_W
+v_maxant = 36
+v_step_every = 3            # frames between ant steps (at the design pace)
+
+# ---------------- Grid ----------------
+# cell: 0 tunnel, 1 soil, 2 stone, 3 stored food, 4 egg
+create_array(v_cell, v_ncell, numeric)
+create_array(v_ccol, v_ncell, numeric)     # soil colour index
+create_array(v_cint, v_ncell, numeric)     # soil brightness
+create_array(v_room, v_ncell, numeric)     # 1 = inside a planned chamber
+create_array(v_scname, 6, string)
+v_scname[0] = "dark_brown"
+v_scname[1] = "wood_brown"
+v_scname[2] = "standard_brown"
+v_scname[3] = "tan"
+v_scname[4] = "gray"
+v_scname[5] = "bronze"
+
+print("Filling the farm with soil...")
+v_ph1 = random(0, 628, 0) / 100
+v_ph2 = random(0, 628, 0) / 100
+for v_y in (0, v_H - 1, 1)
+    for v_x in (0, v_W - 1, 1)
+        v_c = v_y * v_W + v_x
+        v_cell[v_c] = 1
+        v_room[v_c] = 0
+        v_b1 = 9 + sin(v_x * 0.17 + v_ph1) * 2 + sin(v_x * 0.05) * 2
+        v_b2 = 22 + sin(v_x * 0.11 + v_ph2) * 3
+        v_b3 = 36 + sin(v_x * 0.08 + v_ph1 * 2) * 3
+        if v_y < v_b1 then
+            v_ccol[v_c] = 0
+            v_base = 52
+        elseif v_y < v_b2 then
+            v_ccol[v_c] = 1
+            v_base = 40
+        elseif v_y < v_b3 then
+            v_ccol[v_c] = 2
+            v_base = 34
+        else
+            v_ccol[v_c] = 5
+            v_base = 26
+        endif
+        # thin sandy band
+        if abs(v_y - v_b2 - 4 - sin(v_x * 0.3) * 1.5) < 1 then
+            v_ccol[v_c] = 3
+            v_base = 30
+        endif
+        v_cint[v_c] = v_base + random(-2, 2, 0) * 3
+    endfor v_x
+endfor v_y
+# a few stones
+for v_s in (1, 7, 1)
+    v_sx = random(4, 59, 0)
+    v_sy = random(8, v_H - 4, 0)
+    v_sw = random(2, 4, 0)
+    v_sh = random(1, 3, 0)
+    for v_y in (v_sy - v_sh, v_sy + v_sh, 1)
+        for v_x in (v_sx - v_sw, v_sx + v_sw, 1)
+            if (v_x - v_sx) * (v_x - v_sx) * v_sh * v_sh + (v_y - v_sy) * (v_y - v_sy) * v_sw * v_sw <= v_sw * v_sw * v_sh * v_sh then
+                if v_x >= 1 and v_x <= 62 and v_y >= 0 and v_y < v_H then
+                    v_c = v_y * v_W + v_x
+                    v_cell[v_c] = 2
+                    v_ccol[v_c] = 4
+                    v_cint[v_c] = 35 + random(0, 3, 0) * 5
+                endif
+            endif
+        endfor v_x
+    endfor v_y
+endfor v_s
+
+# starting nest: an entrance shaft and the queen's chamber
+v_entx = random(18, 45, 0)
+v_qy = 16
+for v_y in (0, v_qy, 1)
+    v_cell[v_y * v_W + v_entx] = 0
+endfor v_y
+v_qx = v_entx
+for v_y in (v_qy - 2, v_qy + 2, 1)
+    for v_x in (v_qx - 4, v_qx + 4, 1)
+        if (v_x - v_qx) * (v_x - v_qx) * 4 + (v_y - v_qy) * (v_y - v_qy) * 16 <= 64 then
+            v_cell[v_y * v_W + v_x] = 0
+        endif
+    endfor v_x
+endfor v_y
+
+# ---------------- Surface ----------------
+create_array(v_pile, v_W, numeric)        # mound height per column
+for v_x in (0, v_W - 1, 1)
+    v_pile[v_x] = 0
+endfor v_x
+v_nseed = 6
+create_array(v_seedx, v_nseed, numeric)
+create_array(v_seedy, v_nseed, numeric)   # falling height (rows above the ground)
+create_array(v_seedon, v_nseed, numeric)  # 0 none, 1 falling, 2 on the ground
+for v_i in (0, v_nseed - 1, 1)
+    v_seedon[v_i] = 0
+endfor v_i
+
+# ---------------- Ants ----------------
+create_array(v_ax, v_maxant, numeric)
+create_array(v_ay, v_maxant, numeric)     # screen row; < y0 means on the surface
+create_array(v_adx, v_maxant, numeric)
+create_array(v_ady, v_maxant, numeric)
+create_array(v_ast, v_maxant, numeric)    # 0 explore, 1 carry soil, 2 carry food
+create_array(v_aclk, v_maxant, numeric)
+create_array(v_adrop, v_maxant, numeric)  # where to drop soil on the surface
+create_array(v_apat, v_maxant, numeric)   # steps spent carrying food
+create_array(v_atrip, v_maxant, numeric)  # surface trip target x (-999 = none)
+create_array(v_await, v_maxant, numeric)  # time spent out of sight
+v_offl = -25               # ants may wander this far beyond the glass
+v_offr = 88
+# pixels drawn for each ant last frame (to repaint the background there)
+create_array(v_ox1, v_maxant, numeric)
+create_array(v_oy1, v_maxant, numeric)
+create_array(v_ox2, v_maxant, numeric)
+create_array(v_oy2, v_maxant, numeric)
+create_array(v_ox3, v_maxant, numeric)
+create_array(v_oy3, v_maxant, numeric)
+v_nant = 0
+
+def add_ant {
+    if v_nant < v_maxant then
+        v_ax[v_nant] = v_nx
+        v_ay[v_nant] = v_ny
+        v_adx[v_nant] = 1
+        v_ady[v_nant] = 0
+        v_ast[v_nant] = 0
+        v_apat[v_nant] = 0
+        v_atrip[v_nant] = -999
+        v_await[v_nant] = 0
+        v_aclk[v_nant] = random(0, 30, 0) / 10
+        v_ox1[v_nant] = -1
+        v_ox2[v_nant] = -1
+        v_ox3[v_nant] = -1
+        v_nant = v_nant + 1
+    endif
+}
+for v_i in (1, 6, 1)
+    v_nx = v_qx + random(-3, 3, 0)
+    v_ny = v_y0 + v_qy
+    call add_ant
+endfor v_i
+
+# eggs
+v_maxegg = 10
+create_array(v_egc, v_maxegg, numeric)    # cell index, -1 none
+create_array(v_egt, v_maxegg, numeric)    # time left
+for v_i in (0, v_maxegg - 1, 1)
+    v_egc[v_i] = -1
+endfor v_i
+
+# ---------------- Distance map (built in slices) ----------------
+create_array(v_dA, v_ncell, numeric)
+create_array(v_sA, v_ncell, numeric)
+create_array(v_dB, v_ncell, numeric)
+create_array(v_sB, v_ncell, numeric)
+create_array(v_bq, v_ncell, numeric)
+for v_c in (0, v_ncell - 1, 1)
+    v_sA[v_c] = -1
+    v_sB[v_c] = -1
+endfor v_c
+v_cur = 0          # 0: ants read A, 1: ants read B
+v_gen = 0
+v_bh = 0
+v_bt = 0
+v_building = 0
+
+def start_build {
+    v_gen = v_gen + 1
+    v_bh = 0
+    v_bt = 0
+    for v_x in (1, 62, 1)
+        if v_cell[v_x] != 1 and v_cell[v_x] != 2 then
+            v_bq[v_bt] = v_x
+            v_bt = v_bt + 1
+            if v_cur == 0 then
+                v_dB[v_x] = 0
+                v_sB[v_x] = v_gen
+            else
+                v_dA[v_x] = 0
+                v_sA[v_x] = v_gen
+            endif
+        endif
+    endfor v_x
+    v_building = 1
+}
+
+def build_slice {
+    v_budget = 220
+    while v_bh < v_bt and v_budget > 0 then
+        v_c = v_bq[v_bh]
+        v_bh = v_bh + 1
+        v_budget = v_budget - 1
+        if v_cur == 0 then
+            v_d = v_dB[v_c] + 1
+        else
+            v_d = v_dA[v_c] + 1
+        endif
+        for v_nb in (0, 3, 1)
+            if v_nb == 0 then
+                v_n = v_c - 1
+            elseif v_nb == 1 then
+                v_n = v_c + 1
+            elseif v_nb == 2 then
+                v_n = v_c - v_W
+            else
+                v_n = v_c + v_W
+            endif
+            if v_n >= 0 and v_n < v_ncell then
+                if v_cell[v_n] != 1 and v_cell[v_n] != 2 then
+                    if v_cur == 0 then
+                        if v_sB[v_n] != v_gen then
+                            v_sB[v_n] = v_gen
+                            v_dB[v_n] = v_d
+                            v_bq[v_bt] = v_n
+                            v_bt = v_bt + 1
+                        endif
+                    else
+                        if v_sA[v_n] != v_gen then
+                            v_sA[v_n] = v_gen
+                            v_dA[v_n] = v_d
+                            v_bq[v_bt] = v_n
+                            v_bt = v_bt + 1
+                        endif
+                    endif
+                endif
+            endif
+        endfor v_nb
+    endwhile
+    if v_bh >= v_bt then
+        # finished: switch the ants over to the new map
+        v_cur = 1 - v_cur
+        v_curgen = v_gen
+        v_building = 0
+    endif
+}
+
+def get_dist {
+    # cell v_gc -> v_gd (-1 if unknown)
+    v_gd = -1
+    if v_cur == 0 then
+        if v_sA[v_gc] == v_curgen then
+            v_gd = v_dA[v_gc]
+        endif
+    else
+        if v_sB[v_gc] == v_curgen then
+            v_gd = v_dB[v_gc]
+        endif
+    endif
+}
+
+# build the first map straight away
+v_curgen = -1
+call start_build
+while v_building == 1 then
+    call build_slice
+endwhile
+
+# ---------------- Drawing helpers ----------------
+def sky_row {
+    # colour of the sky at row v_ry -> v_rc, v_ri
+    v_rc = "sky_blue"
+    v_ri = 20 + v_ry * 2.2
+}
+
+def paint {
+    # repaint the background at (v_px, v_py)
+    if v_px >= 1 and v_px <= 62 and v_py >= 1 and v_py <= 62 then
+        if v_py >= v_y0 then
+            v_c = (v_py - v_y0) * v_W + v_px
+            v_cv = v_cell[v_c]
+            if v_cv == 0 then
+                mplot(v_px, v_py, dark_brown, 10)
+            elseif v_cv == 3 then
+                mplot(v_px, v_py, yellow, 55)
+            elseif v_cv == 4 then
+                mplot(v_px, v_py, white, 70)
+            else
+                mplot(v_px, v_py, v_scname[v_ccol[v_c]], v_cint[v_c])
+            endif
+        elseif v_py >= v_y0 - v_pile[v_px] then
+            mplot(v_px, v_py, wood_brown, 48 + (v_px + v_py) % 3 * 4)
+        elseif v_cell[v_px] != 1 and v_cell[v_px] != 2 and v_py >= v_y0 - max(v_pile[max(v_px - 1, 1)], v_pile[min(v_px + 1, 62)]) then
+            # the open hole through the mound
+            mplot(v_px, v_py, dark_brown, 10)
+        elseif v_py == v_y0 - 1 and (v_px * 7) % 5 < 2 then
+            mplot(v_px, v_py, green, 45)
+        elseif (v_px - 52) * (v_px - 52) + (v_py - 5) * (v_py - 5) <= 5 then
+            mplot(v_px, v_py, gold, 85)
+        else
+            v_ry = v_py
+            call sky_row
+            mplot(v_px, v_py, v_rc, v_ri)
+        endif
+    endif
+}
+
+def draw_all {
+    # the whole farm, row by row with runs of equal colour
+    for v_py in (1, v_y0 - 1, 1)
+        v_ry = v_py
+        call sky_row
+        draw_line(1, v_py, 62, v_py, v_rc, v_ri)
+    endfor v_py
+    # sun and grass
+    draw_circle(52, 5, 2, gold, 85, true)
+    for v_px in (1, 62, 1)
+        if (v_px * 7) % 5 < 2 then
+            mplot(v_px, v_y0 - 1, green, 45)
+        endif
+    endfor v_px
+    for v_py in (v_y0, 62, 1)
+        for v_px in (1, 62, 1)
+            call paint
+        endfor v_px
+    endfor v_py
+    # the wooden frame
+    draw_rectangle(0, 0, 64, 64, wood_brown, 60, false)
+    draw_line(0, 0, 63, 0, dark_brown, 70)
+    draw_line(0, 63, 63, 63, dark_brown, 70)
+}
+
+# ---------------- Ant behaviour ----------------
+def cell_at {
+    # (v_tx, v_ty) -> v_tc (cell value; 9 = outside the farm)
+    v_tc = 9
+    if v_tx >= 1 and v_tx <= 62 and v_ty >= v_y0 and v_ty <= 62 then
+        v_tc = v_cell[(v_ty - v_y0) * v_W + v_tx]
+    endif
+}
+
+def new_heading {
+    v_r = random(0, 99, 0)
+    # near the surface, prefer heading down
+    if v_ay[v_a] - v_y0 < 10 then
+        v_r = v_r * 0.7
+    endif
+    if v_r < 34 then
+        v_adx[v_a] = 0
+        v_ady[v_a] = 1
+    elseif v_r < 62 then
+        v_adx[v_a] = -1
+        v_ady[v_a] = 0
+    elseif v_r < 90 then
+        v_adx[v_a] = 1
+        v_ady[v_a] = 0
+    else
+        v_adx[v_a] = 0
+        v_ady[v_a] = -1
+    endif
+}
+
+def is_entrance {
+    # is column v_ex an open hole down into the nest? -> v_ent
+    v_ent = 0
+    if v_ex >= 1 and v_ex <= 62 then
+        if v_cell[v_ex] != 1 and v_cell[v_ex] != 2 then
+            v_ent = 1
+        endif
+    endif
+}
+
+def surface_y {
+    # row an ant walks on at column v_sx2 (beyond the glass it is flat ground)
+    if v_sx2 >= 1 and v_sx2 <= 62 then
+        v_sy2 = v_y0 - 1 - v_pile[v_sx2]
+    else
+        v_sy2 = v_y0 - 1
+    endif
+}
+
+def dig_ok {
+    # may the ant dig into soil cell (v_tx, v_ty) coming from (v_fx, v_fy)?
+    v_ok = 0
+    v_tci = (v_ty - v_y0) * v_W + v_tx
+    if v_room[v_tci] == 1 then
+        v_ok = 1
+    elseif (v_ty - v_y0 < 5 or v_ty > 59) and v_ty == v_fy then
+        # no galleries just under the surface or along the bottom of the glass
+        v_ok = 0
+    else
+        # keep tunnels one wide: no other tunnel touching the new cell
+        v_cnt = 0
+        for v_nb in (0, 3, 1)
+            v_ex = v_tx
+            v_ey = v_ty
+            if v_nb == 0 then
+                v_ex = v_tx - 1
+            elseif v_nb == 1 then
+                v_ex = v_tx + 1
+            elseif v_nb == 2 then
+                v_ey = v_ty - 1
+            else
+                v_ey = v_ty + 1
+            endif
+            if (v_ex != v_fx or v_ey != v_fy) and v_ex >= 1 and v_ex <= 62 and v_ey >= v_y0 and v_ey <= 62 then
+                if v_cell[(v_ey - v_y0) * v_W + v_ex] != 1 and v_cell[(v_ey - v_y0) * v_W + v_ex] != 2 then
+                    v_cnt = v_cnt + 1
+                endif
+            endif
+        endfor v_nb
+        if v_cnt == 0 then
+            v_ok = 1
+        endif
+    endif
+}
+
+def plan_chamber {
+    # mark an oval around (v_tx, v_ty) as a chamber to be hollowed out
+    v_crw = random(3, 5, 0)
+    v_crh = 2
+    for v_ey in (v_ty - v_crh, v_ty + v_crh, 1)
+        for v_ex in (v_tx - v_crw, v_tx + v_crw, 1)
+            if v_ex >= 2 and v_ex <= 61 and v_ey >= v_y0 + 3 and v_ey <= 61 then
+                if (v_ex - v_tx) * (v_ex - v_tx) * v_crh * v_crh + (v_ey - v_ty) * (v_ey - v_ty) * v_crw * v_crw <= v_crw * v_crw * v_crh * v_crh then
+                    v_room[(v_ey - v_y0) * v_W + v_ex] = 1
+                endif
+            endif
+        endfor v_ex
+    endfor v_ey
+}
+
+v_dug = 0
+v_food = 0
+def step_ant {
+    v_x = v_ax[v_a]
+    v_y = v_ay[v_a]
+    v_st = v_ast[v_a]
+    if v_y < v_y0 then
+        # ---- on the surface ----
+        if v_st == 1 then
+            # walk to the drop spot and add to the mound
+            if v_x == v_adrop[v_a] then
+                v_dx2 = v_x
+                # never drop soil into a nest entrance
+                v_ex = v_dx2
+                call is_entrance
+                if v_ent == 1 then
+                    v_dx2 = v_dx2 + 1
+                    if v_dx2 > 61 then
+                        v_dx2 = v_dx2 - 2
+                    endif
+                endif
+                # soil slides down the sides of the mound, but not into a hole
+                v_moved = 1
+                while v_moved == 1 then
+                    v_moved = 0
+                    v_ex = v_dx2 - 1
+                    call is_entrance
+                    v_entl = v_ent
+                    v_ex = v_dx2 + 1
+                    call is_entrance
+                    v_entr = v_ent
+                    if v_dx2 > 1 and v_entl == 0 and v_pile[v_dx2 - 1] < v_pile[v_dx2] then
+                        v_dx2 = v_dx2 - 1
+                        v_moved = 1
+                    elseif v_dx2 < 62 and v_entr == 0 and v_pile[v_dx2 + 1] < v_pile[v_dx2] then
+                        v_dx2 = v_dx2 + 1
+                        v_moved = 1
+                    endif
+                endwhile
+                if v_pile[v_dx2] < v_y0 - 4 then
+                    v_pile[v_dx2] = v_pile[v_dx2] + 1
+                    v_px = v_dx2
+                    v_py = v_y0 - v_pile[v_dx2]
+                    call paint
+                    # deepen the hole's walls beside it
+                    for v_sd in (-1, 1, 2)
+                        v_px = v_dx2 + v_sd
+                        call paint
+                    endfor v_sd
+                endif
+                v_ast[v_a] = 0
+                v_adx[v_a] = 0 - v_adx[v_a]
+            else
+                v_adx[v_a] = 1
+                if v_adrop[v_a] < v_x then
+                    v_adx[v_a] = -1
+                endif
+            endif
+        elseif v_st == 2 then
+            # carry the seed to the nearest entrance
+            v_best = -1
+            v_bd = 999
+            for v_ex in (1, 62, 1)
+                if v_cell[v_ex] != 1 and v_cell[v_ex] != 2 and abs(v_ex - v_x) < v_bd then
+                    v_bd = abs(v_ex - v_x)
+                    v_best = v_ex
+                endif
+            endfor v_ex
+            if v_best == v_x then
+                v_ay[v_a] = v_y0
+                v_ady[v_a] = 1
+                v_adx[v_a] = 0
+            elseif v_best > v_x then
+                v_adx[v_a] = 1
+            else
+                v_adx[v_a] = -1
+            endif
+        else
+            # trips away from the nest: walk out of view, look around, come back
+            if v_atrip[v_a] == -999 and random(0, 999, 0) < 12 then
+                if random(0, 1, 0) == 0 then
+                    v_atrip[v_a] = random(v_offl, -6, 0)
+                else
+                    v_atrip[v_a] = random(69, v_offr, 0)
+                endif
+            endif
+            if v_atrip[v_a] != -999 then
+                if v_x == v_atrip[v_a] then
+                    if v_x < 1 or v_x > 62 then
+                        # out of sight: wander about for a while, then head home
+                        v_await[v_a] = v_await[v_a] + 1
+                        v_adx[v_a] = random(0, 1, 0) * 2 - 1
+                        if v_await[v_a] > random(25, 90, 0) then
+                            v_await[v_a] = 0
+                            v_atrip[v_a] = random(6, 57, 0)
+                            if random(0, 99, 0) < 18 and v_food < 45 then
+                                # found something good out there
+                                v_ast[v_a] = 2
+                                v_apat[v_a] = 0
+                                v_atrip[v_a] = -999
+                            endif
+                        endif
+                    else
+                        v_atrip[v_a] = -999
+                    endif
+                else
+                    v_adx[v_a] = 1
+                    if v_atrip[v_a] < v_x then
+                        v_adx[v_a] = -1
+                    endif
+                endif
+            endif
+            # forage: pick up a seed underfoot, or head back down a hole
+            for v_i in (0, v_nseed - 1, 1)
+                if v_seedon[v_i] == 2 and v_seedx[v_i] == v_x then
+                    v_seedon[v_i] = 0
+                    v_ast[v_a] = 2
+                    v_apat[v_a] = 0
+                endif
+            endfor v_i
+            if v_ast[v_a] == 0 and v_atrip[v_a] == -999 and v_x >= 1 and v_x <= 62 and v_cell[v_x] != 1 and v_cell[v_x] != 2 and random(0, 99, 0) < 35 then
+                v_ay[v_a] = v_y0
+                v_adx[v_a] = 0
+                v_ady[v_a] = 1
+            elseif v_atrip[v_a] == -999 and random(0, 99, 0) < 4 then
+                v_adx[v_a] = 0 - v_adx[v_a]
+            endif
+        endif
+        if v_ay[v_a] < v_y0 then
+            if v_adx[v_a] == 0 then
+                v_adx[v_a] = 1
+            endif
+            v_nx = v_x + v_adx[v_a]
+            if v_nx < v_offl or v_nx > v_offr or ((v_nx < 1 or v_nx > 62) and v_atrip[v_a] == -999 and v_ast[v_a] != 2) then
+                v_adx[v_a] = 0 - v_adx[v_a]
+                v_nx = v_x
+            endif
+            v_ax[v_a] = v_nx
+            v_sx2 = v_nx
+            call surface_y
+            v_ay[v_a] = v_sy2
+        endif
+    else
+        # ---- underground ----
+        v_gc = (v_y - v_y0) * v_W + v_x
+        call get_dist
+        v_here = v_gd
+        if v_st == 1 or v_st == 2 then
+            # carrying: climb toward the surface (soil) or away from it (food)
+            if v_y == v_y0 and v_st == 1 then
+                v_sx2 = v_x
+                call surface_y
+                v_ay[v_a] = v_sy2
+                v_adrop[v_a] = min(max(v_x + random(-7, 7, 0), 2), 61)
+            else
+                v_bx = -1
+                v_bestd = -1
+                v_cnt = 0
+                for v_nb in (0, 3, 1)
+                    v_tx = v_x
+                    v_ty = v_y
+                    if v_nb == 0 then
+                        v_tx = v_x - 1
+                    elseif v_nb == 1 then
+                        v_tx = v_x + 1
+                    elseif v_nb == 2 then
+                        v_ty = v_y - 1
+                    else
+                        v_ty = v_y + 1
+                    endif
+                    call cell_at
+                    if v_tc == 0 or v_tc == 3 or v_tc == 4 then
+                        v_gc = (v_ty - v_y0) * v_W + v_tx
+                        call get_dist
+                        if v_gd >= 0 then
+                            if v_st == 1 then
+                                v_score2 = 0 - v_gd
+                            else
+                                v_score2 = v_gd
+                            endif
+                            v_score2 = v_score2 + random(0, 9, 0) / 20
+                            if v_bx < 0 or v_score2 > v_bestd then
+                                v_bx = v_tx
+                                v_by = v_ty
+                                v_bestd = v_score2
+                            endif
+                        endif
+                    endif
+                endfor v_nb
+                if v_st == 2 then
+                    v_apat[v_a] = v_apat[v_a] + 1
+                endif
+                if v_st == 2 and v_bx >= 0 and v_bestd < v_here + 0.5 and v_here <= 18 and v_apat[v_a] < 300 then
+                    # a shallow dead end: wander on to find a deeper way
+                    call new_heading
+                    v_tx = v_x + v_adx[v_a]
+                    v_ty = v_y + v_ady[v_a]
+                    call cell_at
+                    if v_tc == 0 or v_tc == 3 or v_tc == 4 then
+                        v_bx = v_tx
+                        v_by = v_ty
+                        v_bestd = v_here + 1
+                    endif
+                endif
+                if v_st == 2 and (v_bx < 0 or (v_bestd < v_here + 0.5 and (v_here > 18 or v_apat[v_a] >= 300)) or (v_room[(v_y - v_y0) * v_W + v_x] == 1 and v_here > 12 and random(0, 99, 0) < 25)) then
+                    # deep enough: store the seed here
+                    if v_cell[(v_y - v_y0) * v_W + v_x] == 0 then
+                        v_cell[(v_y - v_y0) * v_W + v_x] = 3
+                        v_food = v_food + 1
+                        v_ast[v_a] = 0
+                        v_apat[v_a] = 0
+                        call new_heading
+                    endif
+                elseif v_bx >= 0 then
+                    v_ax[v_a] = v_bx
+                    v_ay[v_a] = v_by
+                endif
+            endif
+        else
+            # exploring and digging
+            if random(0, 99, 0) < 12 then
+                call new_heading
+            endif
+            v_tx = v_x + v_adx[v_a]
+            v_ty = v_y + v_ady[v_a]
+            if v_ty < v_y0 then
+                if random(0, 99, 0) < 30 then
+                    v_sx2 = v_x
+                    call surface_y
+                    v_ax[v_a] = v_x
+                    v_ay[v_a] = v_sy2
+                    v_adx[v_a] = random(0, 1, 0) * 2 - 1
+                else
+                    call new_heading
+                endif
+            else
+                call cell_at
+                if v_tc == 0 or v_tc == 3 or v_tc == 4 then
+                    v_ax[v_a] = v_tx
+                    v_ay[v_a] = v_ty
+                elseif v_tc == 1 then
+                    # dig more slowly as the farm fills up
+                    v_dp = 22 - v_dug / 60
+                    if v_room[(v_ty - v_y0) * v_W + v_tx] == 1 then
+                        v_dp = 40
+                    endif
+                    if random(0, 99, 0) < v_dp then
+                        v_fx = v_x
+                        v_fy = v_y
+                        call dig_ok
+                        if v_ok == 1 then
+                            v_cell[(v_ty - v_y0) * v_W + v_tx] = 0
+                            v_dug = v_dug + 1
+                            v_px = v_tx
+                            v_py = v_ty
+                            call paint
+                            v_ax[v_a] = v_tx
+                            v_ay[v_a] = v_ty
+                            v_ast[v_a] = 1
+                            if v_ty - v_y0 > 8 and random(0, 99, 0) < 3 then
+                                call plan_chamber
+                            endif
+                        else
+                            call new_heading
+                        endif
+                    endif
+                else
+                    call new_heading
+                endif
+            endif
+        endif
+    endif
+}
+
+def draw_ant {
+    # body at the ant's cell, head one step ahead, load in its jaws
+    v_bx2 = v_ax[v_a]
+    v_by2 = v_ay[v_a]
+    v_ox1[v_a] = -1
+    v_ox3[v_a] = -1
+    if v_bx2 >= 1 and v_bx2 <= 62 then
+    v_hx = v_bx2 + v_adx[v_a]
+    v_hy = v_by2 + v_ady[v_a]
+    if v_hx < 1 or v_hx > 62 or v_hy < 1 or v_hy > 62 then
+        v_hx = v_bx2
+        v_hy = v_by2
+    endif
+    mplot(v_bx2, v_by2, crimson, 75)
+    mplot(v_hx, v_hy, red, 95)
+    v_ox1[v_a] = v_bx2
+    v_oy1[v_a] = v_by2
+    v_ox2[v_a] = v_hx
+    v_oy2[v_a] = v_hy
+    v_ox3[v_a] = -1
+    if v_ast[v_a] > 0 then
+        v_lx = v_hx + v_adx[v_a]
+        v_ly = v_hy + v_ady[v_a]
+        if v_ady[v_a] == 0 then
+            v_ly = v_ly - 1
+        endif
+        if v_lx >= 1 and v_lx <= 62 and v_ly >= 1 and v_ly <= 62 then
+            if v_ast[v_a] == 1 then
+                mplot(v_lx, v_ly, tan, 70)
+            else
+                mplot(v_lx, v_ly, yellow, 90)
+            endif
+            v_ox3[v_a] = v_lx
+            v_oy3[v_a] = v_ly
+        endif
+    endif
+    endif
+}
+
+def draw_queen {
+    # a bigger ant resting in her chamber, gently twitching
+    v_qw = int(v_t * 0.05) % 2
+    mplot(v_qx - 2, v_y0 + v_qy, maroon, 90)
+    mplot(v_qx - 1, v_y0 + v_qy, crimson, 85)
+    mplot(v_qx, v_y0 + v_qy, crimson, 85)
+    mplot(v_qx + 1, v_y0 + v_qy, red, 95)
+    mplot(v_qx - 2, v_y0 + v_qy - 1, maroon, 70)
+    mplot(v_qx + 2, v_y0 + v_qy - v_qw, red, 70)
+}
+
+# ---------------- Colony life ----------------
+v_t = 0
+v_seed_clock = 200
+v_egg_clock = 300
+
+def colony {
+    # seeds fall onto the surface now and then
+    v_seed_clock = v_seed_clock - v_k
+    if v_seed_clock <= 0 then
+        v_seed_clock = random(500, 900, 0)
+        for v_i in (0, v_nseed - 1, 1)
+            if v_seedon[v_i] == 0 and v_seed_clock > 0 then
+                # one seed per drop
+                v_seedon[v_i] = 1
+                v_seedx[v_i] = random(3, 60, 0)
+                v_seedy[v_i] = 1
+                v_seed_clock = 0 - 0.01
+            endif
+        endfor v_i
+        v_seed_clock = random(500, 900, 0)
+    endif
+    for v_i in (0, v_nseed - 1, 1)
+        if v_seedon[v_i] == 1 then
+            v_px = v_seedx[v_i]
+            v_py = int(v_seedy[v_i])
+            call paint
+            v_seedy[v_i] = v_seedy[v_i] + 0.25 * v_k
+            v_sx2 = v_seedx[v_i]
+            call surface_y
+            if v_seedy[v_i] >= v_sy2 then
+                v_seedy[v_i] = v_sy2
+                v_seedon[v_i] = 2
+            endif
+        endif
+        if v_seedon[v_i] > 0 then
+            mplot(v_seedx[v_i], int(v_seedy[v_i]), yellow, 90)
+        endif
+    endfor v_i
+    # the queen lays eggs; eggs hatch into workers
+    v_egg_clock = v_egg_clock - v_k
+    if v_egg_clock <= 0 then
+        v_egg_clock = random(400, 700, 0)
+        if v_nant < v_maxant then
+            for v_i in (0, v_maxegg - 1, 1)
+                if v_egc[v_i] < 0 and v_egg_clock > 0 then
+                    v_ex = v_qx + random(-3, 3, 0)
+                    v_ey = v_qy + random(-1, 1, 0)
+                    v_c = v_ey * v_W + v_ex
+                    if v_cell[v_c] == 0 then
+                        v_cell[v_c] = 4
+                        v_egc[v_i] = v_c
+                        v_egt[v_i] = random(700, 1100, 0)
+                        v_px = v_ex
+                        v_py = v_ey + v_y0
+                        call paint
+                    endif
+                    v_egg_clock = v_egg_clock + 0.01
+                endif
+            endfor v_i
+        endif
+    endif
+    for v_i in (0, v_maxegg - 1, 1)
+        if v_egc[v_i] >= 0 then
+            v_egt[v_i] = v_egt[v_i] - v_k
+            if v_egt[v_i] <= 0 then
+                v_c = v_egc[v_i]
+                v_cell[v_c] = 0
+                v_egc[v_i] = -1
+                v_nx = v_c % v_W
+                v_ny = int(v_c / v_W) + v_y0
+                v_px = v_nx
+                v_py = v_ny
+                call paint
+                call add_ant
+            endif
+        endif
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+begin_frame
+    call draw_all
+end_frame
+while true then
+    v_t = v_t + v_k
+    if v_building == 0 then
+        call start_build
+    endif
+    call build_slice
+    begin_frame(true)
+        # repaint where the ants were
+        for v_a in (0, v_nant - 1, 1)
+            if v_ox1[v_a] >= 0 then
+                v_px = v_ox1[v_a]
+                v_py = v_oy1[v_a]
+                call paint
+                v_px = v_ox2[v_a]
+                v_py = v_oy2[v_a]
+                call paint
+                if v_ox3[v_a] >= 0 then
+                    v_px = v_ox3[v_a]
+                    v_py = v_oy3[v_a]
+                    call paint
+                endif
+            endif
+        endfor v_a
+        call colony
+        for v_a in (0, v_nant - 1, 1)
+            v_aclk[v_a] = v_aclk[v_a] + v_k
+            if v_aclk[v_a] >= v_step_every then
+                v_aclk[v_a] = v_aclk[v_a] - v_step_every
+                call step_ant
+            endif
+        endfor v_a
+        call draw_queen
+        for v_a in (0, v_nant - 1, 1)
+            call draw_ant
+        endfor v_a
+    end_frame
+endwhile

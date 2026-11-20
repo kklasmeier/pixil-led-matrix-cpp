@@ -1,6 +1,6 @@
 # Native Pixil Runtime — Phase 2 Plan (Consumer)
 
-**Status:** C0–C5 done (owner panel switch still required for C6). Phase 1 producer is the daily show; Python `rgb_matrix_lib` still draws the panel by default.  
+**Status:** C0–C6 done. Native producer + native consumer are the daily show; Python spawn path removed.  
 **Date:** 2026-11-17  
 **Charter predecessor:** `docs/Native_Pixil_Runtime_Phase1_Plan.md` (especially M7 Phase 2 note)  
 **Audience:** Implementation sessions in this repo  
@@ -316,13 +316,13 @@ clear (D-016). `Abstract_Geometry` left out of hard MATCH gate (D-010 race).
 
 ### C6 — Panel cutover
 
-- [ ] Owner-authorized A/B on hardware (not the unattended daily show until signed off)
-- [ ] Switch daily show to `--consumer native` (or make native the default)
-- [ ] Watch consumer-bound scripts (e.g. Gravity Plexus): inbox pressure and achievable fps
-- [ ] **Remove the switch:** native only; update `CUTOVER.md` / `OPS.md` / README
-- [ ] Leave legacy tree installed as manual fallback until owner retires it
+- [x] Owner-authorized A/B on hardware
+- [x] Daily show on native consumer (default = only path)
+- [x] Consumer-bound scripts exercised on hardware (inbox / cfps)
+- [x] **Remove the switch:** native only; `CUTOVER.md` / `OPS.md` / README / ADR-002 updated
+- [x] Python bridge deleted; emergency blackout is `pixil-consumer --blackout`
 
-**Gate:** Daily show runs from this repo with the C++ consumer; Python consumer is fallback only, not launched by default.
+**Gate:** Daily show runs from this repo with the C++ consumer only.
 
 ---
 

@@ -1,0 +1,302 @@
+# Raymarch Shapes - glossy shapes that melt from one form into the next
+#
+# A shiny, softly lit object floats above a checkered floor, turning slowly
+# and morphing through a series of forms: three blobs that orbit and melt
+# together, a ring, a rounded cube and a rippling ball. Its colour shifts
+# across its surface with the angle of the light, it picks up a white
+# highlight and a glowing rim, and casts a soft shadow on the floor.
+#
+# How it is built (ray marching, all in Pixil):
+#   - Every shape is described by a distance function: for any point in
+#     space it gives the distance to the nearest surface. Blobs melt
+#     together through a smooth minimum, and one shape morphs into the next
+#     by blending their two distances.
+#   - For each pixel a ray steps forward by the distance to the surface
+#     until it is close enough to call a hit ("sphere tracing"). The surface
+#     direction comes from how the distance changes around the hit point.
+#   - The picture is 32x32 (2x2 blocks). Each frame re-traces a quarter of
+#     the pixels in a rotating pattern and the rest of the picture is kept
+#     from earlier frames, so a full image takes four frames to complete.
+#     Rays that miss the object's bounding sphere skip the marching.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_res = 32
+v_npx = v_res * v_res
+v_shape_len = 900          # frames on each shape (at the design pace)
+v_morph_len = 220          # frames to melt into the next shape
+
+# ---------------- Rays ----------------
+create_array(v_rdx, v_npx, numeric)
+create_array(v_rdy, v_npx, numeric)
+create_array(v_rdz, v_npx, numeric)
+create_array(v_bgc, v_npx, numeric)     # background colour (spectral) per pixel
+create_array(v_bgi, v_npx, numeric)     # background brightness
+create_array(v_fhx, v_npx, numeric)     # where the ray meets the floor
+create_array(v_fhz, v_npx, numeric)
+v_ex = 0
+v_ey = 0.35
+v_ez = -3.3
+for v_j in (0, v_res - 1, 1)
+    for v_i in (0, v_res - 1, 1)
+        v_p = v_j * v_res + v_i
+        v_dx = (v_i - 15.5) / 16 * 0.62
+        v_dy = (15.5 - v_j) / 16 * 0.62 - 0.1
+        v_dz = 1
+        v_l = sqrt(v_dx * v_dx + v_dy * v_dy + v_dz * v_dz)
+        v_rdx[v_p] = v_dx / v_l
+        v_rdy[v_p] = v_dy / v_l
+        v_rdz[v_p] = v_dz / v_l
+        # background: floor below the horizon, soft gradient above
+        v_fhx[v_p] = 999
+        if v_rdy[v_p] < -0.02 then
+            v_tf = (-1.35 - v_ey) / v_rdy[v_p]
+            v_fx = v_ex + v_rdx[v_p] * v_tf
+            v_fz = v_ez + v_rdz[v_p] * v_tf
+            v_fhx[v_p] = v_fx
+            v_fhz[v_p] = v_fz
+            v_chk = (floor(v_fx * 1.6) + floor(v_fz * 1.6)) % 2
+            v_bgc[v_p] = 62
+            v_bgi[v_p] = (10 + v_chk * 10) * min(1, 3.5 / v_tf)
+        else
+            v_bgc[v_p] = 66
+            v_bgi[v_p] = 6 + v_j * 0.5
+        endif
+    endfor v_i
+endfor v_j
+
+# light, and the half-way vector for highlights (viewer roughly along -z)
+v_lx = 0.55
+v_ly = 0.7
+v_lz = -0.45
+v_l = sqrt(v_lx * v_lx + v_ly * v_ly + v_lz * v_lz)
+v_lx = v_lx / v_l
+v_ly = v_ly / v_l
+v_lz = v_lz / v_l
+v_hx = v_lx
+v_hy = v_ly
+v_hz = v_lz - 1
+v_l = sqrt(v_hx * v_hx + v_hy * v_hy + v_hz * v_hz)
+v_hx = v_hx / v_l
+v_hy = v_hy / v_l
+v_hz = v_hz / v_l
+
+# ---------------- Shapes ----------------
+# shape ids: 0 three melting blobs, 1 ring, 2 rounded cube, 3 rippling ball
+create_array(v_shue, 4, numeric)
+v_shue[0] = 88
+v_shue[1] = 52
+v_shue[2] = 12
+v_shue[3] = 33
+
+def shape_dist {
+    # distance from (v_qx, v_qy, v_qz) to shape v_sid -> v_sd
+    if v_sid == 0 then
+        v_a = sqrt((v_qx - v_b1x) * (v_qx - v_b1x) + (v_qy - v_b1y) * (v_qy - v_b1y) + (v_qz - v_b1z) * (v_qz - v_b1z)) - 0.52
+        v_b = sqrt((v_qx - v_b2x) * (v_qx - v_b2x) + (v_qy - v_b2y) * (v_qy - v_b2y) + (v_qz - v_b2z) * (v_qz - v_b2z)) - 0.46
+        v_c = sqrt((v_qx - v_b3x) * (v_qx - v_b3x) + (v_qy - v_b3y) * (v_qy - v_b3y) + (v_qz - v_b3z) * (v_qz - v_b3z)) - 0.4
+        # smooth minimum: surfaces melt together where they meet
+        v_h = max(0.55 - abs(v_a - v_b), 0) / 0.55
+        v_m = min(v_a, v_b) - v_h * v_h * 0.1375
+        v_h = max(0.55 - abs(v_m - v_c), 0) / 0.55
+        v_sd = min(v_m, v_c) - v_h * v_h * 0.1375
+    else
+        # the other shapes turn: rotate the point into the shape's frame
+        v_rx = v_qx * v_cy1 - v_qz * v_sy1
+        v_rz = v_qx * v_sy1 + v_qz * v_cy1
+        v_ry = v_qy * v_cx1 - v_rz * v_sx1
+        v_rz = v_qy * v_sx1 + v_rz * v_cx1
+        if v_sid == 1 then
+            v_a = sqrt(v_rx * v_rx + v_rz * v_rz) - 0.82
+            v_sd = sqrt(v_a * v_a + v_ry * v_ry) - 0.32
+        elseif v_sid == 2 then
+            v_ax = abs(v_rx) - 0.6
+            v_ay = abs(v_ry) - 0.6
+            v_az = abs(v_rz) - 0.6
+            v_mx = max(v_ax, 0)
+            v_my = max(v_ay, 0)
+            v_mz = max(v_az, 0)
+            v_sd = sqrt(v_mx * v_mx + v_my * v_my + v_mz * v_mz) + min(max(v_ax, max(v_ay, v_az)), 0) - 0.2
+        else
+            v_sd = sqrt(v_rx * v_rx + v_ry * v_ry + v_rz * v_rz) - 0.92 + sin(v_rx * 4.5 + v_t * 0.04) * sin(v_ry * 4.5) * sin(v_rz * 4.5 + v_t * 0.03) * 0.13
+            v_sd = v_sd * 0.8
+        endif
+    endif
+}
+
+def scene_dist {
+    # current shape, or a blend of two while one melts into the next
+    v_sid = v_cur
+    call shape_dist
+    if v_mix > 0 then
+        v_d0 = v_sd
+        v_sid = v_next
+        call shape_dist
+        v_sd = v_d0 + (v_sd - v_d0) * v_mix
+    endif
+}
+
+# ---------------- Rendering ----------------
+v_frame = 0
+def trace_pixel {
+    # ray v_p -> colour v_oc, brightness v_oi
+    v_dx = v_rdx[v_p]
+    v_dy = v_rdy[v_p]
+    v_dz = v_rdz[v_p]
+    # bounding sphere (radius 1.45 at the origin)
+    v_bb = v_ex * v_dx + v_ey * v_dy + v_ez * v_dz
+    v_cc = v_ex * v_ex + v_ey * v_ey + v_ez * v_ez - 2.1
+    v_disc = v_bb * v_bb - v_cc
+    v_hit = 0
+    if v_disc > 0 then
+        v_sq = sqrt(v_disc)
+        v_tt = max(0 - v_bb - v_sq, 0)
+        v_t1 = 0 - v_bb + v_sq
+        v_st = 0
+        while v_st < 26 and v_tt < v_t1 and v_hit == 0 then
+            v_qx = v_ex + v_dx * v_tt
+            v_qy = v_ey + v_dy * v_tt
+            v_qz = v_ez + v_dz * v_tt
+            call scene_dist
+            if v_sd < 0.012 then
+                v_hit = 1
+            else
+                v_tt = v_tt + v_sd
+                v_st = v_st + 1
+            endif
+        endwhile
+    endif
+    if v_hit == 1 then
+        # surface direction from the change in distance around the hit
+        v_px0 = v_qx
+        v_py0 = v_qy
+        v_pz0 = v_qz
+        v_qx = v_px0 + 0.02
+        v_qy = v_py0 - 0.02
+        v_qz = v_pz0 - 0.02
+        call scene_dist
+        v_nx = v_sd
+        v_ny = 0 - v_sd
+        v_nz = 0 - v_sd
+        v_qx = v_px0 - 0.02
+        v_qy = v_py0 - 0.02
+        v_qz = v_pz0 + 0.02
+        call scene_dist
+        v_nx = v_nx - v_sd
+        v_ny = v_ny - v_sd
+        v_nz = v_nz + v_sd
+        v_qx = v_px0 - 0.02
+        v_qy = v_py0 + 0.02
+        v_qz = v_pz0 - 0.02
+        call scene_dist
+        v_nx = v_nx - v_sd
+        v_ny = v_ny + v_sd
+        v_nz = v_nz - v_sd
+        v_qx = v_px0 + 0.02
+        v_qy = v_py0 + 0.02
+        v_qz = v_pz0 + 0.02
+        call scene_dist
+        v_nx = v_nx + v_sd
+        v_ny = v_ny + v_sd
+        v_nz = v_nz + v_sd
+        v_nl = sqrt(v_nx * v_nx + v_ny * v_ny + v_nz * v_nz) + 0.00001
+        v_nx = v_nx / v_nl
+        v_ny = v_ny / v_nl
+        v_nz = v_nz / v_nl
+        v_dif = max(v_nx * v_lx + v_ny * v_ly + v_nz * v_lz, 0)
+        v_spc = pow(max(v_nx * v_hx + v_ny * v_hy + v_nz * v_hz, 0), 30)
+        v_rim = pow(1 - abs(v_nx * v_dx + v_ny * v_dy + v_nz * v_dz), 3)
+        if v_spc > 0.6 then
+            v_oc = "white"
+            v_oi = 70 + v_spc * 30
+        else
+            # colour drifts with the surface direction for an iridescent sheen
+            v_oc = int(v_hue + v_ny * 9 + v_nx * 5 + 100) % 100
+            v_oi = min(10 + v_dif * 62 + v_rim * 35 + v_spc * 40, 100)
+        endif
+    else
+        v_oc = v_bgc[v_p]
+        v_oi = v_bgi[v_p]
+        # soft shadow on the floor beneath the shape
+        if v_fhx[v_p] < 900 then
+            v_sdd = sqrt(v_fhx[v_p] * v_fhx[v_p] + (v_fhz[v_p] - 0.25) * (v_fhz[v_p] - 0.25))
+            v_oi = v_oi * min(max(v_sdd - 0.4, 0.25), 1)
+        endif
+    endif
+}
+
+def render_part {
+    # re-trace one pixel in each 2x2 group, rotating which one each frame
+    v_ph = v_frame % 4
+    v_oxs = v_ph % 2
+    v_oys = int(v_ph / 2)
+    for v_j in (v_oys, v_res - 1, 2)
+        for v_i in (v_oxs, v_res - 1, 2)
+            v_p = v_j * v_res + v_i
+            call trace_pixel
+            if v_oi < 1 then
+                v_oc = "black"
+                v_oi = 100
+            endif
+            draw_rectangle(v_i * 2, v_j * 2, 2, 2, v_oc, v_oi, true)
+        endfor v_i
+    endfor v_j
+}
+
+# ---------------- Animation ----------------
+v_t = 0
+v_cur = 0
+v_next = 1
+v_mix = 0
+v_st_t = 0
+def animate {
+    v_t = v_t + v_k
+    v_st_t = v_st_t + v_k
+    if v_st_t > v_shape_len then
+        v_mix = min((v_st_t - v_shape_len) / v_morph_len, 1)
+        v_mix = v_mix * v_mix * (3 - 2 * v_mix)
+        if v_st_t > v_shape_len + v_morph_len then
+            v_cur = v_next
+            v_next = (v_next + 1) % 4
+            v_mix = 0
+            v_st_t = 0
+        endif
+    endif
+    v_hue = v_shue[v_cur] + (v_shue[v_next] - v_shue[v_cur]) * v_mix
+    # blobs orbit and drift through each other
+    v_b1x = sin(v_t * 0.011) * 0.55
+    v_b1y = cos(v_t * 0.013) * 0.3
+    v_b1z = cos(v_t * 0.011) * 0.4
+    v_b2x = sin(v_t * 0.009 + 2.1) * 0.6
+    v_b2y = sin(v_t * 0.015 + 1) * 0.4
+    v_b2z = cos(v_t * 0.012 + 2.1) * 0.35
+    v_b3x = sin(v_t * 0.014 + 4.2) * 0.5
+    v_b3y = cos(v_t * 0.01 + 3) * 0.45
+    v_b3z = cos(v_t * 0.016 + 4.2) * 0.3
+    # slow tumble for the other shapes
+    v_ay1 = v_t * 0.008
+    v_ax1 = 0.5 + sin(v_t * 0.005) * 0.4
+    v_cy1 = cos(v_ay1)
+    v_sy1 = sin(v_ay1)
+    v_cx1 = cos(v_ax1)
+    v_sx1 = sin(v_ax1)
+}
+
+# first full picture
+begin_frame
+    call animate
+    for v_f in (0, 3, 1)
+        v_frame = v_f
+        call render_part
+    endfor v_f
+end_frame
+while true then
+    v_frame = v_frame + 1
+    call animate
+    begin_frame(true)
+        call render_part
+    end_frame
+endwhile

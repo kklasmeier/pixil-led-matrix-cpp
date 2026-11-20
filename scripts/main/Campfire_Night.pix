@@ -1,0 +1,396 @@
+# Campfire Night - a crackling fire in a forest clearing under the stars
+#
+# A campfire burns in a ring of stones on crossed logs. Flames lick and
+# sway, sparks spiral up into the night, thin smoke drifts away, and now
+# and then a log settles and the fire flares up with a burst of sparks.
+# The flickering firelight plays over the ground, the stones, a little
+# tent and the edges of the pine trees around the clearing. Above, stars
+# twinkle beside a crescent moon, and fireflies blink in the dark between
+# the trees.
+#
+# How it is built:
+#   - The flames are a small heat simulation: heat is fed in along the
+#     bottom, and every cell takes its heat from the cell below it, shifted
+#     a little sideways at random and cooled a little. Heat is turned into
+#     colour from dark red through orange and gold to white, and each row is
+#     drawn as a few runs of equal colour.
+#   - One flicker value drives all the firelight, so the ground, stones,
+#     tent and trees brighten and dim together with the flames.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+
+# ---------------- Fire simulation ----------------
+v_fw = 22                   # fire grid width
+v_fh = 28                   # fire grid height
+v_fx0 = 21                  # screen x of the grid's left edge
+v_fy0 = 27                  # screen y of the grid's top row
+v_hmax = 36
+create_array(v_heat, v_fw * v_fh, numeric)
+for v_i in (0, v_fw * v_fh - 1, 1)
+    v_heat[v_i] = 0
+endfor v_i
+
+# heat -> colour and brightness
+create_array(v_hc, 10, string)
+create_array(v_hi, 10, numeric)
+v_hc[0] = "black"
+v_hi[0] = 0
+v_hc[1] = "maroon"
+v_hi[1] = 45
+v_hc[2] = "red"
+v_hi[2] = 50
+v_hc[3] = "red"
+v_hi[3] = 75
+v_hc[4] = "orange"
+v_hi[4] = 70
+v_hc[5] = "orange"
+v_hi[5] = 95
+v_hc[6] = "gold"
+v_hi[6] = 90
+v_hc[7] = "yellow"
+v_hi[7] = 90
+v_hc[8] = "yellow"
+v_hi[8] = 100
+v_hc[9] = "white"
+v_hi[9] = 85
+
+v_flare = 0
+v_wind = 0
+
+def feed_fire {
+    # fresh heat along the bottom row, strongest in the middle
+    v_row = (v_fh - 1) * v_fw
+    v_half = v_fw / 2 - 2
+    for v_x in (0, v_fw - 1, 1)
+        v_d = abs(v_x - (v_fw - 1) / 2 - v_wind * 0.5) / v_half
+        if v_d < 1 then
+            v_h = v_hmax * (1 - v_d * v_d) * (0.75 + random(0, 25, 0) / 100) + v_flare
+            v_heat[v_row + v_x] = min(v_h, v_hmax)
+        else
+            v_heat[v_row + v_x] = 0
+        endif
+    endfor v_x
+}
+
+def spread_fire {
+    # every cell passes its heat up to a cell just above it, drifting a
+    # little sideways and cooling; the sides cool faster so flames taper
+    v_mid = (v_fw - 1) / 2 + v_wind * 0.4
+    for v_y in (0, v_fh - 2, 1)
+        v_rb = (v_y + 1) * v_fw
+        v_ra = v_y * v_fw
+        for v_x in (0, v_fw - 1, 1)
+            v_src = v_heat[v_rb + v_x]
+            v_dst = min(max(v_x + random(-1, 1, 0), 0), v_fw - 1)
+            v_side = abs(v_x - v_mid) / (v_fw / 2)
+            v_cool = 2.6 * (1 + v_side * v_side * 2.5)
+            v_heat[v_ra + v_dst] = max(v_src - random(0, 10, 0) / 10 * v_cool, 0)
+        endfor v_x
+    endfor v_y
+}
+
+def draw_fire {
+    for v_y in (0, v_fh - 1, 1)
+        v_ra = v_y * v_fw
+        v_runc = -1
+        v_runx = 0
+        for v_x in (0, v_fw, 1)
+            if v_x < v_fw then
+                v_c = min(int(v_heat[v_ra + v_x] / v_hmax * 9.9), 9)
+            else
+                v_c = -2
+            endif
+            if v_c != v_runc then
+                if v_runc > 0 then
+                    draw_line(v_fx0 + v_runx, v_fy0 + v_y, v_fx0 + v_x - 1, v_fy0 + v_y, v_hc[v_runc], v_hi[v_runc])
+                endif
+                v_runc = v_c
+                v_runx = v_x
+            endif
+        endfor v_x
+    endfor v_y
+}
+
+# ---------------- Scenery ----------------
+v_nstar = 42
+create_array(v_stx, v_nstar, numeric)
+create_array(v_sty, v_nstar, numeric)
+create_array(v_stb, v_nstar, numeric)
+for v_i in (0, v_nstar - 1, 1)
+    v_stx[v_i] = random(0, 63, 0)
+    v_sty[v_i] = random(0, 30, 0)
+    v_stb[v_i] = random(10, 55, 0)
+endfor v_i
+
+# pine trees: x, base row, height, half-width (left trees face the fire on
+# their right edge, right trees on their left edge)
+v_ntree = 6
+create_array(v_tx, v_ntree, numeric)
+create_array(v_tb, v_ntree, numeric)
+create_array(v_th, v_ntree, numeric)
+create_array(v_tw, v_ntree, numeric)
+v_tx[0] = 4
+v_tb[0] = 52
+v_th[0] = 34
+v_tw[0] = 7
+v_tx[1] = 13
+v_tb[1] = 48
+v_th[1] = 26
+v_tw[1] = 5
+v_tx[2] = 58
+v_tb[2] = 53
+v_th[2] = 36
+v_tw[2] = 7
+v_tx[3] = 49
+v_tb[3] = 47
+v_th[3] = 24
+v_tw[3] = 5
+v_tx[4] = 26
+v_tb[4] = 43
+v_th[4] = 14
+v_tw[4] = 3
+v_tx[5] = 38
+v_tb[5] = 43
+v_th[5] = 16
+v_tw[5] = 3
+
+def draw_sky {
+    for v_y in (0, 44, 1)
+        draw_line(0, v_y, 63, v_y, navy, 8 + v_y * 0.35)
+    endfor v_y
+    for v_i in (0, v_nstar - 1, 1)
+        v_b = v_stb[v_i] * (0.7 + sin(v_t * 0.05 + v_i * 2.3) * 0.3)
+        mplot(v_stx[v_i], v_sty[v_i], white, v_b)
+    endfor v_i
+    # crescent moon
+    draw_circle(51, 8, 4, light_gray, 70, true)
+    draw_circle(53, 7, 4, navy, 10, true)
+}
+
+def draw_ground {
+    # dark ground lit by a flickering pool of firelight
+    draw_rectangle(0, 45, 64, 19, dark_brown, 12, true)
+    draw_ellipse(32, 56, 30, 8, dark_brown, 18 * v_fl, true, 0)
+    draw_ellipse(32, 56, 22, 6, wood_brown, 22 * v_fl, true, 0)
+    draw_ellipse(32, 56, 14, 4, bronze, 26 * v_fl, true, 0)
+    # a few grass tufts at the edge of the light
+    for v_i in (0, 9, 1)
+        v_gx = 3 + v_i * 6.5
+        v_gy = 47 + (v_i * 5) % 7
+        if abs(v_gx - 32) > 12 then
+            draw_line(v_gx, v_gy, v_gx - 1, v_gy - 2, forest_green, 18 + 10 * v_fl * max(1 - abs(v_gx - 32) / 32, 0))
+            draw_line(v_gx, v_gy, v_gx + 1, v_gy - 2, forest_green, 18 + 10 * v_fl * max(1 - abs(v_gx - 32) / 32, 0))
+        endif
+    endfor v_i
+}
+
+def draw_trees {
+    for v_i in (0, v_ntree - 1, 1)
+        v_x = v_tx[v_i]
+        v_top = v_tb[v_i] - v_th[v_i]
+        v_lit = 1
+        if v_x > 32 then
+            v_lit = -1
+        endif
+        v_near = max(1 - abs(v_x - 32) / 36, 0.15)
+        # trunk
+        draw_line(v_x, v_tb[v_i] - 3, v_x, v_tb[v_i], dark_brown, 25)
+        # tiers of branches: each tier widens, then steps back in
+        for v_r in (0, v_th[v_i] - 4, 1)
+            v_tier = (v_r % 7) / 7
+            v_w = v_tw[v_i] * (v_r / v_th[v_i]) * (0.65 + v_tier * 0.5) + 0.5
+            v_ry = v_top + v_r
+            draw_line(v_x - v_w, v_ry, v_x + v_w, v_ry, forest_green, 9)
+            # the side facing the fire catches the light
+            v_li = 50 * v_fl * v_near * (v_r / v_th[v_i])
+            if v_li >= 2 then
+                mplot(v_x + v_lit * v_w, v_ry, orange, v_li)
+            endif
+        endfor v_r
+    endfor v_i
+}
+
+def draw_tent {
+    # small canvas tent to the left of the fire, lit on the side facing it
+    for v_r in (0, 10, 1)
+        v_hw = v_r * 0.9
+        v_ry = 44 + v_r
+        draw_line(16 - v_hw, v_ry, 16 + v_hw, v_ry, tan, 10 + 10 * v_fl)
+        draw_line(16 + v_hw * 0.4, v_ry, 16 + v_hw, v_ry, peach, 14 + 22 * v_fl)
+    endfor v_r
+    # open door
+    for v_r in (5, 10, 1)
+        v_dw = (v_r - 5) * 0.45
+        draw_line(16 - v_dw, 44 + v_r, 16 + v_dw, 44 + v_r, black, 100)
+    endfor v_r
+}
+
+def draw_hearth {
+    # ring of stones, lit on their tops
+    for v_i in (0, 6, 1)
+        v_sx = 22 + v_i * 3.4
+        v_sy = 57 + abs(v_i - 3) * 0.3
+        draw_ellipse(v_sx, v_sy, 1.8, 1.2, gray, 18 + 22 * v_fl, true, 0)
+        mplot(v_sx, v_sy - 1, light_gray, 25 + 30 * v_fl)
+    endfor v_i
+    # crossed logs with glowing embers
+    draw_line(23, 56, 40, 52, dark_brown, 80)
+    draw_line(23, 55, 40, 51, wood_brown, 55)
+    draw_line(24, 51, 41, 56, dark_brown, 80)
+    draw_line(24, 52, 41, 55, wood_brown, 50)
+    for v_i in (0, 7, 1)
+        v_ex = 26 + v_i * 1.8
+        v_ey = 53 + (v_i % 3) * 0.7
+        mplot(v_ex, v_ey, orange, 50 + 45 * abs(sin(v_t * 0.07 + v_i * 1.9)))
+    endfor v_i
+}
+
+# ---------------- Particles ----------------
+v_nsp = 30
+create_array(v_spx, v_nsp, numeric)
+create_array(v_spy, v_nsp, numeric)
+create_array(v_spvx, v_nsp, numeric)
+create_array(v_spvy, v_nsp, numeric)
+create_array(v_spl, v_nsp, numeric)
+for v_i in (0, v_nsp - 1, 1)
+    v_spl[v_i] = 0
+endfor v_i
+
+def launch_spark {
+    for v_i in (0, v_nsp - 1, 1)
+        if v_spl[v_i] <= 0 and v_launch > 0 then
+            v_spx[v_i] = 32 + random(-40, 40, 0) / 10
+            v_spy[v_i] = 40 + random(0, 60, 0) / 10
+            v_spvx[v_i] = random(-20, 20, 0) / 100
+            v_spvy[v_i] = 0 - random(30, 70, 0) / 100
+            v_spl[v_i] = random(40, 90, 0)
+            v_launch = v_launch - 1
+        endif
+    endfor v_i
+}
+
+def draw_sparks {
+    for v_i in (0, v_nsp - 1, 1)
+        if v_spl[v_i] > 0 then
+            v_spl[v_i] = v_spl[v_i] - v_k
+            v_spx[v_i] = v_spx[v_i] + (v_spvx[v_i] + sin(v_t * 0.1 + v_i) * 0.12 + v_wind * 0.03) * v_k
+            v_spy[v_i] = v_spy[v_i] + v_spvy[v_i] * v_k
+            v_spvy[v_i] = v_spvy[v_i] * 0.995
+            if v_spl[v_i] > 50 then
+                v_sc = "yellow"
+            elseif v_spl[v_i] > 25 then
+                v_sc = "orange"
+            else
+                v_sc = "red"
+            endif
+            if v_spy[v_i] >= 0 and v_spl[v_i] >= 1 then
+                mplot(v_spx[v_i], v_spy[v_i], v_sc, min(v_spl[v_i] * 2, 100))
+            endif
+        endif
+    endfor v_i
+}
+
+v_nsm = 7
+create_array(v_smx, v_nsm, numeric)
+create_array(v_smy, v_nsm, numeric)
+create_array(v_sml, v_nsm, numeric)
+for v_i in (0, v_nsm - 1, 1)
+    v_smx[v_i] = 32
+    v_smy[v_i] = 30 - v_i * 4
+    v_sml[v_i] = v_i * 20
+endfor v_i
+
+def draw_smoke {
+    for v_i in (0, v_nsm - 1, 1)
+        v_sml[v_i] = v_sml[v_i] + 0.6 * v_k
+        if v_sml[v_i] > 140 then
+            v_sml[v_i] = 0
+            v_smx[v_i] = 32 + random(-2, 2, 0)
+            v_smy[v_i] = 31
+        endif
+        v_smy[v_i] = v_smy[v_i] - 0.18 * v_k
+        v_smx[v_i] = v_smx[v_i] + (0.06 + v_wind * 0.02 + sin(v_t * 0.02 + v_i) * 0.05) * v_k
+        v_sr = 1 + v_sml[v_i] / 30
+        v_si = 11 * (1 - v_sml[v_i] / 140)
+        if v_si > 2 and v_sr >= 1 then
+            draw_circle(v_smx[v_i], v_smy[v_i], v_sr, light_gray, v_si, true)
+        endif
+    endfor v_i
+}
+
+v_nff = 7
+create_array(v_ffx, v_nff, numeric)
+create_array(v_ffy, v_nff, numeric)
+create_array(v_ffp, v_nff, numeric)
+for v_i in (0, v_nff - 1, 1)
+    v_ffx[v_i] = random(2, 61, 0)
+    v_ffy[v_i] = random(25, 46, 0)
+    v_ffp[v_i] = random(0, 628, 0) / 100
+endfor v_i
+
+def draw_fireflies {
+    for v_i in (0, v_nff - 1, 1)
+        v_ffp[v_i] = v_ffp[v_i] + 0.013 * v_k
+        v_ffx[v_i] = v_ffx[v_i] + sin(v_ffp[v_i] * 1.7 + v_i) * 0.12 * v_k
+        v_ffy[v_i] = v_ffy[v_i] + cos(v_ffp[v_i] * 1.3 + v_i * 2) * 0.08 * v_k
+        # keep them away from the fire, out among the trees
+        if abs(v_ffx[v_i] - 32) < 12 then
+            v_ffx[v_i] = v_ffx[v_i] + (v_ffx[v_i] - 32) * 0.02
+        endif
+        v_ffx[v_i] = min(max(v_ffx[v_i], 1), 62)
+        v_ffy[v_i] = min(max(v_ffy[v_i], 20), 50)
+        v_glow = sin(v_t * 0.04 + v_i * 2.7)
+        if v_glow > 0.47 then
+            mplot(v_ffx[v_i], v_ffy[v_i], lime, (v_glow - 0.45) * 160)
+        endif
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+v_t = 0
+v_simacc = 0
+v_fl = 1
+v_flare_clock = 300
+v_spark_acc = 0
+while true then
+    v_t = v_t + v_k
+    # gentle breeze and the flicker of the firelight
+    v_wind = sin(v_t * 0.011) * 1.5 + sin(v_t * 0.037) * 0.8
+    v_fl = min(max(0.82 + sin(v_t * 0.31) * 0.06 + sin(v_t * 0.77) * 0.05 + random(-5, 5, 0) / 100 + v_flare / 30, 0.5), 1.3)
+    # now and then a log settles: the fire flares and throws up sparks
+    v_flare_clock = v_flare_clock - v_k
+    if v_flare_clock <= 0 then
+        v_flare_clock = random(300, 700, 0)
+        v_flare = 12
+        v_launch = 12
+        call launch_spark
+    endif
+    v_flare = max(v_flare - 0.25 * v_k, 0)
+    v_spark_acc = v_spark_acc + 0.06 * v_k
+    if v_spark_acc >= 1 then
+        v_spark_acc = v_spark_acc - 1
+        v_launch = 1
+        call launch_spark
+    endif
+    v_simacc = v_simacc + v_k
+    while v_simacc >= 1 then
+        v_simacc = v_simacc - 1
+        call feed_fire
+        call spread_fire
+    endwhile
+    begin_frame
+        call draw_sky
+        call draw_ground
+        call draw_trees
+        call draw_tent
+        call draw_smoke
+        call draw_fire
+        call draw_hearth
+        call draw_sparks
+        call draw_fireflies
+    end_frame
+endwhile

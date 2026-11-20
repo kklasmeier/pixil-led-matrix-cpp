@@ -1,0 +1,582 @@
+# Tron City - a neon wireframe city flyover, written entirely in Pixil
+#
+# A black city outlined in neon: glowing building edges, panel lines on the
+# towers, a grid on the ground, and light cycles racing along the streets
+# trailing walls of light. The camera flies down the avenues, curves around
+# corners, dives low between the towers and climbs to look down over the city.
+#
+# How it renders:
+#   - The city is a wrapping height map (streets and blocks of towers).
+#   - One ray per screen column steps through the map (as in Doom_Tour). The
+#     neon lines fall out of the ray's cell crossings: the ground grid where
+#     it crosses street cells, the top and base of every facade it hits,
+#     building corners (where the next cell along the face is a different
+#     height), floor lines up the towers, and roof edges where it drops off
+#     a roof. Buildings in front hide those behind, so it reads as solid.
+#   - Light cycles and their trails are projected 3D lines, hidden behind
+#     the first building in their column.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7             # bigger = slower, smoother flight (1.7 suits fps 60)
+v_speed = 0.16 / v_pace  # camera speed, units per frame
+v_cycles = 6             # light cycles on the streets
+v_trail = 18             # trail points per cycle
+v_maxd = 26              # draw distance
+v_plane = 0.8
+v_sc = 32 / v_plane
+
+# ---------------- City map ----------------
+v_m = 96                 # map size (wraps); block period 6 = 2 street + 4 building
+v_n = v_m * v_m
+create_array(v_hm, v_n, numeric)     # building height (0 = street / plaza)
+create_array(v_hue, v_n, numeric)    # neon colour of the building
+
+for v_by in (0, 15, 1)
+    for v_bx in (0, 15, 1)
+        v_r = random(0, 99, 0)
+        if v_r < 10 then
+            v_bh = 0
+        elseif v_r < 38 then
+            v_bh = random(8, 22, 0) / 10
+        elseif v_r < 78 then
+            v_bh = random(25, 55, 0) / 10
+        else
+            v_bh = random(60, 110, 0) / 10
+        endif
+        v_c = random(0, 99, 0)
+        v_bc = 50
+        if v_c > 62 then
+            v_bc = 60
+        endif
+        if v_c > 80 then
+            v_bc = 83
+        endif
+        if v_c > 92 then
+            v_bc = 8
+        endif
+        v_split = random(0, 99, 0) < 45 and v_bh > 0
+        for v_qy in (0, 3, 1)
+            for v_qx in (0, 3, 1)
+                v_x = v_bx * 6 + 2 + v_qx
+                v_y = v_by * 6 + 2 + v_qy
+                v_hh = v_bh
+                if v_split then
+                    # four towers of different heights in one block
+                    v_hh = max(v_bh * (0.45 + ((v_bx * 7 + v_by * 13 + int(v_qx / 2) * 5 + int(v_qy / 2) * 11) % 7) * 0.13), 0.8)
+                endif
+                v_hm[v_y * v_m + v_x] = v_hh
+                v_hue[v_y * v_m + v_x] = v_bc
+            endfor v_qx
+        endfor v_qy
+    endfor v_bx
+endfor v_by
+
+def hgt {
+    # input v_qx, v_qy (cell coords, any integers) -> v_qh
+    v_qh = v_hm[((v_qy % v_m + v_m) % v_m) * v_m + (v_qx % v_m + v_m) % v_m]
+}
+
+# ---------------- Light cycles ----------------
+create_array(v_cx, v_cycles, numeric)
+create_array(v_cy, v_cycles, numeric)
+create_array(v_cd, v_cycles, numeric)     # direction 0-3
+create_array(v_cleft, v_cycles, numeric)  # distance to next intersection
+create_array(v_chue, v_cycles, numeric)
+create_array(v_cseen, v_cycles, numeric)  # last time the cycle was on screen
+create_array(v_tx, v_cycles * v_trail, numeric)
+create_array(v_ty, v_cycles * v_trail, numeric)
+create_array(v_dx4, 4, numeric)
+create_array(v_dy4, 4, numeric)
+v_dx4[0] = 1
+v_dy4[0] = 0
+v_dx4[1] = 0
+v_dy4[1] = 1
+v_dx4[2] = -1
+v_dy4[2] = 0
+v_dx4[3] = 0
+v_dy4[3] = -1
+v_cam_cx = random(0, 15, 0) * 6 + 1
+v_cam_cy = random(0, 15, 0) * 6 + 1
+for v_k in (0, v_cycles - 1, 1)
+    # start near the camera so they cross its path
+    v_cx[v_k] = v_cam_cx + random(-3, 3, 0) * 6 + 0.55
+    v_cy[v_k] = v_cam_cy + random(-3, 3, 0) * 6 + 0.55
+    v_cd[v_k] = random(0, 3, 0)
+    v_cleft[v_k] = 6
+    # orange and yellow light walls stand out against the cyan city
+    v_chue[v_k] = 7
+    if v_k % 2 == 1 then
+        v_chue[v_k] = 15
+    endif
+    for v_j in (0, v_trail - 1, 1)
+        v_tx[v_k * v_trail + v_j] = v_cx[v_k]
+        v_ty[v_k * v_trail + v_j] = v_cy[v_k]
+    endfor v_j
+endfor v_k
+v_thead = 0
+v_frame = 0
+
+# Put cycle v_k on a street a few blocks ahead of the camera
+def respawn_cycle {
+    v_fx = v_dx4[v_head]
+    v_fy = v_dy4[v_head]
+    v_ix = floor(v_px / 6 + 0.5) * 6
+    v_iy = floor(v_py / 6 + 0.5) * 6
+    v_ahead = random(2, 4, 0) * 6
+    v_side_off = random(-1, 1, 0) * 6
+    if random(0, 9, 0) < 6 then
+        # most of the time, use the camera's own avenue
+        v_side_off = 0
+    endif
+    v_cx[v_k] = v_ix + v_fx * v_ahead - v_fy * v_side_off + 0.55
+    v_cy[v_k] = v_iy + v_fy * v_ahead + v_fx * v_side_off + 0.55
+    v_r = random(0, 9, 0)
+    if v_side_off == 0 and v_r < 6 then
+        # coming toward the camera
+        v_cd[v_k] = (v_head + 2) % 4
+    elseif v_r < 4 then
+        v_cd[v_k] = (v_head + 2) % 4
+    elseif v_r < 7 then
+        v_cd[v_k] = (v_head + 1) % 4
+    else
+        v_cd[v_k] = (v_head + 3) % 4
+    endif
+    v_cleft[v_k] = 6
+    v_cseen[v_k] = v_t
+    for v_j in (0, v_trail - 1, 1)
+        v_tx[v_k * v_trail + v_j] = v_cx[v_k]
+        v_ty[v_k * v_trail + v_j] = v_cy[v_k]
+    endfor v_j
+}
+
+def move_cycles {
+    for v_k in (0, v_cycles - 1, 1)
+        v_ddx2 = v_cx[v_k] - v_px
+        v_ddy2 = v_cy[v_k] - v_py
+        if v_ddx2 * v_ddx2 + v_ddy2 * v_ddy2 > 26 * 26 or v_t - v_cseen[v_k] > 140 + v_k * 20 then
+            call respawn_cycle
+        endif
+        v_step = 0.09 * 1.7 / v_pace
+        v_cx[v_k] = v_cx[v_k] + v_dx4[v_cd[v_k]] * v_step
+        v_cy[v_k] = v_cy[v_k] + v_dy4[v_cd[v_k]] * v_step
+        v_cleft[v_k] = v_cleft[v_k] - v_step
+        if v_cleft[v_k] <= 0 then
+            # at an intersection: snap to the lane and maybe turn
+            v_cx[v_k] = floor(v_cx[v_k] / 6 + 0.5) * 6 + 0.55
+            v_cy[v_k] = floor(v_cy[v_k] / 6 + 0.5) * 6 + 0.55
+            v_r = random(0, 9, 0)
+            if v_r < 3 then
+                v_cd[v_k] = (v_cd[v_k] + 1) % 4
+            elseif v_r < 6 then
+                v_cd[v_k] = (v_cd[v_k] + 3) % 4
+            endif
+            v_cleft[v_k] = 6
+        endif
+    endfor v_k
+    # trail history, sampled every few frames
+    v_frame = v_frame + 1
+    if v_frame % int(3 * v_pace + 0.5) == 0 then
+        v_thead = (v_thead + 1) % v_trail
+        for v_k in (0, v_cycles - 1, 1)
+            v_tx[v_k * v_trail + v_thead] = v_cx[v_k]
+            v_ty[v_k * v_trail + v_thead] = v_cy[v_k]
+        endfor v_k
+    endif
+}
+
+# ---------------- Camera ----------------
+# The route is planned a few intersections ahead. The camera follows it at a
+# steady speed, rounding each corner on a curve as wide as the street allows,
+# and looks a few units ahead along the route, so it leans into turns smoothly.
+v_corner = 1.8           # corner radius (streets are 2 wide; under 2 stays clear)
+v_look = 4.0             # how far ahead along the route the camera looks
+create_array(v_rtx, 4, numeric)    # upcoming intersection centres
+create_array(v_rty, 4, numeric)
+create_array(v_ldir, 3, numeric)   # direction of each leg between them
+
+def choose_dir {
+    # input v_din -> v_dout: mostly straight on, sometimes left or right
+    v_r = random(0, 9, 0)
+    v_dout = v_din
+    if v_r < 2 then
+        v_dout = (v_din + 1) % 4
+    elseif v_r < 4 then
+        v_dout = (v_din + 3) % 4
+    endif
+}
+
+v_head = random(0, 3, 0)
+v_prevdir = v_head
+v_rtx[0] = v_cam_cx
+v_rty[0] = v_cam_cy
+v_ldir[0] = v_head
+for v_k in (1, 3, 1)
+    v_rtx[v_k] = v_rtx[v_k - 1] + v_dx4[v_ldir[v_k - 1]] * 6
+    v_rty[v_k] = v_rty[v_k - 1] + v_dy4[v_ldir[v_k - 1]] * 6
+    if v_k < 3 then
+        v_din = v_ldir[v_k - 1]
+        call choose_dir
+        v_ldir[v_k] = v_dout
+    endif
+endfor v_k
+v_lu = 0                 # distance travelled along the current leg (0-6)
+v_px = v_rtx[0]
+v_py = v_rty[0]
+v_ang = v_head * 1.5708
+v_alt = 3
+v_pitch = 0
+v_t = 0
+
+# Point on the rounded route: leg v_lk (0 = current, 1 = next), v_lq along it
+def leg_point {
+    v_ax = v_rtx[v_lk]
+    v_ay = v_rty[v_lk]
+    v_d1 = v_ldir[v_lk]
+    v_d0 = v_prevdir
+    if v_lk == 1 then
+        v_d0 = v_ldir[0]
+    endif
+    v_d2 = v_ldir[v_lk + 1]
+    if v_lq > 6 - v_corner and v_d2 != v_d1 then
+        # first half of the curve into the next street
+        v_a = (v_lq - (6 - v_corner)) / (2 * v_corner)
+        v_bx = v_ax + v_dx4[v_d1] * 6
+        v_by = v_ay + v_dy4[v_d1] * 6
+        v_p0x = v_bx - v_dx4[v_d1] * v_corner
+        v_p0y = v_by - v_dy4[v_d1] * v_corner
+        v_p2x = v_bx + v_dx4[v_d2] * v_corner
+        v_p2y = v_by + v_dy4[v_d2] * v_corner
+    elseif v_lq < v_corner and v_d0 != v_d1 then
+        # second half of the curve out of the last corner
+        v_a = 0.5 + v_lq / (2 * v_corner)
+        v_bx = v_ax
+        v_by = v_ay
+        v_p0x = v_bx - v_dx4[v_d0] * v_corner
+        v_p0y = v_by - v_dy4[v_d0] * v_corner
+        v_p2x = v_bx + v_dx4[v_d1] * v_corner
+        v_p2y = v_by + v_dy4[v_d1] * v_corner
+    else
+        v_a = -1
+        v_qx = v_ax + v_dx4[v_d1] * v_lq
+        v_qy = v_ay + v_dy4[v_d1] * v_lq
+    endif
+    if v_a >= 0 then
+        # quadratic Bezier with the intersection centre as control point
+        v_b0 = (1 - v_a) * (1 - v_a)
+        v_b1 = 2 * v_a * (1 - v_a)
+        v_b2 = v_a * v_a
+        v_qx = v_b0 * v_p0x + v_b1 * v_bx + v_b2 * v_p2x
+        v_qy = v_b0 * v_p0y + v_b1 * v_by + v_b2 * v_p2y
+    endif
+}
+
+def move_camera {
+    v_lu = v_lu + v_speed
+    if v_lu >= 6 then
+        # next leg: shift the plan along and pick a new far intersection
+        v_lu = v_lu - 6
+        v_prevdir = v_ldir[0]
+        for v_k in (0, 2, 1)
+            v_rtx[v_k] = v_rtx[v_k + 1]
+            v_rty[v_k] = v_rty[v_k + 1]
+        endfor v_k
+        v_ldir[0] = v_ldir[1]
+        v_ldir[1] = v_ldir[2]
+        v_din = v_ldir[1]
+        call choose_dir
+        v_ldir[2] = v_dout
+        v_rtx[3] = v_rtx[2] + v_dx4[v_ldir[2]] * 6
+        v_rty[3] = v_rty[2] + v_dy4[v_ldir[2]] * 6
+    endif
+    v_head = v_ldir[0]
+    v_lk = 0
+    v_lq = v_lu
+    call leg_point
+    v_px = v_qx
+    v_py = v_qy
+    # look ahead along the route
+    v_lq = v_lu + v_look
+    v_lk = 0
+    if v_lq >= 6 then
+        v_lq = v_lq - 6
+        v_lk = 1
+    endif
+    call leg_point
+    v_want = atan2(v_qy - v_py, v_qx - v_px)
+    v_dang = v_want - v_ang
+    v_dang = v_dang - 6.283185 * floor((v_dang + 3.141593) / 6.283185)
+    v_ang = v_ang + v_dang * 0.05 * 1.7 / v_pace
+
+    # keep coordinates small (the city wraps)
+    if v_px > v_m * 3 or v_px < 0 - v_m * 2 or v_py > v_m * 3 or v_py < 0 - v_m * 2 then
+        v_wx = floor(v_px / v_m) * v_m
+        v_wy = floor(v_py / v_m) * v_m
+        v_px = v_px - v_wx
+        v_py = v_py - v_wy
+        for v_k in (0, 3, 1)
+            v_rtx[v_k] = v_rtx[v_k] - v_wx
+            v_rty[v_k] = v_rty[v_k] - v_wy
+        endfor v_k
+        for v_k in (0, v_cycles - 1, 1)
+            v_cx[v_k] = v_cx[v_k] - v_wx
+            v_cy[v_k] = v_cy[v_k] - v_wy
+        endfor v_k
+        for v_j in (0, v_cycles * v_trail - 1, 1)
+            v_tx[v_j] = v_tx[v_j] - v_wx
+            v_ty[v_j] = v_ty[v_j] - v_wy
+        endfor v_j
+    endif
+    # altitude: long swoops between street level and above the rooftops
+    v_alt_target = 4.6 + sin(v_t * 0.0042) * 3.6 + sin(v_t * 0.011) * 0.8
+    v_alt = v_alt + (v_alt_target - v_alt) * 0.02
+    v_pitch = min(max((v_alt - 2.5) * 2.4, 0), 16)
+}
+
+# ---------------- Rendering ----------------
+create_array(v_zfirst, 64, numeric)
+
+def draw_sky {
+    # faint glow just above the horizon
+    v_hzi = int(v_hz)
+    for v_k in (1, 7, 1)
+        v_y = v_hzi - v_k
+        if v_y >= 0 and v_y <= 63 then
+            draw_line(0, v_y, 63, v_y, navy, 36 - v_k * 4)
+        endif
+    endfor v_k
+    if v_hzi >= 0 and v_hzi <= 63 then
+        draw_line(0, v_hzi, 63, v_hzi, 52, 30)
+    endif
+}
+
+def render {
+    v_dirx = cos(v_ang)
+    v_diry = sin(v_ang)
+    v_plx = 0 - v_diry * v_plane
+    v_ply = v_dirx * v_plane
+    v_hz = 32 - v_pitch
+    v_ez = v_alt
+    call draw_sky
+    for v_x in (0, 63, 1)
+        v_c = (v_x + 0.5) / 32 - 1
+        v_rdx = v_dirx + v_plx * v_c
+        v_rdy = v_diry + v_ply * v_c
+        v_mx = floor(v_px)
+        v_my = floor(v_py)
+        v_ddx = 999999
+        if v_rdx != 0 then
+            v_ddx = abs(1 / v_rdx)
+        endif
+        v_ddy = 999999
+        if v_rdy != 0 then
+            v_ddy = abs(1 / v_rdy)
+        endif
+        if v_rdx < 0 then
+            v_stx = -1
+            v_sdx = (v_px - v_mx) * v_ddx
+        else
+            v_stx = 1
+            v_sdx = (v_mx + 1 - v_px) * v_ddx
+        endif
+        if v_rdy < 0 then
+            v_sty = -1
+            v_sdy = (v_py - v_my) * v_ddy
+        else
+            v_sty = 1
+            v_sdy = (v_my + 1 - v_py) * v_ddy
+        endif
+        v_wb = 63
+        v_ux = (v_mx % v_m + v_m) % v_m
+        v_uy = (v_my % v_m + v_m) % v_m
+        v_hp = v_hm[v_uy * v_m + v_ux]
+        v_zf = v_maxd
+        v_go = 1
+        while v_go == 1 then
+            if v_sdx < v_sdy then
+                v_d = v_sdx
+                v_sdx = v_sdx + v_ddx
+                v_mx = v_mx + v_stx
+                v_ux = v_ux + v_stx
+                if v_ux < 0 then
+                    v_ux = v_m - 1
+                elseif v_ux >= v_m then
+                    v_ux = 0
+                endif
+                v_side = 0
+            else
+                v_d = v_sdy
+                v_sdy = v_sdy + v_ddy
+                v_my = v_my + v_sty
+                v_uy = v_uy + v_sty
+                if v_uy < 0 then
+                    v_uy = v_m - 1
+                elseif v_uy >= v_m then
+                    v_uy = 0
+                endif
+                v_side = 1
+            endif
+            v_d = max(v_d, 0.02)
+            if v_d >= v_maxd then
+                v_go = 0
+            else
+                v_fog = 1 - v_d / v_maxd
+                v_k = v_sc / v_d
+                # the cell we just crossed ends here: its top surface hides what is below
+                v_ytop = v_hz + (v_ez - v_hp) * v_k
+                v_ci = v_uy * v_m + v_ux
+                v_hn = v_hm[v_ci]
+                if v_hn > v_hp then
+                    # facade of the next building, from v_hp up to v_hn
+                    v_yt = v_hz - (v_hn - v_ez) * v_k
+                    v_yb = min(v_ytop, v_wb + 1)
+                    v_r0 = max(ceil(v_yt), 0)
+                    v_r1 = min(ceil(v_yb) - 1, v_wb)
+                    if v_r0 <= v_r1 then
+                        v_hc = v_hue[v_ci]
+                        v_li = 100 * v_fog
+                        # dark glass fill so the towers read as solid
+                        draw_line(v_x, v_r0, v_x, v_r1, navy, 16 * v_fog)
+                        # corner of the building? (next cell along the face is different)
+                        if v_side == 0 then
+                            v_u = v_py + v_d * v_rdy
+                            v_u = v_u - floor(v_u)
+                            v_ha = v_hm[((v_uy + v_m - 1) % v_m) * v_m + v_ux]
+                            v_hb = v_hm[((v_uy + 1) % v_m) * v_m + v_ux]
+                        else
+                            v_u = v_px + v_d * v_rdx
+                            v_u = v_u - floor(v_u)
+                            v_ha = v_hm[v_uy * v_m + (v_ux + v_m - 1) % v_m]
+                            v_hb = v_hm[v_uy * v_m + (v_ux + 1) % v_m]
+                        endif
+                        v_thr = 0.6 / v_k
+                        if (v_u < v_thr and v_ha != v_hn) or (v_u > 1 - v_thr and v_hb != v_hn) then
+                            draw_line(v_x, v_r0, v_x, v_r1, v_hc, v_li)
+                        else
+                            # floor lines up the tower, one per storey
+                            if v_k > 2.5 then
+                                for v_fl in (ceil(v_hp + 0.01), floor(v_hn - 0.01), 1)
+                                    v_fy = ceil(v_hz - (v_fl - v_ez) * v_k)
+                                    if v_fy >= v_r0 and v_fy <= v_r1 then
+                                        mplot(v_x, v_fy, v_hc, v_li * 0.4)
+                                    endif
+                                endfor v_fl
+                            endif
+                            # top edge of the facade
+                            if ceil(v_yt) >= 0 and ceil(v_yt) <= v_wb then
+                                mplot(v_x, ceil(v_yt), v_hc, v_li)
+                            endif
+                        endif
+                        # base of the facade, where it meets the ground
+                        if v_hp == 0 and ceil(v_ytop) - 1 <= v_wb and ceil(v_ytop) - 1 >= v_r0 then
+                            mplot(v_x, ceil(v_ytop) - 1, v_hc, v_li * 0.7)
+                        endif
+                    endif
+                    if v_zf == v_maxd then
+                        v_zf = v_d
+                    endif
+                    v_wb = min(v_wb, ceil(v_yt) - 1)
+                else
+                    # flat or dropping away: mark the edge of this surface
+                    v_ey = ceil(v_ytop) - 1
+                    if v_ey >= 0 and v_ey <= v_wb then
+                        if v_hp > 0 then
+                            if v_hn < v_hp then
+                                # roof edge
+                                v_hc = v_hue[((v_uy - v_sty * v_side + v_m) % v_m) * v_m + (v_ux - v_stx * (1 - v_side) + v_m) % v_m]
+                                mplot(v_x, v_ey, v_hc, 90 * v_fog)
+                            endif
+                        elseif v_d < 20 then
+                            # ground grid line
+                            mplot(v_x, v_ey, 52, 34 * (1 - v_d / 20))
+                        endif
+                    endif
+                    v_wb = min(v_wb, v_ey)
+                endif
+                v_hp = v_hn
+                if v_wb < 0 then
+                    v_go = 0
+                endif
+            endif
+        endwhile
+        v_zfirst[v_x] = v_zf
+    endfor v_x
+}
+
+# Project a world point (v_wx3, v_wy3, height v_wz3): -> v_sx, v_sy, v_sd (depth), v_vis
+def project {
+    v_rx = v_wx3 - v_px
+    v_ry = v_wy3 - v_py
+    v_sd = v_inv * (0 - v_ply * v_rx + v_plx * v_ry)
+    v_vis = 0
+    v_sx = -99
+    v_sy = -99
+    if v_sd > 0.3 and v_sd < v_maxd then
+        v_sx = 32 * (1 + v_inv * (v_diry * v_rx - v_dirx * v_ry) / v_sd)
+        v_sy = v_hz - (v_wz3 - v_ez) * v_sc / v_sd
+        v_col = int(v_sx)
+        if v_col >= 0 and v_col <= 63 then
+            if v_sd <= v_zfirst[v_col] + 0.5 then
+                v_vis = 1
+            endif
+        endif
+    endif
+}
+
+def draw_cycles {
+    v_inv = 1 / (v_plx * v_diry - v_dirx * v_ply)
+    for v_k in (0, v_cycles - 1, 1)
+        v_hc = v_chue[v_k]
+        # trail: a ribbon of light from the oldest point to the bike
+        v_pvis = 0
+        for v_j in (1, v_trail, 1)
+            v_idx = v_k * v_trail + (v_thead + v_j) % v_trail
+            if v_j == v_trail then
+                v_wx3 = v_cx[v_k]
+                v_wy3 = v_cy[v_k]
+            else
+                v_wx3 = v_tx[v_idx]
+                v_wy3 = v_ty[v_idx]
+            endif
+            v_wz3 = 0.4
+            call project
+            if v_vis == 1 and v_pvis == 1 then
+                v_fade = v_j / v_trail
+                draw_line(v_lsx, v_lsy, v_sx, v_sy, v_hc, 100 * v_fade * (1 - v_sd / v_maxd))
+                v_g = v_hz - (0 - v_ez) * v_sc / v_sd
+                draw_line(v_lsx, v_lgy, v_sx, v_g, v_hc, 55 * v_fade * (1 - v_sd / v_maxd))
+            endif
+            v_pvis = v_vis
+            v_lsx = v_sx
+            v_lsy = v_sy
+            v_lgy = v_hz - (0 - v_ez) * v_sc / max(v_sd, 0.3)
+        endfor v_j
+        # the bike itself: a bright head
+        v_wx3 = v_cx[v_k]
+        v_wy3 = v_cy[v_k]
+        v_wz3 = 0.18
+        call project
+        if v_vis == 1 then
+            v_cseen[v_k] = v_t
+            v_bs = v_sc / v_sd * 0.12
+            if v_bs < 1.2 then
+                mplot(v_sx, v_sy, white, 100)
+            else
+                draw_circle(v_sx, v_sy, v_bs, white, 100, true)
+            endif
+        endif
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1 / v_pace
+    call move_camera
+    call move_cycles
+    begin_frame
+        call render
+        call draw_cycles
+    end_frame
+endwhile

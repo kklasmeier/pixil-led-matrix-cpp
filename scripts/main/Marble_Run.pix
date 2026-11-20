@@ -1,0 +1,481 @@
+# Marble Run - glass marbles racing round an ever-changing marble machine
+#
+# A marble machine on a pegboard. Glass marbles are released one at a time
+# from a gate at the top left and zig-zag down five levels of track to a
+# chain lift that carries them back up and along the top to the gate.
+# Every few minutes the board fades out and a brand new course is built:
+# each level is made of a random mix of pieces - plain ramps, loop-the-
+# loops, jumps off little kickers, bumpy humps and rows of chime bars that
+# light up as the marbles roll over them.
+#
+# How it is built:
+#   - A course is one long path of points, built from straight pieces and
+#     arcs. Levels run alternately right and left, joined by U-turns, and
+#     each level is cut into two or three pieces of random kinds.
+#   - Each marble keeps its distance along the path. Speed comes from
+#     energy: faster going down, slower going up, a little lost to friction,
+#     and the lift moves at a steady pace. Loops only go where a marble will
+#     have the speed to get round.
+#   - Marbles never overlap: one that catches up with the marble ahead
+#     slows to its pace, so they queue at the lift and the gate.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_g = 0.011
+v_ds = 0.5                 # path point spacing
+v_maxp = 1800
+v_course_len = 3600        # frames each course stays up (at the design pace)
+
+create_array(v_px, v_maxp, numeric)
+create_array(v_py, v_maxp, numeric)
+create_array(v_pk, v_maxp, numeric)    # 0 track, 1 lift, 2 jump (no track), 3 loop
+v_np = 0
+
+# loops and chime bars on the current course
+v_maxloop = 6
+create_array(v_lpx, v_maxloop, numeric)
+create_array(v_lpy, v_maxloop, numeric)
+create_array(v_lpr, v_maxloop, numeric)
+v_nloop = 0
+v_maxch = 16
+create_array(v_chx, v_maxch, numeric)
+create_array(v_chy, v_maxch, numeric)
+create_array(v_chi0, v_maxch, numeric)   # path range that rings this bar
+create_array(v_chi1, v_maxch, numeric)
+create_array(v_chl, v_maxch, numeric)
+create_array(v_chc, v_maxch, string)
+v_nch = 0
+create_array(v_chpal, 6, string)
+v_chpal[0] = "red"
+v_chpal[1] = "orange"
+v_chpal[2] = "gold"
+v_chpal[3] = "lime"
+v_chpal[4] = "sky_blue"
+v_chpal[5] = "magenta"
+
+# ---------------- Path building ----------------
+def add_point {
+    if v_np < v_maxp then
+        v_px[v_np] = v_lx
+        v_py[v_np] = v_ly
+        v_pk[v_np] = v_kind
+        v_np = v_np + 1
+    endif
+}
+
+def add_line {
+    # from the path's end to (v_tx, v_ty)
+    if v_np == 0 then
+        v_lx = v_tx
+        v_ly = v_ty
+        call add_point
+    else
+        v_x0 = v_px[v_np - 1]
+        v_y0 = v_py[v_np - 1]
+        v_len = sqrt((v_tx - v_x0) * (v_tx - v_x0) + (v_ty - v_y0) * (v_ty - v_y0))
+        v_n = max(int(v_len / v_ds), 1)
+        for v_i in (1, v_n, 1)
+            v_lx = v_x0 + (v_tx - v_x0) * v_i / v_n
+            v_ly = v_y0 + (v_ty - v_y0) * v_i / v_n
+            call add_point
+        endfor v_i
+    endif
+}
+
+def add_arc {
+    # around (v_acx, v_acy), radius v_ar, from angle v_a0 to v_a1 (screen y down)
+    v_n = max(int(abs(v_a1 - v_a0) * v_ar / v_ds), 2)
+    for v_i in (1, v_n, 1)
+        v_a = v_a0 + (v_a1 - v_a0) * v_i / v_n
+        v_lx = v_acx + cos(v_a) * v_ar
+        v_ly = v_acy + sin(v_a) * v_ar
+        call add_point
+    endfor v_i
+}
+
+# ---------------- Course pieces ----------------
+# each piece runs from the path's end a distance v_plenx in direction v_dir,
+# dropping v_pdrop on the way
+
+def piece_ramp {
+    v_kind = 0
+    v_tx = v_px[v_np - 1] + v_dir * v_plenx
+    v_ty = v_py[v_np - 1] + v_pdrop
+    call add_line
+}
+
+def piece_chimes {
+    v_kind = 0
+    v_cx0 = v_px[v_np - 1]
+    v_cy0 = v_py[v_np - 1]
+    v_cstart = v_np
+    v_tx = v_cx0 + v_dir * v_plenx
+    v_ty = v_cy0 + v_pdrop
+    call add_line
+    v_nb = int(v_plenx / 4.5)
+    v_c0 = random(0, 5, 0)
+    for v_b in (0, v_nb - 1, 1)
+        if v_nch < v_maxch then
+            v_f = (v_b + 0.6) / v_nb
+            v_chx[v_nch] = v_cx0 + v_dir * v_plenx * v_f
+            v_chy[v_nch] = v_cy0 + v_pdrop * v_f + 3
+            v_chi0[v_nch] = v_cstart
+            v_chi1[v_nch] = v_np
+            v_chl[v_nch] = 0
+            v_chc[v_nch] = v_chpal[(v_c0 + v_b) % 6]
+            v_nch = v_nch + 1
+        endif
+    endfor v_b
+}
+
+def piece_bumps {
+    v_kind = 0
+    v_bx0 = v_px[v_np - 1]
+    v_by0 = v_py[v_np - 1]
+    v_nh = random(2, 3, 0)
+    for v_i in (1, 24, 1)
+        v_f = v_i / 24
+        v_tx = v_bx0 + v_dir * v_plenx * v_f
+        v_ty = v_by0 + v_pdrop * v_f - abs(sin(v_f * 3.1416 * v_nh)) * 1.6
+        call add_line
+    endfor v_i
+}
+
+def piece_jump {
+    # a short run-up, a kicker, a flight over a gap, and a landing
+    v_kind = 0
+    v_jx = v_px[v_np - 1]
+    v_jy = v_py[v_np - 1]
+    v_tx = v_jx + v_dir * (v_plenx - 11)
+    v_ty = v_jy + v_pdrop * 0.5
+    call add_line
+    v_tx = v_tx + v_dir * 2
+    v_ty = v_ty - 1.2
+    call add_line
+    v_kind = 2
+    v_fx0 = v_px[v_np - 1]
+    v_fy0 = v_py[v_np - 1]
+    for v_i in (1, 14, 1)
+        v_f = v_i / 14
+        v_tx = v_fx0 + v_dir * 7 * v_f
+        v_ty = v_fy0 - sin(v_f * 3.1416) * 2.5 + v_f * (v_pdrop * 0.5 + 2.2)
+        call add_line
+    endfor v_i
+    v_kind = 0
+    v_tx = v_px[v_np - 1] + v_dir * 2
+    v_ty = v_py[v_np - 1] + 0.4
+    call add_line
+}
+
+def piece_loop {
+    v_kind = 0
+    v_tx = v_px[v_np - 1] + v_dir * (v_plenx * 0.5)
+    v_ty = v_py[v_np - 1] + v_pdrop * 0.5
+    call add_line
+    v_lr = random(4, 5, 0)
+    v_lcx = v_px[v_np - 1]
+    v_lcy = v_py[v_np - 1] - v_lr
+    v_kind = 3
+    v_acx = v_lcx
+    v_acy = v_lcy
+    v_ar = v_lr
+    v_a0 = 1.5708
+    v_a1 = 1.5708 - 6.2832 * v_dir
+    call add_arc
+    if v_nloop < v_maxloop then
+        v_lpx[v_nloop] = v_lcx
+        v_lpy[v_nloop] = v_lcy
+        v_lpr[v_nloop] = v_lr
+        v_nloop = v_nloop + 1
+    endif
+    v_kind = 0
+    v_tx = v_px[v_np - 1] + v_dir * (v_plenx * 0.5)
+    v_ty = v_py[v_np - 1] + v_pdrop * 0.5
+    call add_line
+}
+
+# ---------------- A whole course ----------------
+create_array(v_split, 4, numeric)
+def build_course {
+    v_np = 0
+    v_nloop = 0
+    v_nch = 0
+    v_kind = 0
+    v_tx = 8
+    v_ty = 8
+    call add_line
+    v_nrow = 5
+    v_ur = random(45, 52, 0) / 10      # U-turn radius
+    v_rowdrop = 1.5
+    v_dir = 1
+    for v_row in (0, v_nrow - 1, 1)
+        # this level runs from x 8 to 52 (or back); cut it into pieces
+        v_np_pieces = random(2, 3, 0)
+        v_span = 44
+        if v_row == v_nrow - 1 then
+            v_span = 46
+        endif
+        v_used = 0
+        for v_pc in (0, v_np_pieces - 1, 1)
+            if v_pc == v_np_pieces - 1 then
+                v_plenx = v_span - v_used
+            else
+                v_plenx = int(v_span / v_np_pieces) + random(-3, 3, 0)
+            endif
+            v_used = v_used + v_plenx
+            v_pdrop = v_rowdrop * v_plenx / v_span
+            # loops need room above and enough height fallen to get round
+            v_ytop = v_py[v_np - 1] - 11
+            v_r = random(0, 99, 0)
+            if v_r < 22 and v_row >= 1 and v_ytop > 14 and v_plenx >= 12 then
+                call piece_loop
+            elseif v_r < 42 and v_plenx >= 15 then
+                call piece_jump
+            elseif v_r < 60 then
+                call piece_chimes
+            elseif v_r < 75 and v_plenx >= 10 then
+                call piece_bumps
+            else
+                call piece_ramp
+            endif
+        endfor v_pc
+        if v_row < v_nrow - 1 then
+            # U-turn down to the next level
+            v_ex = v_px[v_np - 1]
+            v_ey = v_py[v_np - 1]
+            v_kind = 0
+            v_acx = v_ex
+            v_acy = v_ey + v_ur
+            v_ar = v_ur
+            v_a0 = -1.5708
+            if v_dir > 0 then
+                v_a1 = 1.5708
+            else
+                v_a1 = -4.7124
+            endif
+            call add_arc
+            v_dir = 0 - v_dir
+        endif
+    endfor v_row
+    # into the lift, up the side, across the top and back to the gate
+    v_kind = 0
+    v_acx = v_px[v_np - 1]
+    v_acy = v_py[v_np - 1] - 3
+    v_ar = 3
+    v_a0 = 1.5708
+    v_a1 = 0
+    call add_arc
+    v_kind = 1
+    v_tx = v_px[v_np - 1]
+    v_ty = 6
+    call add_line
+    v_acx = v_px[v_np - 1] - 3
+    v_acy = 6
+    v_ar = 3
+    v_a0 = 0
+    v_a1 = -1.5708
+    call add_arc
+    v_tx = 11
+    v_ty = 3
+    call add_line
+    v_acx = 11
+    v_acy = 6
+    v_ar = 3
+    v_a0 = -1.5708
+    v_a1 = -3.1416
+    call add_arc
+    v_tx = 8
+    v_ty = 8
+    call add_line
+    v_plen = v_np * v_ds
+    v_liftx = v_px[v_np - 30]
+    # find where the lift starts
+    v_lift_s = 0
+    for v_i in (0, v_np - 1, 1)
+        if v_lift_s == 0 and v_pk[v_i] == 1 then
+            v_lift_s = v_i
+        endif
+    endfor v_i
+    v_lifttop = 6
+    v_liftbot = v_py[v_lift_s]
+}
+
+# ---------------- Marbles ----------------
+v_nm = 7
+create_array(v_ms, v_nm, numeric)
+create_array(v_mv, v_nm, numeric)
+create_array(v_me, v_nm, numeric)
+create_array(v_mrot, v_nm, numeric)
+create_array(v_mc, v_nm, string)
+create_array(v_mc2, v_nm, string)
+v_mc[0] = "red"
+v_mc2[0] = "gold"
+v_mc[1] = "royal_blue"
+v_mc2[1] = "white"
+v_mc[2] = "lime"
+v_mc2[2] = "yellow"
+v_mc[3] = "orange"
+v_mc2[3] = "red"
+v_mc[4] = "magenta"
+v_mc2[4] = "white"
+v_mc[5] = "cyan"
+v_mc2[5] = "royal_blue"
+v_mc[6] = "gold"
+v_mc2[6] = "orange"
+v_lift_v = 0.3
+
+def reset_marbles {
+    # all queued on the lift
+    for v_i in (0, v_nm - 1, 1)
+        v_ms[v_i] = (v_lift_s + 10 + v_i * 10) * v_ds
+        v_mv[v_i] = v_lift_v
+        v_me[v_i] = 0
+        v_mrot[v_i] = 0
+    endfor v_i
+    v_gate_clock = 0
+}
+
+def path_at {
+    v_qs2 = v_qs - floor(v_qs / v_plen) * v_plen
+    v_qi = min(int(v_qs2 / v_ds), v_np - 1)
+}
+
+def move_marbles {
+    v_gate_clock = v_gate_clock - v_k
+    for v_i in (0, v_nm - 1, 1)
+        v_qs = v_ms[v_i]
+        call path_at
+        v_kd = v_pk[v_qi]
+        v_h = 0 - v_py[v_qi]
+        if v_kd == 1 then
+            v_mv[v_i] = v_lift_v
+            v_me[v_i] = 0.5 * v_lift_v * v_lift_v + v_g * v_h
+            if v_qi >= v_np - 4 and v_gate_clock > 0 then
+                v_mv[v_i] = 0
+            endif
+        else
+            v_me[v_i] = v_me[v_i] - 0.00012 * v_k
+            v_mv[v_i] = sqrt(max(2 * (v_me[v_i] - v_g * v_h), 0.0225))
+        endif
+        for v_j in (0, v_nm - 1, 1)
+            if v_j != v_i then
+                v_gap = v_ms[v_j] - v_ms[v_i]
+                v_gap = v_gap - floor(v_gap / v_plen) * v_plen
+                if v_gap < 4.2 then
+                    v_mv[v_i] = min(v_mv[v_i], max(v_gap - 3.8, 0) * 0.5)
+                endif
+            endif
+        endfor v_j
+        v_ms[v_i] = v_ms[v_i] + v_mv[v_i] * v_k
+        if v_ms[v_i] >= v_plen then
+            v_ms[v_i] = v_ms[v_i] - v_plen
+            v_gate_clock = 70
+            v_me[v_i] = 0.5 * 0.15 * 0.15 + v_g * (0 - v_py[0])
+        endif
+        if v_pk[v_qi] != 1 then
+            v_mrot[v_i] = v_mrot[v_i] + v_mv[v_i] * v_k * 0.5
+        endif
+        # ring chime bars as the marble rolls over them
+        v_qx = v_px[v_qi]
+        for v_c in (0, v_nch - 1, 1)
+            if v_qi >= v_chi0[v_c] and v_qi <= v_chi1[v_c] and abs(v_qx - v_chx[v_c]) < 1 then
+                v_chl[v_c] = 30
+            endif
+        endfor v_c
+    endfor v_i
+}
+
+# ---------------- Drawing ----------------
+def draw_board {
+    for v_y in (0, 63, 1)
+        draw_line(0, v_y, 63, v_y, wood_brown, 20 * v_fade)
+    endfor v_y
+    for v_y in (2, 62, 6)
+        for v_x in (2, 62, 6)
+            mplot(v_x, v_y, dark_brown, 45 * v_fade)
+        endfor v_x
+    endfor v_y
+}
+
+def draw_track {
+    v_f = v_fade
+    for v_i in (2, v_np - 1, 2)
+        if v_pk[v_i] == 0 and v_pk[v_i - 2] == 0 then
+            draw_line(v_px[v_i - 2], v_py[v_i - 2] + 2, v_px[v_i], v_py[v_i] + 2, light_gray, 55 * v_f)
+        endif
+    endfor v_i
+    for v_i in (8, v_np - 1, 24)
+        if v_pk[v_i] == 0 then
+            draw_line(v_px[v_i], v_py[v_i] + 3, v_px[v_i], v_py[v_i] + 5, bronze, 40 * v_f)
+        endif
+    endfor v_i
+    for v_l in (0, v_nloop - 1, 1)
+        draw_circle(v_lpx[v_l], v_lpy[v_l], v_lpr[v_l] + 2, light_gray, 55 * v_f, false)
+    endfor v_l
+    for v_c in (0, v_nch - 1, 1)
+        if v_chl[v_c] > 0 then
+            draw_line(v_chx[v_c] - 1, v_chy[v_c], v_chx[v_c] + 1, v_chy[v_c], v_chc[v_c], (60 + v_chl[v_c]) * v_f)
+            v_chl[v_c] = v_chl[v_c] - v_k
+        else
+            draw_line(v_chx[v_c] - 1, v_chy[v_c], v_chx[v_c] + 1, v_chy[v_c], v_chc[v_c], 28 * v_f)
+        endif
+    endfor v_c
+    # the lift chain up the right side and across the top
+    v_lx2 = v_px[v_lift_s] + 2
+    draw_line(v_lx2, 6, v_lx2, v_liftbot, dark_gray, 60 * v_f)
+    draw_line(10, 1, v_lx2 - 3, 1, dark_gray, 60 * v_f)
+    v_cm = (v_t * v_lift_v) % 6
+    for v_y in (int(v_liftbot) - 1, 6, -6)
+        v_cy = v_y - v_cm
+        if v_cy > 5 then
+            draw_line(v_lx2 - 1, v_cy, v_lx2 + 1, v_cy, gray, 60 * v_f)
+        endif
+    endfor v_y
+    for v_x in (10, v_lx2 - 4, 6)
+        v_cx = v_x + 6 - v_cm
+        if v_cx < v_lx2 - 3 then
+            draw_line(v_cx, 0, v_cx, 2, gray, 60 * v_f)
+        endif
+    endfor v_x
+    draw_line(5, 4, 5, 10, bronze, 70 * v_f)
+}
+
+def draw_marbles {
+    for v_i in (0, v_nm - 1, 1)
+        v_qs = v_ms[v_i]
+        call path_at
+        v_mx = v_px[v_qi]
+        v_my = v_py[v_qi]
+        draw_circle(v_mx, v_my, 1.8, v_mc[v_i], 70 * v_fade, true)
+        mplot(v_mx + cos(v_mrot[v_i]) * 0.9, v_my + sin(v_mrot[v_i]) * 0.9, v_mc2[v_i], 90 * v_fade)
+        mplot(v_mx - 1, v_my - 1, white, 85 * v_fade)
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+v_t = 0
+v_ct = 0
+call build_course
+call reset_marbles
+print(f"New course: {v_np} points, {v_nloop} loops, {v_nch} chimes")
+while true then
+    v_t = v_t + v_k
+    v_ct = v_ct + v_k
+    if v_ct > v_course_len then
+        # fade out, then build a new course
+        v_ct = 0
+        call build_course
+        call reset_marbles
+        print(f"New course: {v_np} points, {v_nloop} loops, {v_nch} chimes")
+    endif
+    v_fade = min(min(v_ct / 50, 1), max((v_course_len - v_ct) / 50, 0))
+    call move_marbles
+    begin_frame
+        call draw_board
+        call draw_track
+        call draw_marbles
+    end_frame
+endwhile

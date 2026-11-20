@@ -1,0 +1,324 @@
+# Outrun Racer - a pseudo-3D road racer in the style of 1980s arcade games
+#
+# A red convertible races endlessly down a coastal highway at sunset: curves,
+# rolling hills, palm trees, rival cars to overtake, a striped synthwave sun
+# and mountains that slide past as the road bends.
+#
+# How it works (the classic arcade technique):
+#   - The track is a loop of short road segments. Each has a curve value and
+#     a height; the heights are built from waves that repeat around the loop.
+#   - Every frame, segments are projected from near to far. Curves add up as
+#     the road recedes (each segment shifts the next one sideways a bit more),
+#     which is what bends the road.
+#   - Each segment fills the screen rows between itself and the previous one,
+#     but only rows not already covered by nearer road - so a hill crest hides
+#     the road behind it, and a dip shows it again further on.
+#   - Alternating light and dark stripes every few segments give the sense
+#     of speed. Palms and cars are scaled sprites drawn far to near.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_speed = 0.55 / v_pace  # segments per frame
+v_nseg = 900             # track length (segments, loops)
+v_draw = 160             # draw distance (segments)
+v_segl = 0.6             # segment length (world units)
+v_roadw = 1.7            # half width of the road
+v_camh = 0.95            # camera height above the road
+v_k = 46                 # projection scale
+v_hz = 30                # horizon row
+
+# ---------------- Track ----------------
+create_array(v_curve, v_nseg, numeric)
+create_array(v_hgt, v_nseg, numeric)
+# curves: random sections that ease in and out
+v_i = 0
+while v_i < v_nseg then
+    v_len = random(40, 120, 0)
+    v_c = 0
+    v_r = random(0, 9, 0)
+    if v_r < 7 then
+        v_c = random(-60, 60, 0) / 100 * 0.06
+    endif
+    for v_j in (0, v_len - 1, 1)
+        if v_i + v_j < v_nseg then
+            v_curve[v_i + v_j] = v_c * sin(v_j / v_len * 3.14159)
+        endif
+    endfor v_j
+    v_i = v_i + v_len
+endwhile
+# hills: waves that fit the loop exactly, so the track joins up
+v_h1 = random(0, 628, 0) / 100
+v_h2 = random(0, 628, 0) / 100
+for v_i in (0, v_nseg - 1, 1)
+    v_a = v_i / v_nseg * 6.283185
+    v_hgt[v_i] = sin(v_a * 3 + v_h1) * 7 + sin(v_a * 7 + v_h2) * 3
+endfor v_i
+
+# ---------------- Sprites ----------------
+# Rival cars: position along the track, lane (-1 to 1), speed, colour
+v_ncars = 5
+create_array(v_carz, v_ncars, numeric)
+create_array(v_carx, v_ncars, numeric)
+create_array(v_cars, v_ncars, numeric)
+create_array(v_carc, v_ncars, string)
+create_array(v_carcols, 5, string)
+v_carcols[0] = "yellow"
+v_carcols[1] = "royal_blue"
+v_carcols[2] = "white"
+v_carcols[3] = "lime"
+v_carcols[4] = "orange"
+for v_k2 in (0, v_ncars - 1, 1)
+    v_carz[v_k2] = 30 + v_k2 * 45
+    v_carx[v_k2] = random(-60, 60, 0) / 100
+    v_cars[v_k2] = (0.25 + random(0, 20, 0) / 100) / v_pace
+    v_carc[v_k2] = v_carcols[v_k2 % 5]
+endfor v_k2
+
+# Per-frame projection of each drawn segment (for sprites)
+create_array(v_psx, v_draw + 2, numeric)
+create_array(v_psy, v_draw + 2, numeric)
+create_array(v_psw, v_draw + 2, numeric)
+create_array(v_pclip, v_draw + 2, numeric)
+
+# ---------------- State ----------------
+v_z = 0                  # player position along the track (segments)
+v_px = 0                 # player lateral position (-1 to 1 = road edges)
+v_target = 0             # lane the autopilot is aiming for
+v_bg = 0                 # background scroll from curves
+v_t = 0
+v_steer = 0
+
+def autopilot {
+    v_z = v_z + v_speed
+    if v_z >= v_nseg then
+        v_z = v_z - v_nseg
+        for v_c in (0, v_ncars - 1, 1)
+            v_carz[v_c] = v_carz[v_c] - v_nseg
+        endfor v_c
+    endif
+    v_seg = int(v_z)
+    # the road's curve pushes the car outward; the driver steers back
+    v_push = v_curve[v_seg] * v_speed * 1.6
+    v_bg = v_bg + v_curve[v_seg] * v_speed * 22
+    # overtake: if a car is close ahead in our lane, move to the other side
+    for v_c in (0, v_ncars - 1, 1)
+        v_gap = v_carz[v_c] - v_z
+        if v_gap > 2 and v_gap < 16 and abs(v_carx[v_c] - v_target) < 0.45 then
+            if v_carx[v_c] > 0 then
+                v_target = -0.5
+            else
+                v_target = 0.5
+            endif
+        endif
+    endfor v_c
+    v_want = (v_target - v_px) * 0.05
+    v_steer = v_steer + (v_want - v_steer) * 0.2
+    v_px = v_px - v_push + v_steer
+    v_px = min(max(v_px, -0.85), 0.85)
+    # rival cars drive slower, and are recycled ahead once passed
+    for v_c in (0, v_ncars - 1, 1)
+        v_carz[v_c] = v_carz[v_c] + v_cars[v_c]
+        if v_carz[v_c] < v_z - 1 then
+            v_carz[v_c] = v_z + v_draw - random(0, 20, 0)
+            v_carx[v_c] = random(-70, 70, 0) / 100
+        endif
+    endfor v_c
+}
+
+# ---------------- Background ----------------
+def draw_background {
+    # sunset sky bands
+    draw_rectangle(0, 0, 64, 7, indigo, 45, true)
+    draw_rectangle(0, 7, 64, 6, purple, 55, true)
+    draw_rectangle(0, 13, 64, 6, magenta, 50, true)
+    draw_rectangle(0, 19, 64, 5, rose, 60, true)
+    draw_rectangle(0, 24, 64, 4, coral, 70, true)
+    draw_rectangle(0, 28, 64, v_hz - 28 + 1, orange, 75, true)
+    # striped sun, sliding a little with the curves
+    v_sunx = 32 + ((v_bg * 0.15) % 40 + 40) % 40 - 20
+    v_suny = v_hz - 13
+    for v_r in (-12, 12, 1)
+        v_sy = v_suny + v_r
+        if v_sy >= 0 and v_sy <= v_hz then
+            # bands cut through the lower half, getting wider toward the bottom
+            v_cut = (v_r >= 0 and v_r % 3 == 0) or (v_r > 5 and v_r % 3 == 1)
+            if v_cut == 0 then
+                v_hw = sqrt(max(144 - v_r * v_r, 0))
+                if v_r < -6 then
+                    draw_line(v_sunx - v_hw, v_sy, v_sunx + v_hw, v_sy, yellow, 100)
+                elseif v_r < -1 then
+                    draw_line(v_sunx - v_hw, v_sy, v_sunx + v_hw, v_sy, gold, 100)
+                elseif v_r < 5 then
+                    draw_line(v_sunx - v_hw, v_sy, v_sunx + v_hw, v_sy, orange, 100)
+                else
+                    draw_line(v_sunx - v_hw, v_sy, v_sunx + v_hw, v_sy, magenta, 90)
+                endif
+            endif
+        endif
+    endfor v_r
+    # two layers of mountains, the nearer one scrolling faster
+    for v_x in (0, 63, 1)
+        v_m = v_x + v_bg * 0.25
+        v_mh = 5 + sin(v_m * 0.11) * 2.5 + sin(v_m * 0.043 + 1) * 3 + sin(v_m * 0.29) * 0.8
+        draw_line(v_x, v_hz - v_mh, v_x, v_hz, indigo, 40)
+        v_m = v_x + v_bg * 0.5
+        v_mh = 2.5 + sin(v_m * 0.17 + 2) * 1.5 + sin(v_m * 0.061) * 2
+        draw_line(v_x, v_hz - v_mh, v_x, v_hz, purple, 30)
+    endfor v_x
+}
+
+# ---------------- Road ----------------
+def draw_road {
+    v_base = int(v_z)
+    v_frac = v_z - v_base
+    # camera height follows the road under the car
+    v_s0 = v_base % v_nseg
+    v_s1 = (v_base + 1) % v_nseg
+    v_camy = v_hgt[v_s0] + (v_hgt[v_s1] - v_hgt[v_s0]) * v_frac + v_camh
+    v_camx = v_px * v_roadw
+    v_x = 0
+    v_dx = 0 - v_curve[v_s0] * v_frac
+    v_maxy = 64
+    v_have = 0
+    for v_n in (0, v_draw, 1)
+        v_seg = (v_base + v_n) % v_nseg
+        v_zz = (v_n - v_frac) * v_segl + 0.5
+        v_sc = v_k / v_zz
+        v_sx = 32 + (v_x - v_camx) * v_sc
+        v_sy = v_hz - (v_hgt[v_seg] - v_camy) * v_sc
+        v_sw = v_roadw * v_sc
+        v_psx[v_n] = v_sx
+        v_psy[v_n] = v_sy
+        v_psw[v_n] = v_sw
+        v_pclip[v_n] = v_maxy
+        if v_have == 1 and v_sy < v_maxy then
+            # fill rows between the previous (nearer) edge and this one
+            v_band = int(v_seg / 3) % 2
+            v_fade = 1 - v_n / v_draw * 0.55
+            v_r0 = max(ceil(v_sy), 0)
+            v_r1 = min(ceil(v_ly) - 1, v_maxy - 1)
+            for v_r in (v_r0, v_r1, 1)
+                v_tt = (v_r - v_sy) / max(v_ly - v_sy, 0.001)
+                v_xx = v_sx + (v_lx - v_sx) * v_tt
+                v_ww = v_sw + (v_lw - v_sw) * v_tt
+                if v_band == 0 then
+                    draw_line(0, v_r, 63, v_r, forest_green, 60 * v_fade)
+                else
+                    draw_line(0, v_r, 63, v_r, green, 45 * v_fade)
+                endif
+                v_rw = v_ww * 1.18
+                if v_band == 0 then
+                    draw_line(max(v_xx - v_rw, 0), v_r, min(v_xx + v_rw, 63), v_r, red, 85 * v_fade)
+                else
+                    draw_line(max(v_xx - v_rw, 0), v_r, min(v_xx + v_rw, 63), v_r, white, 80 * v_fade)
+                endif
+                if v_band == 0 then
+                    draw_line(max(v_xx - v_ww, 0), v_r, min(v_xx + v_ww, 63), v_r, gray, 48 * v_fade)
+                else
+                    draw_line(max(v_xx - v_ww, 0), v_r, min(v_xx + v_ww, 63), v_r, dark_gray, 60 * v_fade)
+                    # lane markings on alternate bands
+                    v_lw2 = v_ww * 0.035
+                    if v_lw2 > 0.25 then
+                        draw_line(max(v_xx - v_ww * 0.33 - v_lw2, 0), v_r, min(v_xx - v_ww * 0.33 + v_lw2, 63), v_r, white, 75 * v_fade)
+                        draw_line(max(v_xx + v_ww * 0.33 - v_lw2, 0), v_r, min(v_xx + v_ww * 0.33 + v_lw2, 63), v_r, white, 75 * v_fade)
+                    endif
+                endif
+            endfor v_r
+            v_maxy = min(v_maxy, ceil(v_sy))
+        endif
+        v_have = 1
+        v_lx = v_sx
+        v_ly = v_sy
+        v_lw = v_sw
+        v_x = v_x + v_dx
+        v_dx = v_dx + v_curve[v_seg]
+    endfor v_n
+}
+
+# ---------------- Sprites ----------------
+# Draw sprites far to near. A palm stands beside every 6th segment, alternating
+# sides; cars are checked at each segment too.
+def draw_sprites {
+    v_base = int(v_z)
+    for v_n in (v_draw - 1, 4, -1)
+        v_seg = (v_base + v_n) % v_nseg
+        v_sx = v_psx[v_n]
+        v_sy = v_psy[v_n]
+        v_sw = v_psw[v_n]
+        if v_sy < v_pclip[v_n] + 0.5 then
+            v_fade = 1 - v_n / v_draw * 0.6
+            if v_seg % 6 == 0 then
+                v_side = 1
+                if v_seg % 12 == 0 then
+                    v_side = -1
+                endif
+                v_tx = v_sx + v_side * v_sw * 1.9
+                v_th = v_sw * 2.2
+                if v_th > 1 and v_tx > -20 and v_tx < 84 then
+                    # trunk with a slight lean, and fronds
+                    v_lean = v_side * v_th * 0.12
+                    draw_line(v_tx, v_sy, v_tx + v_lean, v_sy - v_th, wood_brown, 70 * v_fade)
+                    v_fx = v_tx + v_lean
+                    v_fy = v_sy - v_th
+                    v_fr = v_th * 0.45
+                    draw_line(v_fx, v_fy, v_fx - v_fr, v_fy + v_fr * 0.5, forest_green, 80 * v_fade)
+                    draw_line(v_fx, v_fy, v_fx + v_fr, v_fy + v_fr * 0.5, forest_green, 80 * v_fade)
+                    draw_line(v_fx, v_fy, v_fx - v_fr * 0.7, v_fy - v_fr * 0.25, green, 80 * v_fade)
+                    draw_line(v_fx, v_fy, v_fx + v_fr * 0.7, v_fy - v_fr * 0.25, green, 80 * v_fade)
+                    draw_line(v_fx, v_fy, v_fx, v_fy - v_fr * 0.35, green, 80 * v_fade)
+                endif
+            endif
+            for v_c in (0, v_ncars - 1, 1)
+                if int(v_carz[v_c]) == v_base + v_n then
+                    v_cw = max(v_sw * 0.42, 1)
+                    v_ch = max(v_cw * 0.55, 1)
+                    v_cx = v_sx + v_carx[v_c] * v_sw
+                    draw_rectangle(v_cx - v_cw, v_sy - v_ch, v_cw * 2, v_ch, v_carc[v_c], 85 * v_fade, true)
+                    if v_cw > 3 then
+                        draw_rectangle(v_cx - v_cw * 0.6, v_sy - v_ch * 1.5, v_cw * 1.2, v_ch * 0.55, v_carc[v_c], 60 * v_fade, true)
+                        draw_rectangle(v_cx - v_cw, v_sy - v_ch * 0.55, v_cw * 0.3, v_ch * 0.25, red, 100, true)
+                        draw_rectangle(v_cx + v_cw * 0.7, v_sy - v_ch * 0.55, v_cw * 0.3, v_ch * 0.25, red, 100, true)
+                    endif
+                endif
+            endfor v_c
+        endif
+    endfor v_n
+}
+
+# The player's red convertible, seen from behind, leaning into the curves
+def draw_player {
+    v_lean = v_curve[int(v_z) % v_nseg] * 60
+    v_bx = 32 + v_lean
+    v_bounce = sin(v_t * 1.3) * 0.4
+    v_by = 61 + v_bounce
+    # shadow and tyres
+    draw_rectangle(v_bx - 11, v_by - 1, 22, 2, black, 100, true)
+    draw_rectangle(v_bx - 11, v_by - 5, 4, 5, black, 100, true)
+    draw_rectangle(v_bx + 7, v_by - 5, 4, 5, black, 100, true)
+    # body
+    draw_rectangle(v_bx - 10, v_by - 9, 20, 6, red, 90, true)
+    draw_rectangle(v_bx - 8, v_by - 12, 16, 3, crimson, 85, true)
+    # windscreen and the two passengers
+    draw_rectangle(v_bx - 6, v_by - 14, 12, 2, sky_blue, 50, true)
+    draw_circle(v_bx - 3, v_by - 15, 1.5, dark_brown, 90, true)
+    draw_circle(v_bx + 3, v_by - 15, 1.5, gold, 90, true)
+    # tail lights and plate
+    draw_rectangle(v_bx - 10, v_by - 8, 3, 2, orange, 100, true)
+    draw_rectangle(v_bx + 7, v_by - 8, 3, 2, orange, 100, true)
+    draw_rectangle(v_bx - 2, v_by - 6, 4, 2, white, 70, true)
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_t = v_t + 1 / v_pace
+    call autopilot
+    begin_frame
+        call draw_background
+        call draw_road
+        call draw_sprites
+        call draw_player
+    end_frame
+endwhile

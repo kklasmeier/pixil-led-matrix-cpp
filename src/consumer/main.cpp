@@ -1,4 +1,4 @@
-// pixil-consumer — Phase 2 native LED consumer (ADR-001 / ADR-002).
+// pixil-consumer — native LED consumer (ADR-001 / ADR-002).
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
@@ -20,13 +20,29 @@ void usage(std::ostream& out) {
            "  Spawned by pixil with fds 3/4/5 inherited. Do not run by hand unless debugging.\n"
            "  --headless     in-memory canvas; no GPIO\n"
            "  --record FILE  JSONL of executed commands / markers\n"
+           "  --blackout     one-shot hardware blackout (no pipes; emergency path)\n"
            "  --help\n";
+}
+
+int run_blackout() {
+    try {
+        auto surface = make_hardware_matrix();
+        surface->fill(0, 0, 0);
+        surface->swap();
+        surface->fill(0, 0, 0);
+        surface->swap();
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "[pixil-consumer] blackout failed: " << e.what() << "\n";
+        return 1;
+    }
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
     ConsumerOptions opts;
+    bool blackout = false;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if (a == "--help" || a == "-h") {
@@ -34,6 +50,8 @@ int main(int argc, char** argv) {
             return 0;
         } else if (a == "--headless") {
             opts.headless = true;
+        } else if (a == "--blackout") {
+            blackout = true;
         } else if (a == "--record") {
             if (i + 1 >= argc) {
                 std::cerr << "pixil-consumer: --record needs a path\n";
@@ -46,6 +64,8 @@ int main(int argc, char** argv) {
             return 2;
         }
     }
+
+    if (blackout) return run_blackout();
 
     for (int fd : {3, 4, 5}) {
         if (::fcntl(fd, F_GETFD) < 0) {

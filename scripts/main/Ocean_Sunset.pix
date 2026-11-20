@@ -1,0 +1,403 @@
+# Ocean Sunset - a sea that reflects a setting sun, rendered per pixel in Pixil
+#
+# The sun sinks toward the horizon over a rolling sea. The water mirrors the
+# sunset sky, a road of glittering light runs out toward the sun, clouds
+# drift, a sailboat bobs on the swell and gulls wheel past. As the sun goes
+# down the sky deepens from gold to red to purple and the stars come out,
+# then a new evening begins.
+#
+# How the water works (a small "shader", run for every sea pixel):
+#   - Each pixel below the horizon is a point on the sea; its distance comes
+#     from the row and its sideways position from the column.
+#   - Four wave trains, each a sine wave travelling in its own direction, give
+#     the surface slope at that point (their derivatives, which are cosines).
+#   - The view ray is reflected off that tilted surface. The reflected ray's
+#     height above the horizon picks the colour of the sky it sees.
+#   - A Fresnel term blends between the deep sea (looking steeply down) and
+#     a mirror (looking toward the horizon), as real water does.
+#   - When the reflected ray points almost straight at the sun, the pixel
+#     glints - which is what makes the path of light on the water.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_horizon = 30           # horizon row
+v_focal = 40             # projection scale
+v_camh = 1.6             # eye height above the sea
+v_cycle = 2600           # length of one evening (35-fps frames, scaled by v_pace)
+
+# ---------------- Waves ----------------
+# direction (radians), wavenumber k (2 pi / wavelength), amplitude
+v_nw = 4
+create_array(v_wdir, v_nw, numeric)
+create_array(v_wk, v_nw, numeric)
+create_array(v_wa, v_nw, numeric)
+create_array(v_wkx, v_nw, numeric)
+create_array(v_wkz, v_nw, numeric)
+create_array(v_wsp, v_nw, numeric)
+create_array(v_wph, v_nw, numeric)
+create_array(v_wst, v_nw, numeric)
+v_wdir[0] = 0.25
+v_wk[0] = 1.1
+v_wa[0] = 0.10
+v_wdir[1] = -0.5
+v_wk[1] = 1.9
+v_wa[1] = 0.06
+v_wdir[2] = 1.1
+v_wk[2] = 3.3
+v_wa[2] = 0.035
+v_wdir[3] = -1.3
+v_wk[3] = 6.0
+v_wa[3] = 0.016
+for v_i in (0, v_nw - 1, 1)
+    v_wkx[v_i] = sin(v_wdir[v_i]) * v_wk[v_i]
+    v_wkz[v_i] = cos(v_wdir[v_i]) * v_wk[v_i]
+    # deep-water waves: speed grows with wavelength
+    v_wsp[v_i] = sqrt(9.8 * v_wk[v_i]) * 0.045
+endfor v_i
+
+# ---------------- Sky table ----------------
+# sky colour by elevation of a ray (0 = horizon), rebuilt each frame as the
+# sun sets: v_skh = hue, v_ski = intensity, for 48 elevation steps
+v_nsky = 48
+create_array(v_skh, v_nsky, numeric)
+create_array(v_ski, v_nsky, numeric)
+
+def build_sky {
+    v_bright = max(1 - v_p * 0.8, 0.12)
+    v_hzh = 12 - v_p * 12
+    for v_k in (0, v_nsky - 1, 1)
+        v_e = v_k / v_nsky * 0.6
+        v_f = pow(min(v_e / 0.42, 1), 0.7)
+        # orange at the horizon, through red and magenta to purple and navy
+        v_skh[v_k] = (v_hzh - v_f * (44 - v_p * 8) + 100) % 100
+        v_ski[v_k] = (88 - 64 * min(v_e / 0.5, 1)) * v_bright
+    endfor v_k
+}
+
+# ---------------- Clouds, gulls, stars ----------------
+v_nclouds = 5
+create_array(v_clx, v_nclouds, numeric)
+create_array(v_cly, v_nclouds, numeric)
+create_array(v_clw, v_nclouds, numeric)
+for v_k in (0, v_nclouds - 1, 1)
+    v_clx[v_k] = random(-20, 80, 0)
+    v_cly[v_k] = random(4, 20, 0)
+    v_clw[v_k] = random(10, 26, 0)
+endfor v_k
+v_ngulls = 3
+create_array(v_gx, v_ngulls, numeric)
+create_array(v_gy, v_ngulls, numeric)
+create_array(v_gs, v_ngulls, numeric)
+for v_k in (0, v_ngulls - 1, 1)
+    v_gx[v_k] = random(0, 63, 0)
+    v_gy[v_k] = random(8, 22, 0)
+    v_gs[v_k] = (random(5, 12, 0) / 100) * (random(0, 1, 0) * 2 - 1)
+endfor v_k
+v_nstars = 40
+create_array(v_stx, v_nstars, numeric)
+create_array(v_sty, v_nstars, numeric)
+create_array(v_stb, v_nstars, numeric)
+for v_k in (0, v_nstars - 1, 1)
+    v_stx[v_k] = random(0, 63, 0)
+    v_sty[v_k] = random(0, 20, 0)
+    v_stb[v_k] = random(20, 70, 0)
+endfor v_k
+
+# ---------------- Boat ----------------
+v_bx = -10
+v_bz = 24
+
+# Triangle filler (for the sails)
+def fill_tri {
+    if v_y1 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x1
+        v_x1 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y1
+        v_y1 = v_tmp
+    endif
+    if v_y2 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y2
+        v_y2 = v_tmp
+    endif
+    if v_y2 < v_y1 then
+        v_tmp = v_x1
+        v_x1 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y1
+        v_y1 = v_y2
+        v_y2 = v_tmp
+    endif
+    v_ya = max(int(v_y0 + 0.5), 0)
+    v_yb = min(int(v_y2 + 0.5), 63)
+    v_h02 = v_y2 - v_y0 + 0.0001
+    v_h01 = v_y1 - v_y0 + 0.0001
+    v_h12 = v_y2 - v_y1 + 0.0001
+    for v_yy in (v_ya, v_yb, 1)
+        v_xa = v_x0 + (v_x2 - v_x0) * min(max((v_yy - v_y0) / v_h02, 0), 1)
+        if v_yy < v_y1 then
+            v_xb = v_x0 + (v_x1 - v_x0) * min(max((v_yy - v_y0) / v_h01, 0), 1)
+        else
+            v_xb = v_x1 + (v_x2 - v_x1) * min(max((v_yy - v_y1) / v_h12, 0), 1)
+        endif
+        draw_line(int(min(v_xa, v_xb) + 0.5), v_yy, int(max(v_xa, v_xb) + 0.5), v_yy, v_tc, v_ti)
+    endfor v_yy
+}
+
+# ---------------- Drawing ----------------
+def draw_sky {
+    # one line per sky row, looked up in the sky table
+    for v_y in (0, v_horizon - 1, 1)
+        v_e = (v_horizon - v_y - 0.5) / v_focal
+        v_k = min(int(v_e / 0.6 * v_nsky), v_nsky - 1)
+        draw_line(0, v_y, 63, v_y, v_skh[v_k], v_ski[v_k])
+    endfor v_y
+    # stars come out after sunset
+    if v_p > 0.72 then
+        v_sb = (v_p - 0.72) / 0.28
+        for v_k in (0, v_nstars - 1, 1)
+            mplot(v_stx[v_k], v_sty[v_k], white, v_stb[v_k] * v_sb * (0.8 + sin(v_t * 0.1 + v_k) * 0.2))
+        endfor v_k
+    endif
+    # the sun: a soft halo and a disc, sinking below the horizon
+    v_sunx = 31.5 + v_sunaz * v_focal
+    v_suny = v_horizon - v_sunel * v_focal
+    if v_suny < v_horizon + 7 then
+        # the halo fades away as the sun slips below the horizon
+        v_halo = 22 * min(max((v_sunel + 0.04) / 0.12, 0), 1)
+        if v_halo >= 2 then
+            draw_circle(v_sunx, v_suny, 10, orange, v_halo, true)
+        endif
+        draw_circle(v_sunx, v_suny, 6.5, 12 - v_p * 8, 70, true)
+        draw_circle(v_sunx, v_suny, 4.5, 15 - v_p * 9, 100, true)
+    endif
+    # clouds: long thin streaks lit from below by the low sun
+    for v_k in (0, v_nclouds - 1, 1)
+        v_cx = v_clx[v_k]
+        v_cy = v_cly[v_k]
+        v_cw = v_clw[v_k]
+        v_ci = 45 * max(1 - v_p * 0.7, 0.2)
+        draw_line(v_cx - v_cw * 0.5, v_cy, v_cx + v_cw * 0.5, v_cy, (90 - v_p * 15 + 100) % 100, v_ci * 0.6)
+        draw_line(v_cx - v_cw * 0.35, v_cy + 1, v_cx + v_cw * 0.4, v_cy + 1, (5 - v_p * 8 + 100) % 100, v_ci)
+        draw_line(v_cx - v_cw * 0.2, v_cy - 1, v_cx + v_cw * 0.15, v_cy - 1, (85 - v_p * 15 + 100) % 100, v_ci * 0.4)
+    endfor v_k
+}
+
+def draw_sea {
+    # sun direction (unit vector)
+    v_sdx = sin(v_sunaz) * cos(v_sunel)
+    v_sdy = sin(v_sunel)
+    v_sdz = cos(v_sunaz) * cos(v_sunel)
+    v_tw = v_t
+    v_skyscale = v_nsky / 0.6
+    v_glint1 = 0.9965 - v_p * 0.002
+    v_glint2 = 0.985
+    if v_sunel < -0.02 then
+        v_glint1 = 2
+    endif
+    if v_sunel < -0.03 then
+        v_glint2 = 2
+    endif
+    v_gi1 = 100 * (1 - v_p * 0.5)
+    v_gh2 = 15 - v_p * 10
+    v_gi2 = 85 * (1 - v_p * 0.5)
+    for v_y in (v_horizon, 63, 1)
+        # distance to the sea for this row, and step per column
+        v_dyr = v_y - v_horizon + 0.5
+        v_zw = v_camh * v_focal / v_dyr
+        v_step = v_zw / v_focal
+        v_xw0 = (0 - 31.5) * v_step
+        # far away the waves shrink to avoid flicker
+        v_att = 1 / (1 + v_zw * 0.06)
+        # wave phases at the left edge of this row, and how they advance per column
+        v_p0 = v_wkx[0] * v_xw0 + v_wkz[0] * v_zw - v_wsp[0] * v_tw
+        v_p1 = v_wkx[1] * v_xw0 + v_wkz[1] * v_zw - v_wsp[1] * v_tw
+        v_p2 = v_wkx[2] * v_xw0 + v_wkz[2] * v_zw - v_wsp[2] * v_tw
+        v_p3 = v_wkx[3] * v_xw0 + v_wkz[3] * v_zw - v_wsp[3] * v_tw
+        v_d0 = v_wkx[0] * v_step
+        v_d1 = v_wkx[1] * v_step
+        v_d2 = v_wkx[2] * v_step
+        v_d3 = v_wkx[3] * v_step
+        v_ax0 = v_wa[0] * v_wkx[0] * v_att
+        v_ax1 = v_wa[1] * v_wkx[1] * v_att
+        v_ax2 = v_wa[2] * v_wkx[2] * v_att
+        v_ax3 = v_wa[3] * v_wkx[3] * v_att
+        v_az0 = v_wa[0] * v_wkz[0] * v_att
+        v_az1 = v_wa[1] * v_wkz[1] * v_att
+        v_az2 = v_wa[2] * v_wkz[2] * v_att
+        v_az3 = v_wa[3] * v_wkz[3] * v_att
+        # near rows only hold big smooth waves: work at half width there
+        v_xs = 1
+        if v_y >= 46 then
+            v_xs = 2
+        endif
+        v_d0 = v_d0 * v_xs
+        v_d1 = v_d1 * v_xs
+        v_d2 = v_d2 * v_xs
+        v_d3 = v_d3 * v_xs
+        v_xstep = v_step * v_xs
+        v_rowb = v_camh * v_camh + v_zw * v_zw
+        v_rows = v_zw * v_sdz - v_camh * v_sdy
+        v_seab = 14 * max(1 - v_p * 0.6, 0.3)
+        v_xw = v_xw0
+        for v_x in (0, 63, v_xs)
+            v_c0 = cos(v_p0)
+            v_c1 = cos(v_p1)
+            v_c2 = cos(v_p2)
+            v_c3 = cos(v_p3)
+            # surface slope; the normal is (-hx, 1, -hz) (slopes are small,
+            # so it is used without normalising)
+            v_hx = v_ax0 * v_c0 + v_ax1 * v_c1 + v_ax2 * v_c2 + v_ax3 * v_c3
+            v_hz = v_az0 * v_c0 + v_az1 * v_c1 + v_az2 * v_c2 + v_az3 * v_c3
+            v_vl = 1 / sqrt(v_xw * v_xw + v_rowb)
+            # view ray . normal, then just the two parts of the reflected ray
+            # we need: its height (which sky it sees) and how close it is to the sun
+            v_dn = (0 - v_xw * v_hx - v_camh - v_zw * v_hz) * v_vl
+            v_ry = 0 - v_camh * v_vl - 2 * v_dn
+            v_g = (v_xw * v_sdx + v_rows) * v_vl - 2 * v_dn * (v_sdy - v_hx * v_sdx - v_hz * v_sdz)
+            if v_g > v_glint1 then
+                # glint straight from the sun
+                draw_line(v_x, v_y, v_x + v_xs - 1, v_y, white, v_gi1)
+            elseif v_g > v_glint2 then
+                draw_line(v_x, v_y, v_x + v_xs - 1, v_y, v_gh2, v_gi2)
+            else
+                # Fresnel: mirror-like at grazing angles, deep sea when looking down
+                v_q = 1 - min(abs(v_dn), 1)
+                v_fr = 0.06 + 0.94 * v_q * v_q * v_q * v_q
+                v_k = min(int(max(v_ry, 0) * v_skyscale), v_nsky - 1)
+                v_sky_i = v_ski[v_k] * v_fr
+                v_sea_i = v_seab * (1 - v_fr)
+                if v_sky_i > v_sea_i then
+                    draw_line(v_x, v_y, v_x + v_xs - 1, v_y, v_skh[v_k], min(v_sky_i + v_sea_i * 0.5, 100))
+                else
+                    draw_line(v_x, v_y, v_x + v_xs - 1, v_y, 64, min(v_sea_i + v_sky_i * 0.5, 100))
+                endif
+            endif
+            v_p0 = v_p0 + v_d0
+            v_p1 = v_p1 + v_d1
+            v_p2 = v_p2 + v_d2
+            v_p3 = v_p3 + v_d3
+            v_xw = v_xw + v_xstep
+        endfor v_x
+    endfor v_y
+}
+
+def draw_boat {
+    v_sc = v_focal / v_bz
+    v_bsx = 31.5 + v_bx * v_sc
+    if v_bsx > -15 and v_bsx < 79 then
+        # bob and rock with the long swell
+        v_bob = sin(v_t * 0.05) * 0.35
+        v_rock = sin(v_t * 0.037) * 0.08
+        v_wl = v_horizon + v_camh * v_focal / v_bz + v_bob
+        v_tc = "black"
+        v_ti = 100
+        # hull
+        v_hl = 3.2 * v_sc
+        v_x0 = v_bsx - v_hl
+        v_y0 = v_wl - 0.7 * v_sc
+        v_x1 = v_bsx + v_hl
+        v_y1 = v_wl - 0.7 * v_sc + v_rock * v_hl
+        v_x2 = v_bsx + v_hl * 0.7
+        v_y2 = v_wl
+        call fill_tri
+        v_x0 = v_bsx - v_hl
+        v_y0 = v_wl - 0.7 * v_sc - v_rock * v_hl
+        v_x1 = v_bsx + v_hl * 0.7
+        v_y1 = v_wl
+        v_x2 = v_bsx - v_hl * 0.75
+        v_y2 = v_wl
+        call fill_tri
+        # mast and sails, the edges catching the last light
+        v_mx = v_bsx - v_hl * 0.1
+        v_mtop = v_wl - 7.5 * v_sc
+        v_mx2 = v_mx + v_rock * 7.5 * v_sc
+        draw_line(v_mx, v_wl - 0.7 * v_sc, v_mx2, v_mtop, black, 100)
+        v_x0 = v_mx2
+        v_y0 = v_mtop
+        v_x1 = v_mx + 0.2
+        v_y1 = v_wl - 1.2 * v_sc
+        v_x2 = v_mx + v_hl * 0.85
+        v_y2 = v_wl - 1.2 * v_sc
+        call fill_tri
+        v_x0 = v_mx2
+        v_y0 = v_mtop + 0.8 * v_sc
+        v_x1 = v_mx - 0.2
+        v_y1 = v_wl - 1.2 * v_sc
+        v_x2 = v_mx - v_hl * 0.75
+        v_y2 = v_wl - 1.2 * v_sc
+        call fill_tri
+        draw_line(v_mx2, v_mtop, v_mx + v_hl * 0.85, v_wl - 1.2 * v_sc, 8, 40 * (1 - v_p * 0.6))
+        # a dark, broken reflection under the hull
+        for v_k in (1, 3, 1)
+            v_ry2 = v_wl + v_k * 1.1
+            if v_ry2 <= 63 then
+                v_rw = v_hl * (1 - v_k * 0.22) + sin(v_t * 0.2 + v_k) * 0.6
+                draw_line(v_bsx - v_rw, v_ry2, v_bsx + v_rw * 0.8, v_ry2, black, 70 - v_k * 15)
+            endif
+        endfor v_k
+    endif
+}
+
+def draw_gulls {
+    for v_k in (0, v_ngulls - 1, 1)
+        v_gx[v_k] = v_gx[v_k] + v_gs[v_k] * 1.7 / v_pace
+        v_gy[v_k] = v_gy[v_k] + sin(v_t * 0.03 + v_k * 2) * 0.03
+        if v_gx[v_k] > 70 then
+            v_gx[v_k] = -6
+            v_gy[v_k] = random(8, 22, 0)
+        endif
+        if v_gx[v_k] < -6 then
+            v_gx[v_k] = 70
+            v_gy[v_k] = random(8, 22, 0)
+        endif
+        # wings flap: the tips rise and fall
+        v_flap = sin(v_t * 0.35 + v_k * 1.7) * 1.2
+        v_px = v_gx[v_k]
+        v_py = v_gy[v_k]
+        draw_line(v_px - 2, v_py - 1 - v_flap, v_px, v_py, black, 90)
+        draw_line(v_px, v_py, v_px + 2, v_py - 1 - v_flap, black, 90)
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+v_t = 0
+v_clock = 0
+while true then
+    v_t = v_t + 1 / v_pace
+    v_clock = v_clock + 1 / v_pace
+    if v_clock > v_cycle then
+        v_clock = 0
+    endif
+    # v_p: 0 = golden hour, 1 = after dark
+    v_p = v_clock / v_cycle
+    v_sunel = 0.2 - v_p * 0.44
+    v_sunaz = -0.08 + sin(v_p * 3.0) * 0.04
+    call build_sky
+    # clouds and boat drift
+    for v_k in (0, v_nclouds - 1, 1)
+        v_clx[v_k] = v_clx[v_k] + (0.012 + v_k * 0.004) * 1.7 / v_pace
+        if v_clx[v_k] - v_clw[v_k] > 64 then
+            v_clx[v_k] = 0 - v_clw[v_k]
+            v_cly[v_k] = random(4, 20, 0)
+        endif
+    endfor v_k
+    v_bx = v_bx + 0.012 * 1.7 / v_pace
+    if v_bx > 16 then
+        v_bx = -16
+    endif
+    begin_frame
+        call draw_sky
+        call draw_gulls
+        call draw_sea
+        call draw_boat
+    end_frame
+endwhile

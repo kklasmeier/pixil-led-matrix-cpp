@@ -4,9 +4,9 @@ import particle
 # then ride a visible 180-degree turn back to the top for the next cycle.
 
 throttle(0)
-fps(30)
+fps(60)
 
-v_count = 24
+v_count = 36
 v_ball_radius = 0.72
 v_wall_radius = 0.78
 v_wall_spacing = 1.25

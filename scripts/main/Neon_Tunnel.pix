@@ -1,0 +1,118 @@
+# Neon Tunnel - the classic demoscene textured tunnel, written in Pixil
+#
+# You fly endlessly down a winding, spiralling tunnel lined with glowing
+# sci-fi panels whose colours slowly cycle.
+#
+# How it works (the same trick Amiga and PC demos used):
+#   - At startup, two lookup tables are built for a 128x128 grid: the angle
+#     of each point around the centre, and its depth into the tunnel
+#     (depth = constant / distance from centre). A third table holds the
+#     shading (dark in the distance, bright near the walls).
+#   - Every frame, each of the 4,096 pixels just looks up its angle and depth,
+#     adds the current rotation, twist and forward motion, and reads a colour
+#     from a procedural 64x64 texture.
+#   - The tables are twice the screen size, so sliding the 64x64 window across
+#     them moves the tunnel's vanishing point - that is what makes it bend.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7             # bigger = slower, smoother (1.7 suits fps 60)
+v_fly = 0.9 / v_pace     # forward speed (texture rows per frame)
+v_spin = 0.12 / v_pace   # rotation speed
+v_depth_k = 640          # depth scale: bigger = longer-looking tunnel
+v_tex = 64               # texture size
+
+# ---------------- Lookup tables ----------------
+v_tw = 128
+create_array(v_ta, v_tw * v_tw, numeric)   # angle, 0-64 around the tunnel
+create_array(v_td, v_tw * v_tw, numeric)   # depth into the tunnel
+create_array(v_ts, v_tw * v_tw, numeric)   # shading 0-1
+for v_y in (0, v_tw - 1, 1)
+    for v_x in (0, v_tw - 1, 1)
+        v_dx = v_x - 63.5
+        v_dy = v_y - 63.5
+        v_r = sqrt(v_dx * v_dx + v_dy * v_dy)
+        v_i = v_y * v_tw + v_x
+        v_ta[v_i] = (atan2(v_dy, v_dx) / 6.283185 + 0.5) * v_tex
+        v_td[v_i] = v_depth_k / (v_r + 1)
+        # dark far away (small radius), full brightness near the walls
+        v_ts[v_i] = min(max((v_r - 2) / 30, 0), 1)
+    endfor v_x
+endfor v_y
+
+# ---------------- Texture ----------------
+# 64 around x 64 along: 16 panels around, 4 sections along the tunnel.
+# Each section uses two related colours in a checkerboard of panels, with a
+# soft inner gradient, dark seams, a glowing ring in a contrasting colour at
+# the start of the section, and lit indicator dots.
+create_array(v_thue, v_tex * v_tex, numeric)
+create_array(v_tint, v_tex * v_tex, numeric)
+for v_v in (0, v_tex - 1, 1)
+    for v_u in (0, v_tex - 1, 1)
+        v_i = v_v * v_tex + v_u
+        v_pu = v_u % 4
+        v_pv = v_v % 16
+        v_sec = int(v_v / 16)
+        v_hue = (v_sec * 9 + ((int(v_u / 4) + v_sec) % 2) * 7) % 100
+        v_in = 50 + sin(v_pu * 0.9) * 8 + sin(v_pv * 0.2) * 12
+        if v_pu == 0 then
+            # seam between panels
+            v_in = 12
+        endif
+        if v_pv == 0 or v_pv == 1 then
+            # glowing ring at the start of each section
+            v_hue = (v_hue + 50) % 100
+            v_in = 95
+        elseif v_pv == 2 then
+            v_in = 20
+        endif
+        if v_pu == 2 and (v_pv == 8 or v_pv == 11) and int(v_u / 4) % 3 == 0 then
+            # indicator lights
+            v_hue = (v_hue + 30) % 100
+            v_in = 100
+        endif
+        v_thue[v_i] = v_hue
+        v_tint[v_i] = v_in
+    endfor v_u
+endfor v_v
+
+# ---------------- Animation ----------------
+v_t = 0
+v_move = 0
+v_rot = 0
+
+while true then
+    v_t = v_t + 1 / v_pace
+    v_move = v_move + v_fly
+    v_rot = v_rot + v_spin
+    # twist: the tunnel spirals, slowly changing direction
+    v_twist = sin(v_t * 0.006) * 0.09
+    # vanishing point wanders: the tunnel bends left, right, up and down
+    v_ox = int(64 - 32 + sin(v_t * 0.011) * 15 + sin(v_t * 0.027) * 5)
+    v_oy = int(64 - 32 + sin(v_t * 0.0087 + 1) * 12 + cos(v_t * 0.021) * 4)
+    v_hshift = v_t * 0.15
+    v_rot_i = v_rot
+    begin_frame
+        for v_y in (0, 63, 1)
+            v_row = (v_y + v_oy) * v_tw + v_ox
+            for v_x in (0, 63, 1)
+                v_i = v_row + v_x
+                v_d = v_td[v_i]
+                v_u = int(v_ta[v_i] + v_rot_i + v_d * v_twist) % v_tex
+                v_v = int(v_d + v_move) % v_tex
+                v_k = v_v * v_tex + v_u
+                v_in = v_tint[v_k] * v_ts[v_i]
+                if v_in >= 2 then
+                    mplot(v_x, v_y, (v_thue[v_k] + v_hshift) % 100, v_in)
+                endif
+            endfor v_x
+        endfor v_y
+        # light at the end of the tunnel
+        v_cx = 63.5 - v_ox
+        v_cy = 63.5 - v_oy
+        draw_circle(v_cx, v_cy, 2.5, white, 18, true)
+        draw_circle(v_cx, v_cy, 1.2, white, 45, true)
+    end_frame
+endwhile

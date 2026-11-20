@@ -1,0 +1,441 @@
+# Nova Runner - an 80s/90s arcade-style rail shooter, in Pixil
+#
+# A starfighter skims a checkerboard alien world at full speed under a
+# ringed planet. Stone pillars loom up and flash past, glowing rings rush in
+# to be flown through, and enemy fighters weave toward you until the
+# autopilot locks on and blows them apart with lasers.
+#
+# How it is built:
+#   - Your ship is an animated sprite (6 cels: level, banking left, banking
+#     right, each with two flickering engine frames). Sprites draw on top of
+#     everything, which suits the player.
+#   - Everything else has to grow as it approaches, and sprites cannot scale,
+#     so pillars, rings, fighters and explosions are drawn with shapes sized
+#     by distance, sorted far to near each frame.
+#   - The ground is drawn row by row: each row is a fixed distance away, and
+#     the checker squares on it become a handful of coloured spans.
+#   - The camera follows the ship sideways and up and down, so the ground and
+#     mountains shift as it steers.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_speed = 0.55 / v_pace  # how fast the world rushes at you (units per frame)
+v_horizon = 24
+v_focal = 40
+v_square = 2.5           # checkerboard square size
+v_fog = 34               # ground fades out by this distance
+v_shipz = 3              # how far in front of the camera the ship flies
+v_maxobj = 14
+
+# ---------------- The ship sprite ----------------
+define_sprite(fighter, 16, 10)
+    # 0, 1: level flight
+    sprite_cel(0)
+        draw_line(1, 6, 7, 4, white, 90)
+        draw_line(8, 4, 14, 6, white, 90)
+        draw_line(1, 7, 7, 6, gray, 70)
+        draw_line(8, 6, 14, 7, gray, 70)
+        draw_line(7, 1, 7, 7, silver, 90)
+        draw_line(8, 1, 8, 7, gray, 80)
+        plot(7, 2, cyan, 100)
+        plot(8, 2, sky_blue, 90)
+        draw_line(4, 3, 3, 6, royal_blue, 90)
+        draw_line(11, 3, 12, 6, royal_blue, 90)
+        plot(1, 6, royal_blue, 100)
+        plot(14, 6, royal_blue, 100)
+        draw_rectangle(7, 8, 2, 2, orange, 100, true)
+    sprite_cel(1)
+        draw_line(1, 6, 7, 4, white, 90)
+        draw_line(8, 4, 14, 6, white, 90)
+        draw_line(1, 7, 7, 6, gray, 70)
+        draw_line(8, 6, 14, 7, gray, 70)
+        draw_line(7, 1, 7, 7, silver, 90)
+        draw_line(8, 1, 8, 7, gray, 80)
+        plot(7, 2, cyan, 100)
+        plot(8, 2, sky_blue, 90)
+        draw_line(4, 3, 3, 6, royal_blue, 90)
+        draw_line(11, 3, 12, 6, royal_blue, 90)
+        plot(1, 6, royal_blue, 100)
+        plot(14, 6, royal_blue, 100)
+        draw_rectangle(7, 8, 2, 2, yellow, 100, true)
+    # 2, 3: banking left (left wing down)
+    sprite_cel(2)
+        draw_line(1, 8, 7, 5, white, 90)
+        draw_line(8, 4, 14, 2, white, 90)
+        draw_line(1, 9, 7, 6, gray, 70)
+        draw_line(8, 5, 14, 3, gray, 70)
+        draw_line(7, 1, 7, 7, silver, 90)
+        draw_line(8, 1, 8, 7, gray, 80)
+        plot(7, 2, cyan, 100)
+        draw_line(4, 5, 4, 7, royal_blue, 90)
+        draw_line(11, 2, 12, 4, royal_blue, 90)
+        plot(1, 8, royal_blue, 100)
+        plot(14, 2, royal_blue, 100)
+        draw_rectangle(7, 8, 2, 2, orange, 100, true)
+    sprite_cel(3)
+        draw_line(1, 8, 7, 5, white, 90)
+        draw_line(8, 4, 14, 2, white, 90)
+        draw_line(1, 9, 7, 6, gray, 70)
+        draw_line(8, 5, 14, 3, gray, 70)
+        draw_line(7, 1, 7, 7, silver, 90)
+        draw_line(8, 1, 8, 7, gray, 80)
+        plot(7, 2, cyan, 100)
+        draw_line(4, 5, 4, 7, royal_blue, 90)
+        draw_line(11, 2, 12, 4, royal_blue, 90)
+        plot(1, 8, royal_blue, 100)
+        plot(14, 2, royal_blue, 100)
+        draw_rectangle(7, 8, 2, 2, yellow, 100, true)
+    # 4, 5: banking right (right wing down)
+    sprite_cel(4)
+        draw_line(1, 2, 7, 4, white, 90)
+        draw_line(8, 5, 14, 8, white, 90)
+        draw_line(1, 3, 7, 5, gray, 70)
+        draw_line(8, 6, 14, 9, gray, 70)
+        draw_line(7, 1, 7, 7, silver, 90)
+        draw_line(8, 1, 8, 7, gray, 80)
+        plot(8, 2, sky_blue, 100)
+        draw_line(4, 2, 3, 4, royal_blue, 90)
+        draw_line(11, 5, 11, 7, royal_blue, 90)
+        plot(1, 2, royal_blue, 100)
+        plot(14, 8, royal_blue, 100)
+        draw_rectangle(7, 8, 2, 2, orange, 100, true)
+    sprite_cel(5)
+        draw_line(1, 2, 7, 4, white, 90)
+        draw_line(8, 5, 14, 8, white, 90)
+        draw_line(1, 3, 7, 5, gray, 70)
+        draw_line(8, 6, 14, 9, gray, 70)
+        draw_line(7, 1, 7, 7, silver, 90)
+        draw_line(8, 1, 8, 7, gray, 80)
+        plot(8, 2, sky_blue, 100)
+        draw_line(4, 2, 3, 4, royal_blue, 90)
+        draw_line(11, 5, 11, 7, royal_blue, 90)
+        plot(1, 2, royal_blue, 100)
+        plot(14, 8, royal_blue, 100)
+        draw_rectangle(7, 8, 2, 2, yellow, 100, true)
+endsprite
+
+# ---------------- World objects ----------------
+# type: 1 pillar, 2 ring, 3 enemy fighter, 4 explosion
+create_array(v_ot, v_maxobj, numeric)
+create_array(v_ox, v_maxobj, numeric)
+create_array(v_oy, v_maxobj, numeric)
+create_array(v_oz, v_maxobj, numeric)
+create_array(v_oh, v_maxobj, numeric)     # pillar height / ring radius / timer
+create_array(v_oph, v_maxobj, numeric)    # phase for weaving fighters
+create_array(v_ord, v_maxobj, numeric)    # draw order
+for v_k in (0, v_maxobj - 1, 1)
+    v_ot[v_k] = 0
+endfor v_k
+
+def spawn {
+    # find a free slot and put a new object far ahead of the ship
+    v_slot = -1
+    for v_k in (0, v_maxobj - 1, 1)
+        if v_slot < 0 and v_ot[v_k] == 0 then
+            v_slot = v_k
+        endif
+    endfor v_k
+    if v_slot >= 0 then
+        v_r = random(0, 99, 0)
+        v_ox[v_slot] = v_wx + random(-120, 120, 0) / 10
+        v_oz[v_slot] = 60
+        v_oph[v_slot] = random(0, 628, 0) / 100
+        if v_r < 45 then
+            v_ot[v_slot] = 1
+            v_oy[v_slot] = 0
+            v_oh[v_slot] = random(30, 70, 0) / 10
+        elseif v_r < 72 then
+            v_ot[v_slot] = 2
+            v_ox[v_slot] = v_wx + random(-50, 50, 0) / 10
+            v_oy[v_slot] = random(10, 30, 0) / 10
+            v_oh[v_slot] = 1.1
+        else
+            v_ot[v_slot] = 3
+            v_ox[v_slot] = v_wx + random(-60, 60, 0) / 10
+            v_oy[v_slot] = random(12, 30, 0) / 10
+            v_oh[v_slot] = 0
+        endif
+    endif
+}
+
+# ---------------- Player state ----------------
+v_wx = 0                 # ship position in the world (sideways)
+v_wy = 1.6               # ship height
+v_tx = 0                 # where the autopilot wants to be
+v_ty = 1.6
+v_vx = 0
+v_vy = 0
+v_camx = 0
+v_camh = 2.2
+v_scroll = 0
+v_score = 0
+v_rings = 0
+v_spawn_clock = 0
+v_laser_t = 0
+v_t = 0
+v_flash = 0
+
+def autopilot {
+    # default: drift back toward the middle
+    v_tx = v_wx * 0.98
+    v_ty = 1.6 + sin(v_t * 0.02) * 0.5
+    v_best = 99
+    v_dodge = 0
+    for v_k in (0, v_maxobj - 1, 1)
+        v_typ = v_ot[v_k]
+        v_dz = v_oz[v_k] - v_shipz
+        if v_typ == 2 and v_dz > 2 and v_dz < 30 and v_dz < v_best then
+            # line up with the next ring
+            v_best = v_dz
+            v_tx = v_ox[v_k]
+            v_ty = v_oy[v_k]
+        endif
+        if v_typ == 1 and v_dz > 0 and v_dz < 14 and abs(v_ox[v_k] - v_wx) < 1.6 then
+            # a pillar dead ahead: swerve around it
+            v_dodge = 1
+            if v_ox[v_k] > v_wx then
+                v_dside = -1
+            else
+                v_dside = 1
+            endif
+            v_dodgex = v_ox[v_k] + v_dside * 2.6
+        endif
+        if v_typ == 3 and v_dz > 6 and v_dz < 28 and v_laser_t <= 0 then
+            # lock on and fire
+            v_laser_t = 6
+            v_lk = v_k
+        endif
+    endfor v_k
+    if v_dodge == 1 then
+        v_tx = v_dodgex
+    endif
+    # smooth steering with a little inertia
+    v_vx = v_vx + ((v_tx - v_wx) * 0.012 - v_vx * 0.12) * 1.7 / v_pace
+    v_vy = v_vy + ((v_ty - v_wy) * 0.012 - v_vy * 0.12) * 1.7 / v_pace
+    v_wx = v_wx + v_vx
+    v_wy = min(max(v_wy + v_vy, 0.5), 3.4)
+    # camera follows the ship, a little behind the motion
+    v_camx = v_camx + (v_wx * 0.85 - v_camx) * 0.08
+    v_camh = v_camh + ((v_wy + 0.7) - v_camh) * 0.08
+}
+
+def update_world {
+    v_scroll = v_scroll + v_speed
+    v_spawn_clock = v_spawn_clock + 1 / v_pace
+    if v_spawn_clock > 14 then
+        v_spawn_clock = 0
+        call spawn
+    endif
+    for v_k in (0, v_maxobj - 1, 1)
+        if v_ot[v_k] > 0 then
+            v_oz[v_k] = v_oz[v_k] - v_speed
+            if v_ot[v_k] == 3 then
+                # fighters weave and come at you a little faster
+                v_oph[v_k] = v_oph[v_k] + 0.04 / v_pace * 1.7
+                v_ox[v_k] = v_ox[v_k] + sin(v_oph[v_k]) * 0.06
+                v_oy[v_k] = v_oy[v_k] + cos(v_oph[v_k] * 1.3) * 0.02
+                v_oz[v_k] = v_oz[v_k] - v_speed * 0.4
+            endif
+            if v_ot[v_k] == 4 then
+                v_oh[v_k] = v_oh[v_k] + 1 / v_pace * 1.7
+                if v_oh[v_k] > 22 then
+                    v_ot[v_k] = 0
+                endif
+            endif
+            # passing the ship: score a ring if flown through
+            if v_ot[v_k] == 2 and v_oz[v_k] < v_shipz and v_oz[v_k] >= v_shipz - v_speed then
+                if abs(v_ox[v_k] - v_wx) < 1.1 and abs(v_oy[v_k] - v_wy) < 1.1 then
+                    v_rings = v_rings + 1
+                    v_score = v_score + 100
+                    v_flash = 8
+                endif
+            endif
+            if v_oz[v_k] < 0.6 then
+                v_ot[v_k] = 0
+            endif
+        endif
+    endfor v_k
+    # lasers hit their target a few frames after firing
+    if v_laser_t > 0 then
+        v_laser_t = v_laser_t - 1 / v_pace * 1.7
+        if v_laser_t <= 0 and v_ot[v_lk] == 3 then
+            v_ot[v_lk] = 4
+            v_oh[v_lk] = 0
+            v_score = v_score + 250
+        endif
+    endif
+}
+
+# ---------------- Drawing ----------------
+def project {
+    # world (v_px3, v_py3, v_pz3) -> screen (v_sx, v_sy), scale v_s
+    v_s = v_focal / v_pz3
+    v_sx = 31.5 + (v_px3 - v_camx) * v_s
+    v_sy = v_horizon - (v_py3 - v_camh) * v_s
+}
+
+def draw_sky {
+    draw_rectangle(0, 0, 64, 6, navy, 50, true)
+    draw_rectangle(0, 6, 64, 6, indigo, 55, true)
+    draw_rectangle(0, 12, 64, 5, purple, 55, true)
+    draw_rectangle(0, 17, 64, 4, magenta, 45, true)
+    draw_rectangle(0, 21, 64, v_horizon - 21, rose, 55, true)
+    # ringed planet, drifting slightly as the camera moves
+    v_plx = 46 - v_camx * 0.4
+    v_ply = 9 + (v_camh - 2) * 0.6
+    draw_ellipse(v_plx, v_ply, 13, 3, lavender, 35, false, -15)
+    draw_circle(v_plx, v_ply, 7, teal, 70, true)
+    draw_circle(v_plx + 2, v_ply - 2, 4, cyan, 30, true)
+    draw_line(v_plx - 2, v_ply + 4.5, v_plx + 10, v_ply + 1.2, lavender, 60)
+    # two ranges of mountains with parallax
+    for v_x in (0, 63, 2)
+        v_m = v_x + v_camx * 1.5
+        v_mh = 4 + sin(v_m * 0.13) * 2.5 + sin(v_m * 0.051 + 1) * 2.5
+        draw_rectangle(v_x, v_horizon - v_mh, 2, v_mh + 1, purple, 35, true)
+        v_m = v_x + v_camx * 3
+        v_mh = 2 + sin(v_m * 0.21 + 2) * 1.2 + sin(v_m * 0.07) * 1.5
+        draw_rectangle(v_x, v_horizon - v_mh, 2, v_mh + 1, indigo, 45, true)
+    endfor v_x
+}
+
+def draw_ground {
+    for v_y in (v_horizon + 1, 63, 1)
+        v_z = v_camh * v_focal / (v_y - v_horizon)
+        v_fogf = 1 - v_z / v_fog
+        if v_fogf <= 0.08 then
+            draw_line(0, v_y, 63, v_y, teal, 10)
+        else
+            v_row = floor((v_z + v_scroll) / v_square)
+            v_left = v_camx + (0 - 32) * v_z / v_focal
+            v_right = v_camx + 32 * v_z / v_focal
+            v_k0 = floor(v_left / v_square)
+            v_k1 = floor(v_right / v_square)
+            for v_k in (v_k0, v_k1, 1)
+                v_x0 = 32 + (v_k * v_square - v_camx) * v_focal / v_z
+                v_x1 = 32 + ((v_k + 1) * v_square - v_camx) * v_focal / v_z - 1
+                if (v_k + v_row) % 2 == 0 then
+                    draw_line(max(v_x0, 0), v_y, min(v_x1, 63), v_y, cyan, 70 * v_fogf)
+                else
+                    draw_line(max(v_x0, 0), v_y, min(v_x1, 63), v_y, teal, 45 * v_fogf)
+                endif
+            endfor v_k
+        endif
+    endfor v_y
+}
+
+def draw_objects {
+    # sort live objects far to near
+    v_n = 0
+    for v_k in (0, v_maxobj - 1, 1)
+        if v_ot[v_k] > 0 then
+            v_ord[v_n] = v_k
+            v_n = v_n + 1
+        endif
+    endfor v_k
+    for v_a in (1, v_n - 1, 1)
+        v_j = v_a
+        while v_j > 0 and v_oz[v_ord[v_j - 1]] < v_oz[v_ord[v_j]] then
+            v_tmp = v_ord[v_j]
+            v_ord[v_j] = v_ord[v_j - 1]
+            v_ord[v_j - 1] = v_tmp
+            v_j = v_j - 1
+        endwhile
+    endfor v_a
+    for v_i in (0, v_n - 1, 1)
+        v_k = v_ord[v_i]
+        v_px3 = v_ox[v_k]
+        v_py3 = v_oy[v_k]
+        v_pz3 = v_oz[v_k]
+        call project
+        v_fade = min(max(1.3 - v_pz3 / 50, 0.25), 1)
+        if v_ot[v_k] == 1 then
+            # stone pillar: shaded column with a cap and its shadow
+            v_w = 0.5 * v_s
+            v_top = v_horizon - (v_oh[v_k] - v_camh) * v_s
+            draw_ellipse(v_sx + v_w * 0.6, v_sy, v_w * 1.6, max(v_w * 0.35, 0.6), black, 60, true, 0)
+            draw_rectangle(v_sx - v_w, v_top, v_w * 2, v_sy - v_top, wood_brown, 70 * v_fade, true)
+            draw_rectangle(v_sx - v_w, v_top, v_w * 0.7, v_sy - v_top, tan, 75 * v_fade, true)
+            draw_rectangle(v_sx + v_w * 0.4, v_top, v_w * 0.6, v_sy - v_top, dark_brown, 70 * v_fade, true)
+            draw_rectangle(v_sx - v_w * 1.3, v_top - v_w * 0.5, v_w * 2.6, max(v_w * 0.5, 1), tan, 85 * v_fade, true)
+        elseif v_ot[v_k] == 2 then
+            # glowing ring to fly through
+            v_rr = v_oh[v_k] * v_s
+            draw_ellipse(v_sx, v_sy, v_rr, v_rr, gold, 90 * v_fade, false, 0)
+            if v_rr > 3 then
+                draw_ellipse(v_sx, v_sy, v_rr - 1, v_rr - 1, orange, 60 * v_fade, false, 0)
+            endif
+        elseif v_ot[v_k] == 3 then
+            # enemy fighter: dark arrow with red wing lights
+            v_es = max(0.9 * v_s, 1.5)
+            draw_polygon(v_sx, v_sy, v_es, 3, crimson, 85 * v_fade, 180, true)
+            draw_line(v_sx - v_es * 1.6, v_sy - v_es * 0.3, v_sx + v_es * 1.6, v_sy - v_es * 0.3, maroon, 90 * v_fade)
+            mplot(v_sx - v_es * 1.6, v_sy - v_es * 0.3, red, 100)
+            mplot(v_sx + v_es * 1.6, v_sy - v_es * 0.3, red, 100)
+            mplot(v_sx, v_sy - v_es * 0.2, yellow, 100)
+        else
+            # explosion: expanding fireball and a flash
+            v_e = v_oh[v_k] / 22
+            v_er = (0.6 + v_e * 2.4) * v_s
+            draw_circle(v_sx, v_sy, v_er, orange, 70 * (1 - v_e), true)
+            draw_circle(v_sx, v_sy, v_er * 0.6, yellow, 90 * (1 - v_e), true)
+            if v_e < 0.25 then
+                draw_circle(v_sx, v_sy, v_er * 0.3, white, 100, true)
+            endif
+            for v_d in (0, 5, 1)
+                v_da = v_d * 1.047 + v_k
+                mplot(v_sx + cos(v_da) * v_er * 1.4, v_sy + sin(v_da) * v_er * 1.4, gold, 90 * (1 - v_e))
+            endfor v_d
+        endif
+    endfor v_i
+}
+
+def draw_ship_and_fx {
+    # ship on screen: where its world position projects
+    v_px3 = v_wx
+    v_py3 = v_wy
+    v_pz3 = v_shipz
+    call project
+    v_shx = v_sx
+    v_shy = v_sy
+    # bank pose from sideways speed, engine flicker every few frames
+    v_flick = int(v_t * 0.6) % 2
+    v_cel = 0 + v_flick
+    if v_vx < -0.035 then
+        v_cel = 2 + v_flick
+    elseif v_vx > 0.035 then
+        v_cel = 4 + v_flick
+    endif
+    move_sprite(fighter, v_shx - 8, v_shy - 5, 0, v_cel)
+    # lasers to a locked target
+    if v_laser_t > 0 and v_ot[v_lk] == 3 then
+        v_px3 = v_ox[v_lk]
+        v_py3 = v_oy[v_lk]
+        v_pz3 = v_oz[v_lk]
+        call project
+        draw_line(v_shx - 5, v_shy - 1, v_sx, v_sy, lime, 90)
+        draw_line(v_shx + 5, v_shy - 1, v_sx, v_sy, lime, 90)
+    endif
+    # ring bonus flash and score
+    if v_flash > 0 then
+        v_flash = v_flash - 1
+        draw_rectangle(0, 0, 64, 64, gold, v_flash * 5, false)
+    endif
+    draw_text(1, 1, "" & v_score, tiny64_font, 5, white, 60)
+}
+
+# ---------------- Main loop ----------------
+show_sprite(fighter, 24, 40, 0, 10, 0)
+while true then
+    v_t = v_t + 1 / v_pace
+    call autopilot
+    call update_world
+    begin_frame
+        call draw_sky
+        call draw_ground
+        call draw_objects
+        call draw_ship_and_fx
+    end_frame
+endwhile

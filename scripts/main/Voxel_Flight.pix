@@ -1,0 +1,309 @@
+# Voxel Flight - a low-level dusk flight over endless procedural mountains
+#
+# A "voxel space" renderer (the technique behind the 1992 game Comanche),
+# written entirely in Pixil:
+#   - At startup: a 128x128 tileable height map is built from random waves,
+#     then every cell gets a terrain color (lake, beach, grass, forest, rock,
+#     snow) and a light level from its slope (sun from the west).
+#   - Every frame: one ray per screen column marches from the camera to the
+#     horizon (~70 samples each). Each sample projects its terrain height onto
+#     the screen, and anything that rises above what is already drawn becomes
+#     a vertical span. Distance fog dims far ridges into silhouettes against
+#     the dusk sky.
+#   - An autopilot flies forward, banks into gentle turns, and keeps a safe
+#     height above the terrain ahead. The map wraps, so the flight never ends.
+#
+# Work per frame: ~4,500 terrain samples and ~2,000 drawn spans, all
+# interpreted. Every run builds a different world.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_map = 128                 # height map size (power of 2, wraps)
+v_sea = 22                  # water level (heights run roughly 0-100)
+v_horizon = 22              # screen row of the horizon at level flight
+v_proj = 34                 # projection scale (bigger = taller mountains)
+v_fov = 0.62                # half field of view, radians
+v_zmax = 130                # draw distance in map cells
+v_speed = 0.55              # cells per frame
+v_clearance = 19            # height above the terrain ahead
+
+# ---------------- World ----------------
+create_array(v_h, v_map * v_map, numeric)        # height
+create_array(v_cid, v_map * v_map, numeric)      # color index
+create_array(v_lit, v_map * v_map, numeric)      # light 0-1
+create_array(v_pal, 8, string)
+v_pal[0] = "ocean_blue"
+v_pal[1] = "tan"
+v_pal[2] = "spring_green"
+v_pal[3] = "green"
+v_pal[4] = "forest_green"
+v_pal[5] = "wood_brown"
+v_pal[6] = "gray"
+v_pal[7] = "white"
+
+# Tileable terrain: a sum of waves with whole-number frequencies across the
+# map, so the left edge matches the right and the top matches the bottom.
+v_waves = 14
+create_array(v_wfx, v_waves, numeric)
+create_array(v_wfy, v_waves, numeric)
+create_array(v_wph, v_waves, numeric)
+create_array(v_wam, v_waves, numeric)
+for v_k in (0, v_waves - 1, 1)
+    v_f = 1 + int(v_k / 3)
+    v_wfx[v_k] = random(0 - v_f, v_f, 0)
+    v_wfy[v_k] = random(0 - v_f, v_f, 0)
+    if v_wfx[v_k] == 0 and v_wfy[v_k] == 0 then
+        v_wfx[v_k] = v_f
+    endif
+    v_wph[v_k] = random(0, 628, 0) / 100
+    v_wam[v_k] = 1 / (v_f * 1.15)
+endfor v_k
+
+v_two_pi_n = 6.283185 / v_map
+v_hmin = 999
+v_hmax = -999
+for v_y in (0, v_map - 1, 1)
+    for v_x in (0, v_map - 1, 1)
+        v_s = 0
+        v_r = 0
+        for v_k in (0, v_waves - 1, 1)
+            v_w = sin((v_wfx[v_k] * v_x + v_wfy[v_k] * v_y) * v_two_pi_n + v_wph[v_k])
+            v_s = v_s + v_w * v_wam[v_k]
+            # ridged copy of the same wave sharpens the peaks
+            v_r = v_r + (1 - abs(v_w)) * v_wam[v_k]
+        endfor v_k
+        v_val = v_s + v_r * 0.55
+        v_h[v_y * v_map + v_x] = v_val
+        v_hmin = min(v_hmin, v_val)
+        v_hmax = max(v_hmax, v_val)
+    endfor v_x
+endfor v_y
+
+# Normalize to 0-100 with a curve that flattens valleys and lifts peaks
+v_span = v_hmax - v_hmin
+for v_i in (0, v_map * v_map - 1, 1)
+    v_n = (v_h[v_i] - v_hmin) / v_span
+    v_h[v_i] = pow(v_n, 1.6) * 100
+endfor v_i
+
+# Colors and lighting
+for v_y in (0, v_map - 1, 1)
+    for v_x in (0, v_map - 1, 1)
+        v_i = v_y * v_map + v_x
+        v_hv = v_h[v_i]
+        v_west = v_h[v_y * v_map + (v_x + v_map - 1) % v_map]
+        v_north = v_h[((v_y + v_map - 1) % v_map) * v_map + v_x]
+        v_slope = (v_west - v_hv) * 0.9 + (v_north - v_hv) * 0.4
+        v_lit[v_i] = min(max(0.62 - v_slope * 0.09, 0.22), 1)
+        v_steep = abs(v_west - v_hv) + abs(v_north - v_hv)
+        if v_hv < v_sea then
+            v_cid[v_i] = 0
+            v_lit[v_i] = 0.55 + (v_sea - v_hv) * 0.004
+            v_h[v_i] = v_sea
+        elseif v_hv < v_sea + 2.5 then
+            v_cid[v_i] = 1
+        elseif v_hv < 38 then
+            v_cid[v_i] = 2 + (v_hv > 31)
+        elseif v_hv < 55 then
+            v_cid[v_i] = 4
+        elseif v_hv < 72 then
+            v_cid[v_i] = 5 + (v_steep < 2.2)
+        else
+            v_cid[v_i] = 7
+        endif
+        if v_steep > 6 and v_hv > 40 then
+            v_cid[v_i] = 5
+        endif
+    endfor v_x
+endfor v_y
+
+# ---------------- Sky ----------------
+# Dusk bands from the top of the sky down to a thin glow at the horizon,
+# then dark haze below the horizon (where distant land fades out).
+v_bands = 7
+create_array(v_sky_c, v_bands, string)
+create_array(v_sky_i, v_bands, numeric)
+create_array(v_sky_top, v_bands, numeric)
+v_sky_c[0] = "navy"
+v_sky_i[0] = 30
+v_sky_top[0] = -99
+v_sky_c[1] = "indigo"
+v_sky_i[1] = 40
+v_sky_top[1] = -24
+v_sky_c[2] = "purple"
+v_sky_i[2] = 50
+v_sky_top[2] = -15
+v_sky_c[3] = "rose"
+v_sky_i[3] = 55
+v_sky_top[3] = -9
+v_sky_c[4] = "orange"
+v_sky_i[4] = 70
+v_sky_top[4] = -4
+v_sky_c[5] = "peach"
+v_sky_i[5] = 80
+v_sky_top[5] = -1
+v_sky_c[6] = "indigo"
+v_sky_i[6] = 14
+v_sky_top[6] = 1
+
+# Stars, fixed in the world: a bearing and a height above the horizon
+v_stars = 26
+create_array(v_star_a, v_stars, numeric)
+create_array(v_star_y, v_stars, numeric)
+create_array(v_star_i, v_stars, numeric)
+for v_k in (0, v_stars - 1, 1)
+    v_star_a[v_k] = random(0, 628, 0) / 100
+    v_star_y[v_k] = random(16, 34, 0)
+    v_star_i[v_k] = random(25, 70, 0)
+endfor v_k
+
+# ---------------- Camera ----------------
+v_cx = random(0, 127, 0)
+v_cy = random(0, 127, 0)
+v_ang = random(0, 628, 0) / 100
+v_cam_h = 60
+v_turn = 0
+v_roll = 0
+v_t = 0
+v_sun_ang = v_ang + 0.35
+
+create_array(v_ybuf, 64, numeric)
+create_array(v_rdx, 64, numeric)
+create_array(v_rdy, 64, numeric)
+create_array(v_rofs, 64, numeric)
+
+def height_at {
+    # input v_qx, v_qy (map coordinates) -> v_qh
+    v_qi = (int(v_qy) % v_map) * v_map + (int(v_qx) % v_map)
+    v_qh = v_h[v_qi]
+}
+
+def autopilot {
+    v_t = v_t + 1
+    # Wandering turn rate: two slow waves give long, irregular curves
+    v_turn = sin(v_t * 0.0061) * 0.010 + sin(v_t * 0.0173 + 1.3) * 0.006
+    v_ang = v_ang + v_turn
+    v_roll = v_roll + (v_turn * 26 - v_roll) * 0.06
+    v_fx = cos(v_ang)
+    v_fy = sin(v_ang)
+    v_cx = v_cx + v_fx * v_speed
+    v_cy = v_cy + v_fy * v_speed
+    if v_cx < 0 then
+        v_cx = v_cx + v_map
+    endif
+    if v_cx >= v_map then
+        v_cx = v_cx - v_map
+    endif
+    if v_cy < 0 then
+        v_cy = v_cy + v_map
+    endif
+    if v_cy >= v_map then
+        v_cy = v_cy - v_map
+    endif
+    # Look ahead and keep clear of the highest ground on the path
+    v_ahead = 0
+    for v_d in (2, 26, 4)
+        v_qx = v_cx + v_fx * v_d + v_map * 4
+        v_qy = v_cy + v_fy * v_d + v_map * 4
+        call height_at
+        v_ahead = max(v_ahead, v_qh - v_d * 0.25)
+    endfor v_d
+    v_target_h = v_ahead + v_clearance
+    v_cam_h = v_cam_h + (v_target_h - v_cam_h) * 0.045
+}
+
+def setup_rays {
+    for v_i in (0, 63, 1)
+        v_a = v_ang + (v_i - 31.5) / 31.5 * v_fov
+        v_rdx[v_i] = cos(v_a)
+        v_rdy[v_i] = sin(v_a)
+        v_rofs[v_i] = (v_i - 31.5) * v_roll
+        v_ybuf[v_i] = 64
+    endfor v_i
+}
+
+def draw_sky {
+    # One vertical strip per band per column, shifted by the bank angle
+    for v_i in (0, 63, 1)
+        v_base = v_horizon + v_rofs[v_i]
+        for v_b in (0, v_bands - 1, 1)
+            v_y0 = max(v_base + v_sky_top[v_b], 0)
+            if v_b < v_bands - 1 then
+                v_y1 = min(v_base + v_sky_top[v_b + 1] - 1, 63)
+            else
+                v_y1 = 63
+            endif
+            if v_y1 >= v_y0 then
+                draw_line(v_i, v_y0, v_i, v_y1, v_sky_c[v_b], v_sky_i[v_b])
+            endif
+        endfor v_b
+    endfor v_i
+    # Stars (only the ones inside the field of view)
+    for v_k in (0, v_stars - 1, 1)
+        v_rel = v_star_a[v_k] - v_ang
+        v_rel = v_rel - 6.283185 * floor((v_rel + 3.141593) / 6.283185)
+        if abs(v_rel) < v_fov then
+            v_sx = 31.5 + v_rel / v_fov * 31.5
+            v_sy = v_horizon - v_star_y[v_k] + (v_sx - 31.5) * v_roll
+            if v_sy >= 0 then
+                v_tw = v_star_i[v_k] * (0.75 + sin(v_t * 0.08 + v_k * 1.7) * 0.25)
+                mplot(v_sx, v_sy, white, v_tw)
+            endif
+        endif
+    endfor v_k
+    # Setting sun, fixed in the world, low over the horizon
+    v_rel = v_sun_ang - v_ang
+    v_rel = v_rel - 6.283185 * floor((v_rel + 3.141593) / 6.283185)
+    if abs(v_rel) < v_fov + 0.2 then
+        v_sx = 31.5 + v_rel / v_fov * 31.5
+        v_sy = v_horizon - 3 + (v_sx - 31.5) * v_roll
+        draw_circle(v_sx, v_sy, 6, orange, 30, true)
+        draw_circle(v_sx, v_sy, 4, gold, 75, true)
+        draw_circle(v_sx, v_sy, 2, yellow, 100, true)
+    endif
+}
+
+def draw_terrain {
+    v_wave_t = v_t * 0.11
+    for v_i in (0, 63, 1)
+        v_dx = v_rdx[v_i]
+        v_dy = v_rdy[v_i]
+        v_ofs = v_rofs[v_i] + v_horizon
+        v_top = 64
+        v_z = 1.5
+        v_dz = 0.6
+        while v_z < v_zmax and v_top > 0 then
+            v_mx = int(v_cx + v_dx * v_z + v_map * 8) % v_map
+            v_my = int(v_cy + v_dy * v_z + v_map * 8) % v_map
+            v_ci = v_my * v_map + v_mx
+            v_sy = int((v_cam_h - v_h[v_ci]) / v_z * v_proj + v_ofs)
+            if v_sy < v_top then
+                v_fog = 1 - v_z / v_zmax
+                v_inten = v_lit[v_ci] * v_fog * v_fog * 100
+                v_col = v_cid[v_ci]
+                if v_col == 0 then
+                    # water shimmer
+                    v_inten = v_inten * (0.8 + sin(v_mx * 0.9 + v_my * 0.6 + v_wave_t) * 0.2)
+                endif
+                if v_inten >= 3 then
+                    draw_line(v_i, max(v_sy, 0), v_i, v_top - 1, v_pal[v_col], v_inten)
+                endif
+                v_top = v_sy
+            endif
+            v_z = v_z + v_dz
+            v_dz = v_dz * 1.045
+        endwhile
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call autopilot
+    call setup_rays
+    begin_frame
+        call draw_sky
+        call draw_terrain
+    end_frame
+endwhile

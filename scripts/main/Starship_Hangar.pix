@@ -1,0 +1,1242 @@
+# Starship Hangar - a little 3D film, rendered entirely in Pixil
+#
+#   1. A starship sits on its landing pad in a lit hangar; the camera circles it.
+#   2. The bay doors slide open onto the stars and the engines spool up.
+#   3. The ship lifts off and accelerates out through the doors.
+#   4. In space a chase camera follows it through a starfield, until it jumps
+#      to hyperspace - stars stretch into streaks and the ship is gone in a
+#      flash. Then back to the hangar.
+#
+# How it renders:
+#   - A look-at camera turns world points into camera space. Big surfaces
+#     (floor, walls, doors) are clipped against a near plane, because the
+#     camera stands inside the room, then filled as triangle fans.
+#   - The hangar is a convex room, so its surfaces never overlap each other
+#     and can be drawn in any order; doors, floor markings and the ship go on top.
+#   - The ship is a mesh of about 70 triangles built in code: a six-sided hull
+#     tapering to the nose, a glass cockpit, swept wings with red tips, two
+#     engine pods and a tail fin. Each frame its triangles are transformed,
+#     back faces dropped, flat shaded and depth sorted.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pace = 1.7
+v_focal = 40             # projection scale (wide-ish lens)
+v_near = 0.15
+
+# Timeline (in 35-fps frames; v_pace stretches it for 60 fps)
+v_tA = 300               # circling the ship
+v_tB = 430               # doors open, engines spool up
+v_tC = 570               # launch
+v_tD = 860               # space, then hyperspace
+
+# ---------------- Colours ----------------
+create_array(v_pal, 10, string)
+v_pal[0] = "silver"
+v_pal[1] = "gray"
+v_pal[2] = "dark_gray"
+v_pal[3] = "sky_blue"
+v_pal[4] = "red"
+v_pal[5] = "orange"
+v_pal[6] = "white"
+v_pal[7] = "royal_blue"
+
+# ---------------- Ship mesh ----------------
+create_array(v_mx, 64, numeric)
+create_array(v_my, 64, numeric)
+create_array(v_mz, 64, numeric)
+create_array(v_ta, 96, numeric)
+create_array(v_tb, 96, numeric)
+create_array(v_tcx, 96, numeric)
+create_array(v_tcol, 96, numeric)
+create_array(v_tds, 96, numeric)    # 1 = double sided (thin wings, fin)
+
+v_ship_scale = 1.3
+def add_v {
+    v_mx[v_nv] = v_ax * v_ship_scale * v_gw
+    v_my[v_nv] = v_ay * v_ship_scale * v_gh
+    v_mz[v_nv] = v_az * v_ship_scale * v_gl
+    v_nv = v_nv + 1
+}
+def add_t {
+    v_ta[v_nt] = v_i0
+    v_tb[v_nt] = v_i1
+    v_tcx[v_nt] = v_i2
+    v_tcol[v_nt] = v_ci
+    v_tds[v_nt] = v_ds
+    v_nt = v_nt + 1
+}
+
+create_array(v_csx, 6, numeric)
+create_array(v_csy, 6, numeric)
+create_array(v_ringz, 3, numeric)
+create_array(v_rings, 3, numeric)
+
+# Colour choices for the generator
+create_array(v_hullc, 4, string)
+v_hullc[0] = "silver"
+v_hullc[1] = "white"
+v_hullc[2] = "gray"
+v_hullc[3] = "tan"
+create_array(v_accc, 6, string)
+v_accc[0] = "red"
+v_accc[1] = "orange"
+v_accc[2] = "lime"
+v_accc[3] = "cyan"
+v_accc[4] = "magenta"
+v_accc[5] = "gold"
+create_array(v_finc, 5, string)
+v_finc[0] = "royal_blue"
+v_finc[1] = "red"
+v_finc[2] = "gold"
+v_finc[3] = "teal"
+v_finc[4] = "purple"
+create_array(v_glassc, 3, string)
+v_glassc[0] = "sky_blue"
+v_glassc[1] = "cyan"
+v_glassc[2] = "gold"
+
+# A new ship design: proportions, wings, fins, pods and colours all random
+def build_ship {
+    v_nv = 0
+    v_nt = 0
+    v_gl = random(85, 130, 0) / 100          # hull length
+    v_gw = random(80, 125, 0) / 100          # hull width
+    v_gh = random(80, 120, 0) / 100          # hull height
+    v_wspan = random(170, 280, 0) / 100      # wing span
+    v_wsweep = random(-60, 90, 0) / 100      # tip sweep (negative = swept forward)
+    v_wtilt = random(-40, 30, 0) / 100       # tip up / down
+    v_wroot = random(-60, 40, 0) / 100       # where the wing starts on the hull
+    v_fins = random(0, 2, 0)                 # 0, 1 or 2 tail fins
+    v_finh = random(50, 95, 0) / 100
+    v_podx = random(70, 150, 0) / 100        # pod distance from the centre
+    v_pods = random(26, 46, 0) / 100         # pod thickness
+    v_podl = random(110, 190, 0) / 100       # pod length
+    v_pal[0] = v_hullc[random(0, 3, 0)]
+    v_pal[4] = v_accc[random(0, 5, 0)]
+    v_pal[7] = v_finc[random(0, 4, 0)]
+    v_pal[3] = v_glassc[random(0, 2, 0)]
+    # hull cross-section (6 points), nose toward -z
+    v_csx[0] = 0
+    v_csy[0] = 0.42
+    v_csx[1] = 0.55
+    v_csy[1] = 0.12
+    v_csx[2] = 0.45
+    v_csy[2] = -0.25
+    v_csx[3] = 0
+    v_csy[3] = -0.35
+    v_csx[4] = -0.45
+    v_csy[4] = -0.25
+    v_csx[5] = -0.55
+    v_csy[5] = 0.12
+    # nose point
+    v_ax = 0
+    v_ay = 0
+    v_az = -2.3
+    call add_v
+    # three rings: z = -0.9 (narrow), 0.6, 1.6 (rear)
+    v_ringz[0] = -0.9
+    v_rings[0] = 0.75
+    v_ringz[1] = 0.6
+    v_rings[1] = 1.0
+    v_ringz[2] = 1.6
+    v_rings[2] = 0.85
+    for v_r in (0, 2, 1)
+        for v_k in (0, 5, 1)
+            v_ax = v_csx[v_k] * v_rings[v_r]
+            v_ay = v_csy[v_k] * v_rings[v_r]
+            v_az = v_ringz[v_r]
+            call add_v
+        endfor v_k
+    endfor v_r
+    v_ds = 0
+    # nose cone (top two faces are the cockpit glass)
+    for v_k in (0, 5, 1)
+        v_i0 = 0
+        v_i1 = 1 + (v_k + 1) % 6
+        v_i2 = 1 + v_k
+        v_ci = 0
+        if v_k == 0 or v_k == 5 then
+            v_ci = 3
+        endif
+        call add_t
+    endfor v_k
+    # hull sides between rings
+    for v_r in (0, 1, 1)
+        for v_k in (0, 5, 1)
+            v_a0 = 1 + v_r * 6 + v_k
+            v_a1 = 1 + v_r * 6 + (v_k + 1) % 6
+            v_b0 = v_a0 + 6
+            v_b1 = v_a1 + 6
+            v_ci = 0
+            if v_k == 2 or v_k == 3 then
+                v_ci = 1
+            endif
+            v_i0 = v_a0
+            v_i1 = v_a1
+            v_i2 = v_b1
+            call add_t
+            v_i0 = v_a0
+            v_i1 = v_b1
+            v_i2 = v_b0
+            call add_t
+        endfor v_k
+    endfor v_r
+    # rear plate (engine housing)
+    v_ax = 0
+    v_ay = 0
+    v_az = 1.6
+    call add_v
+    v_rc = v_nv - 1
+    for v_k in (0, 5, 1)
+        v_i0 = v_rc
+        v_i1 = 13 + v_k
+        v_i2 = 13 + (v_k + 1) % 6
+        v_ci = 2
+        call add_t
+    endfor v_k
+    # wings (thin, double sided) with red tips
+    v_ds = 1
+    for v_sd in (-1, 1, 2)
+        v_ax = 0.5 * v_sd
+        v_ay = 0
+        v_az = v_wroot
+        call add_v
+        v_w0 = v_nv - 1
+        v_ax = 0.5 * v_sd
+        v_ay = -0.05
+        v_az = 1.4
+        call add_v
+        v_w1 = v_nv - 1
+        v_ax = v_wspan * 0.83 * v_sd
+        v_ay = v_wtilt * 0.8
+        v_az = 1.15 + v_wsweep * 0.8
+        call add_v
+        v_w2 = v_nv - 1
+        v_ax = v_wspan * v_sd
+        v_ay = v_wtilt
+        v_az = 1.5 + v_wsweep
+        call add_v
+        v_w3 = v_nv - 1
+        v_i0 = v_w0
+        v_i1 = v_w1
+        v_i2 = v_w2
+        v_ci = 1
+        call add_t
+        v_i0 = v_w1
+        v_i1 = v_w3
+        v_i2 = v_w2
+        v_ci = 4
+        call add_t
+    endfor v_sd
+    # tail fin(s): none, one in the middle, or two angled outward
+    if v_fins > 0 then
+        for v_fk in (1, v_fins, 1)
+            v_fxo = 0
+            v_flean = 0
+            if v_fins == 2 then
+                v_fxo = (v_fk * 2 - 3) * 0.35
+                v_flean = (v_fk * 2 - 3) * 0.3
+            endif
+            v_ax = v_fxo
+            v_ay = 0.3
+            v_az = 0.5
+            call add_v
+            v_f0 = v_nv - 1
+            v_ax = v_fxo
+            v_ay = 0.28
+            v_az = 1.6
+            call add_v
+            v_f1 = v_nv - 1
+            v_ax = v_fxo + v_flean * v_finh
+            v_ay = 0.3 + v_finh
+            v_az = 1.75
+            call add_v
+            v_f2 = v_nv - 1
+            v_i0 = v_f0
+            v_i1 = v_f1
+            v_i2 = v_f2
+            v_ci = 7
+            call add_t
+        endfor v_fk
+    endif
+    # engine pods: boxes under the wings
+    v_ds = 0
+    for v_sd in (-1, 1, 2)
+        v_cx0 = v_podx * v_sd
+        v_b = v_nv
+        for v_k in (0, 7, 1)
+            v_ax = v_cx0 + (v_k % 2 - 0.5) * v_pods
+            v_ay = -0.22 + (int(v_k / 2) % 2 - 0.5) * v_pods * 0.85
+            v_az = 1.7 - v_podl + int(v_k / 4) * v_podl
+            call add_v
+        endfor v_k
+        # faces: front(z-), back(z+, the glowing nozzle), left, right, top, bottom
+        v_ci = 2
+        v_i0 = v_b + 0
+        v_i1 = v_b + 2
+        v_i2 = v_b + 3
+        call add_t
+        v_i0 = v_b + 0
+        v_i1 = v_b + 3
+        v_i2 = v_b + 1
+        call add_t
+        v_ci = 5
+        v_i0 = v_b + 4
+        v_i1 = v_b + 5
+        v_i2 = v_b + 7
+        call add_t
+        v_i0 = v_b + 4
+        v_i1 = v_b + 7
+        v_i2 = v_b + 6
+        call add_t
+        v_ci = 1
+        v_i0 = v_b + 0
+        v_i1 = v_b + 4
+        v_i2 = v_b + 6
+        call add_t
+        v_i0 = v_b + 0
+        v_i1 = v_b + 6
+        v_i2 = v_b + 2
+        call add_t
+        v_i0 = v_b + 1
+        v_i1 = v_b + 3
+        v_i2 = v_b + 7
+        call add_t
+        v_i0 = v_b + 1
+        v_i1 = v_b + 7
+        v_i2 = v_b + 5
+        call add_t
+        v_ci = 0
+        v_i0 = v_b + 2
+        v_i1 = v_b + 6
+        v_i2 = v_b + 7
+        call add_t
+        v_i0 = v_b + 2
+        v_i1 = v_b + 7
+        v_i2 = v_b + 3
+        call add_t
+        v_i0 = v_b + 0
+        v_i1 = v_b + 1
+        v_i2 = v_b + 5
+        call add_t
+        v_i0 = v_b + 0
+        v_i1 = v_b + 5
+        v_i2 = v_b + 4
+        call add_t
+    endfor v_sd
+}
+call build_ship
+
+# ---------------- Stars ----------------
+v_nstars = 70
+create_array(v_stx, v_nstars, numeric)
+create_array(v_sty, v_nstars, numeric)
+create_array(v_stz, v_nstars, numeric)
+create_array(v_stb, v_nstars, numeric)
+create_array(v_spx, v_nstars, numeric)
+create_array(v_spy, v_nstars, numeric)
+for v_k in (0, v_nstars - 1, 1)
+    # directions on a sphere (for the distant view through the doors)
+    v_a = random(0, 628, 0) / 100
+    v_e = random(-90, 90, 0) / 100
+    v_stx[v_k] = cos(v_a) * cos(v_e)
+    v_sty[v_k] = sin(v_e)
+    v_stz[v_k] = sin(v_a) * cos(v_e)
+    v_stb[v_k] = random(25, 100, 0)
+endfor v_k
+
+# ---------------- Camera ----------------
+# look-at camera: eye (v_ex, v_ey, v_ez) toward (v_lx, v_ly, v_lz)
+def set_camera {
+    v_fx = v_lx - v_ex
+    v_fy = v_ly - v_ey
+    v_fz = v_lz - v_ez
+    v_fl = sqrt(v_fx * v_fx + v_fy * v_fy + v_fz * v_fz)
+    v_fx = v_fx / v_fl
+    v_fy = v_fy / v_fl
+    v_fz = v_fz / v_fl
+    # right = forward x up(0,1,0)
+    v_rx = 0 - v_fz
+    v_ry = 0
+    v_rz = v_fx
+    v_rl = sqrt(v_rx * v_rx + v_rz * v_rz)
+    v_rx = v_rx / v_rl
+    v_rz = v_rz / v_rl
+    # up = right x forward
+    v_ux = v_ry * v_fz - v_rz * v_fy
+    v_uy = v_rz * v_fx - v_rx * v_fz
+    v_uz = v_rx * v_fy - v_ry * v_fx
+}
+
+# world (v_wx, v_wy, v_wz) -> camera space (v_cx, v_cy, v_cz)
+def to_cam {
+    v_dx = v_wx - v_ex
+    v_dy = v_wy - v_ey
+    v_dz = v_wz - v_ez
+    v_cx = v_dx * v_rx + v_dy * v_ry + v_dz * v_rz
+    v_cy = v_dx * v_ux + v_dy * v_uy + v_dz * v_uz
+    v_cz = v_dx * v_fx + v_dy * v_fy + v_dz * v_fz
+}
+
+# ---------------- Polygon filling ----------------
+def fill_tri {
+    if v_y1 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x1
+        v_x1 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y1
+        v_y1 = v_tmp
+    endif
+    if v_y2 < v_y0 then
+        v_tmp = v_x0
+        v_x0 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y0
+        v_y0 = v_y2
+        v_y2 = v_tmp
+    endif
+    if v_y2 < v_y1 then
+        v_tmp = v_x1
+        v_x1 = v_x2
+        v_x2 = v_tmp
+        v_tmp = v_y1
+        v_y1 = v_y2
+        v_y2 = v_tmp
+    endif
+    v_ya = max(int(v_y0 + 0.5), 0)
+    v_yb = min(int(v_y2 + 0.5), 63)
+    v_h02 = v_y2 - v_y0 + 0.0001
+    v_h01 = v_y1 - v_y0 + 0.0001
+    v_h12 = v_y2 - v_y1 + 0.0001
+    for v_yy in (v_ya, v_yb, 1)
+        v_xa = v_x0 + (v_x2 - v_x0) * min(max((v_yy - v_y0) / v_h02, 0), 1)
+        if v_yy < v_y1 then
+            v_xb = v_x0 + (v_x1 - v_x0) * min(max((v_yy - v_y0) / v_h01, 0), 1)
+        else
+            v_xb = v_x1 + (v_x2 - v_x1) * min(max((v_yy - v_y1) / v_h12, 0), 1)
+        endif
+        v_xl = max(int(min(v_xa, v_xb) + 0.5), 0)
+        v_xr = min(int(max(v_xa, v_xb) + 0.5), 63)
+        if v_xl <= v_xr then
+            draw_line(v_xl, v_yy, v_xr, v_yy, v_tc, v_ti)
+        endif
+    endfor v_yy
+}
+
+# A world quad (corners in v_qx/v_qy/v_qz 0-3) clipped at the near plane,
+# projected and filled with colour v_tc, intensity v_ti
+create_array(v_qx, 4, numeric)
+create_array(v_qy, 4, numeric)
+create_array(v_qz, 4, numeric)
+create_array(v_inx, 4, numeric)
+create_array(v_iny, 4, numeric)
+create_array(v_inz, 4, numeric)
+create_array(v_ox, 8, numeric)
+create_array(v_oy, 8, numeric)
+def draw_quad {
+    for v_k in (0, 3, 1)
+        v_wx = v_qx[v_k]
+        v_wy = v_qy[v_k]
+        v_wz = v_qz[v_k]
+        call to_cam
+        v_inx[v_k] = v_cx
+        v_iny[v_k] = v_cy
+        v_inz[v_k] = v_cz
+    endfor v_k
+    # clip against z = v_near, projecting the kept points
+    v_no = 0
+    for v_k in (0, 3, 1)
+        v_k2 = (v_k + 1) % 4
+        v_za = v_inz[v_k]
+        v_zb = v_inz[v_k2]
+        if v_za >= v_near then
+            v_ox[v_no] = 31.5 + v_inx[v_k] / v_za * v_focal
+            v_oy[v_no] = 31.5 - v_iny[v_k] / v_za * v_focal
+            v_no = v_no + 1
+        endif
+        if (v_za >= v_near) != (v_zb >= v_near) then
+            v_f = (v_near - v_za) / (v_zb - v_za)
+            v_ix = v_inx[v_k] + (v_inx[v_k2] - v_inx[v_k]) * v_f
+            v_iy = v_iny[v_k] + (v_iny[v_k2] - v_iny[v_k]) * v_f
+            v_ox[v_no] = 31.5 + v_ix / v_near * v_focal
+            v_oy[v_no] = 31.5 - v_iy / v_near * v_focal
+            v_no = v_no + 1
+        endif
+    endfor v_k
+    if v_no >= 3 then
+        for v_k in (1, v_no - 2, 1)
+            v_x0 = v_ox[0]
+            v_y0 = v_oy[0]
+            v_x1 = v_ox[v_k]
+            v_y1 = v_oy[v_k]
+            v_x2 = v_ox[v_k + 1]
+            v_y2 = v_oy[v_k + 1]
+            call fill_tri
+        endfor v_k
+    endif
+}
+
+# A world line (v_l0x.. to v_l1x..) clipped at the near plane
+def draw_line3 {
+    v_wx = v_l0x
+    v_wy = v_l0y
+    v_wz = v_l0z
+    call to_cam
+    v_ax = v_cx
+    v_ay = v_cy
+    v_az = v_cz
+    v_wx = v_l1x
+    v_wy = v_l1y
+    v_wz = v_l1z
+    call to_cam
+    if v_az >= v_near or v_cz >= v_near then
+        if v_az < v_near then
+            v_f = (v_near - v_az) / (v_cz - v_az)
+            v_ax = v_ax + (v_cx - v_ax) * v_f
+            v_ay = v_ay + (v_cy - v_ay) * v_f
+            v_az = v_near
+        endif
+        if v_cz < v_near then
+            v_f = (v_near - v_cz) / (v_az - v_cz)
+            v_cx = v_cx + (v_ax - v_cx) * v_f
+            v_cy = v_cy + (v_ay - v_cy) * v_f
+            v_cz = v_near
+        endif
+        v_sx0 = 31.5 + v_ax / v_az * v_focal
+        v_sy0 = 31.5 - v_ay / v_az * v_focal
+        v_sx1 = 31.5 + v_cx / v_cz * v_focal
+        v_sy1 = 31.5 - v_cy / v_cz * v_focal
+        if max(v_sx0, v_sx1) >= -40 and min(v_sx0, v_sx1) <= 104 and max(v_sy0, v_sy1) >= -40 and min(v_sy0, v_sy1) <= 104 then
+            draw_line(v_sx0, v_sy0, v_sx1, v_sy1, v_lc, v_li)
+        endif
+    endif
+}
+
+def quad4 {
+    # helper: set quad corners from v_a.. lists set by caller
+    v_qx[0] = v_p0x
+    v_qy[0] = v_p0y
+    v_qz[0] = v_p0z
+    v_qx[1] = v_p1x
+    v_qy[1] = v_p1y
+    v_qz[1] = v_p1z
+    v_qx[2] = v_p2x
+    v_qy[2] = v_p2y
+    v_qz[2] = v_p2z
+    v_qx[3] = v_p3x
+    v_qy[3] = v_p3y
+    v_qz[3] = v_p3z
+    call draw_quad
+}
+
+# Axis-aligned wall rectangle: plane v_pl (0 = x const, 1 = y const, 2 = z const)
+# at v_pv, spanning v_a0..v_a1 and v_b0..v_b1 on the other two axes
+def wall {
+    if v_pl == 0 then
+        v_p0x = v_pv
+        v_p0y = v_a0
+        v_p0z = v_b0
+        v_p1x = v_pv
+        v_p1y = v_a1
+        v_p1z = v_b0
+        v_p2x = v_pv
+        v_p2y = v_a1
+        v_p2z = v_b1
+        v_p3x = v_pv
+        v_p3y = v_a0
+        v_p3z = v_b1
+    elseif v_pl == 1 then
+        v_p0x = v_a0
+        v_p0y = v_pv
+        v_p0z = v_b0
+        v_p1x = v_a1
+        v_p1y = v_pv
+        v_p1z = v_b0
+        v_p2x = v_a1
+        v_p2y = v_pv
+        v_p2z = v_b1
+        v_p3x = v_a0
+        v_p3y = v_pv
+        v_p3z = v_b1
+    else
+        v_p0x = v_a0
+        v_p0y = v_b0
+        v_p0z = v_pv
+        v_p1x = v_a1
+        v_p1y = v_b0
+        v_p1z = v_pv
+        v_p2x = v_a1
+        v_p2y = v_b1
+        v_p2z = v_pv
+        v_p3x = v_a0
+        v_p3y = v_b1
+        v_p3z = v_pv
+    endif
+    call quad4
+}
+
+# ---------------- Scene pieces ----------------
+def draw_stars_far {
+    # stars at infinity: rotate directions only
+    for v_k in (0, v_nstars - 1, 1)
+        v_cz = v_stx[v_k] * v_fx + v_sty[v_k] * v_fy + v_stz[v_k] * v_fz
+        if v_cz > 0.2 then
+            v_cx = v_stx[v_k] * v_rx + v_sty[v_k] * v_ry + v_stz[v_k] * v_rz
+            v_cy = v_stx[v_k] * v_ux + v_sty[v_k] * v_uy + v_stz[v_k] * v_uz
+            mplot(31.5 + v_cx / v_cz * v_focal, 31.5 - v_cy / v_cz * v_focal, white, v_stb[v_k])
+        endif
+    endfor v_k
+}
+
+def draw_hangar {
+    # floor, ceiling, side walls, front wall
+    v_tc = "dark_gray"
+    v_ti = 40
+    v_pl = 1
+    v_pv = 0
+    v_a0 = -10
+    v_a1 = 10
+    v_b0 = -14
+    v_b1 = 10
+    call wall
+    v_ti = 14
+    v_pv = 7
+    call wall
+    v_tc = "navy"
+    v_ti = 22
+    v_pl = 0
+    v_pv = -10
+    v_a0 = 0
+    v_a1 = 7
+    v_b0 = -14
+    v_b1 = 10
+    call wall
+    v_pv = 10
+    call wall
+    v_pl = 2
+    v_pv = 10
+    v_a0 = -10
+    v_a1 = 10
+    v_b0 = 0
+    v_b1 = 7
+    call wall
+    # back wall around the bay door (door opening x -6..6, y 0..5.5)
+    v_pv = -14
+    v_a0 = -10
+    v_a1 = -6
+    call wall
+    v_a0 = 6
+    v_a1 = 10
+    call wall
+    v_a0 = -6
+    v_a1 = 6
+    v_b0 = 5.5
+    v_b1 = 7
+    call wall
+    # the two door panels slide apart
+    v_tc = v_doorc
+    v_ti = 35
+    v_a0 = -6 - v_door
+    v_a1 = 0 - v_door
+    v_b0 = 0
+    v_b1 = 5.5
+    call wall
+    v_a0 = 0 + v_door
+    v_a1 = 6 + v_door
+    call wall
+    # hazard stripes on the door edges and floor markings
+    v_lc = "gold"
+    v_li = 70
+    for v_k in (0, 4, 1)
+        v_l0x = 0 - v_door - 0.3
+        v_l0y = v_k * 1.2
+        v_l0z = -13.95
+        v_l1x = 0 - v_door - 0.3
+        v_l1y = v_k * 1.2 + 0.6
+        v_l1z = -13.95
+        call draw_line3
+        v_l0x = v_door + 0.3
+        v_l1x = v_door + 0.3
+        call draw_line3
+    endfor v_k
+    # floor grid
+    v_lc = "gray"
+    v_li = 30
+    for v_k in (-10, 10, 2)
+        v_l0x = v_k
+        v_l0y = 0.01
+        v_l0z = -14
+        v_l1x = v_k
+        v_l1y = 0.01
+        v_l1z = 10
+        call draw_line3
+    endfor v_k
+    for v_k in (-14, 10, 2)
+        v_l0x = -10
+        v_l0y = 0.01
+        v_l0z = v_k
+        v_l1x = 10
+        v_l1y = 0.01
+        v_l1z = v_k
+        call draw_line3
+    endfor v_k
+    # landing pad ring
+    v_lc = "gold"
+    v_li = 80
+    for v_k in (0, 15, 1)
+        v_a = v_k / 16 * 6.283185
+        v_a2 = (v_k + 1) / 16 * 6.283185
+        v_l0x = cos(v_a) * 3
+        v_l0y = 0.02
+        v_l0z = sin(v_a) * 3
+        v_l1x = cos(v_a2) * 3
+        v_l1y = 0.02
+        v_l1z = sin(v_a2) * 3
+        call draw_line3
+    endfor v_k
+    # light strips along the side walls and ceiling lights
+    v_lc = v_strip
+    v_li = 75
+    v_l0x = -9.95
+    v_l0y = 3.2
+    v_l0z = -14
+    v_l1x = -9.95
+    v_l1y = 3.2
+    v_l1z = 10
+    call draw_line3
+    v_l0x = 9.95
+    v_l1x = 9.95
+    call draw_line3
+    v_lc = "white"
+    v_li = 90
+    for v_k in (-12, 8, 5)
+        v_l0x = -3
+        v_l0y = 6.95
+        v_l0z = v_k
+        v_l1x = 3
+        v_l1y = 6.95
+        v_l1z = v_k
+        call draw_line3
+    endfor v_k
+}
+
+# ---------------- The ship ----------------
+create_array(v_vx, 64, numeric)
+create_array(v_vy, 64, numeric)
+create_array(v_vz, 64, numeric)
+create_array(v_wsx, 64, numeric)
+create_array(v_wsy, 64, numeric)
+create_array(v_wcz, 64, numeric)
+create_array(v_dd, 96, numeric)
+create_array(v_di, 96, numeric)
+create_array(v_dl, 96, numeric)
+
+def draw_ship {
+    # ship rotation: roll (about z), pitch (about x), yaw (about y)
+    v_cr = cos(v_sroll)
+    v_sr = sin(v_sroll)
+    v_cp = cos(v_spitch)
+    v_sp = sin(v_spitch)
+    v_cyw = cos(v_syaw)
+    v_syw = sin(v_syaw)
+    for v_k in (0, v_nv - 1, 1)
+        v_x = v_mx[v_k] * v_cr - v_my[v_k] * v_sr
+        v_y = v_mx[v_k] * v_sr + v_my[v_k] * v_cr
+        v_z = v_mz[v_k]
+        v_y2 = v_y * v_cp - v_z * v_sp
+        v_z = v_y * v_sp + v_z * v_cp
+        v_y = v_y2
+        v_x2 = v_x * v_cyw + v_z * v_syw
+        v_z = 0 - v_x * v_syw + v_z * v_cyw
+        v_x = v_x2
+        v_vx[v_k] = v_x + v_shx
+        v_vy[v_k] = v_y + v_shy
+        v_vz[v_k] = v_z + v_shz
+        v_wx = v_vx[v_k]
+        v_wy = v_vy[v_k]
+        v_wz = v_vz[v_k]
+        call to_cam
+        v_wcz[v_k] = v_cz
+        v_wsx[v_k] = 31.5 + v_cx / max(v_cz, v_near) * v_focal
+        v_wsy[v_k] = 31.5 - v_cy / max(v_cz, v_near) * v_focal
+    endfor v_k
+    # light from above and a little in front
+    v_lx3 = 0.25
+    v_ly3 = 0.85
+    v_lz3 = -0.45
+    v_nd = 0
+    for v_t3 in (0, v_nt - 1, 1)
+        v_a = v_ta[v_t3]
+        v_b = v_tb[v_t3]
+        v_c = v_tcx[v_t3]
+        if v_wcz[v_a] > v_near and v_wcz[v_b] > v_near and v_wcz[v_c] > v_near then
+            # back-face test in screen space
+            v_cross = (v_wsx[v_b] - v_wsx[v_a]) * (v_wsy[v_c] - v_wsy[v_a]) - (v_wsy[v_b] - v_wsy[v_a]) * (v_wsx[v_c] - v_wsx[v_a])
+            if v_cross < 0 or v_tds[v_t3] == 1 then
+                # world normal for lighting
+                v_e1x = v_vx[v_b] - v_vx[v_a]
+                v_e1y = v_vy[v_b] - v_vy[v_a]
+                v_e1z = v_vz[v_b] - v_vz[v_a]
+                v_e2x = v_vx[v_c] - v_vx[v_a]
+                v_e2y = v_vy[v_c] - v_vy[v_a]
+                v_e2z = v_vz[v_c] - v_vz[v_a]
+                v_nx = v_e1y * v_e2z - v_e1z * v_e2y
+                v_ny = v_e1z * v_e2x - v_e1x * v_e2z
+                v_nz = v_e1x * v_e2y - v_e1y * v_e2x
+                v_nl = sqrt(v_nx * v_nx + v_ny * v_ny + v_nz * v_nz) + 0.00001
+                v_dot = abs(v_nx * v_lx3 + v_ny * v_ly3 + v_nz * v_lz3) / v_nl
+                v_dd[v_nd] = v_wcz[v_a] + v_wcz[v_b] + v_wcz[v_c]
+                v_di[v_nd] = v_t3
+                v_dl[v_nd] = 0.3 + v_dot * 0.7
+                v_nd = v_nd + 1
+            endif
+        endif
+    endfor v_t3
+    # sort far to near
+    for v_a in (1, v_nd - 1, 1)
+        v_j = v_a
+        while v_j > 0 and v_dd[v_j - 1] < v_dd[v_j] then
+            v_tmp = v_dd[v_j]
+            v_dd[v_j] = v_dd[v_j - 1]
+            v_dd[v_j - 1] = v_tmp
+            v_tmp = v_di[v_j]
+            v_di[v_j] = v_di[v_j - 1]
+            v_di[v_j - 1] = v_tmp
+            v_tmp = v_dl[v_j]
+            v_dl[v_j] = v_dl[v_j - 1]
+            v_dl[v_j - 1] = v_tmp
+            v_j = v_j - 1
+        endwhile
+    endfor v_a
+    for v_k in (0, v_nd - 1, 1)
+        v_t3 = v_di[v_k]
+        v_ci = v_tcol[v_t3]
+        v_tc = v_pal[v_ci]
+        v_ti = min(v_dl[v_k] * 95, 100)
+        if v_ci == 5 then
+            # engine nozzles: dark when off, glowing when firing
+            v_tc = "orange"
+            v_ti = 15 + v_glow * 85
+            if v_glow > 0.8 and v_t % 3 < 1.5 then
+                v_tc = "yellow"
+            endif
+        endif
+        v_x0 = v_wsx[v_ta[v_t3]]
+        v_y0 = v_wsy[v_ta[v_t3]]
+        v_x1 = v_wsx[v_tb[v_t3]]
+        v_y1 = v_wsy[v_tb[v_t3]]
+        v_x2 = v_wsx[v_tcx[v_t3]]
+        v_y2 = v_wsy[v_tcx[v_t3]]
+        call fill_tri
+    endfor v_k
+}
+
+# Exhaust: glowing puffs behind the two engine pods
+v_nex = 24
+create_array(v_exx, v_nex, numeric)
+create_array(v_exy, v_nex, numeric)
+create_array(v_exz, v_nex, numeric)
+create_array(v_exl, v_nex, numeric)
+v_exi = 0
+def exhaust {
+    if v_glow > 0.3 then
+        for v_sd in (-1, 1, 2)
+            # pod nozzle in ship space, turned by the ship's yaw (enough here)
+            v_px = 1.25 * v_sd * v_ship_scale
+            v_pz = 1.8 * v_ship_scale
+            v_exx[v_exi] = v_shx + v_px * cos(v_syaw) + v_pz * sin(v_syaw)
+            v_exy[v_exi] = v_shy - 0.22 * v_ship_scale
+            v_exz[v_exi] = v_shz - v_px * sin(v_syaw) + v_pz * cos(v_syaw)
+            v_exl[v_exi] = 1
+            v_exi = (v_exi + 1) % v_nex
+        endfor v_sd
+    endif
+    for v_k in (0, v_nex - 1, 1)
+        if v_exl[v_k] > 0 then
+            v_exl[v_k] = v_exl[v_k] - (0.07 + v_space * 0.08) / v_pace * 1.7
+            v_exz[v_k] = v_exz[v_k] + 0.05
+            v_wx = v_exx[v_k]
+            v_wy = v_exy[v_k]
+            v_wz = v_exz[v_k]
+            call to_cam
+            if v_cz > v_near and v_exl[v_k] > 0 then
+                v_rr = v_exl[v_k] * 0.16 * v_glow / v_cz * v_focal
+                v_ecol = "orange"
+                if v_exl[v_k] > 0.6 then
+                    v_ecol = "yellow"
+                endif
+                if v_rr >= 0.6 then
+                    draw_circle(31.5 + v_cx / v_cz * v_focal, 31.5 - v_cy / v_cz * v_focal, v_rr, v_ecol, 90 * v_exl[v_k], true)
+                else
+                    mplot(31.5 + v_cx / v_cz * v_focal, 31.5 - v_cy / v_cz * v_focal, v_ecol, 90 * v_exl[v_k])
+                endif
+            endif
+        endif
+    endfor v_k
+}
+
+# Space: stars that the camera flies past (and that streak in hyperspace)
+def draw_stars_near {
+    for v_k in (0, v_nstars - 1, 1)
+        v_wx = v_spx[v_k]
+        v_wy = v_spy[v_k]
+        v_wz = v_stz[v_k] * 0 + v_spz_base[v_k]
+        call to_cam
+        if v_cz < 0.5 then
+            # passed the camera: put it far ahead again
+            v_spx[v_k] = v_ex + random(-300, 300, 0) / 10
+            v_spy[v_k] = v_ey + random(-300, 300, 0) / 10
+            v_spz_base[v_k] = v_ez - random(300, 900, 0) / 10
+        else
+            v_sx = 31.5 + v_cx / v_cz * v_focal
+            v_sy = 31.5 - v_cy / v_cz * v_focal
+            v_bri = min(max(v_stb[v_k] * (1.2 - v_cz / 90), 0), 100)
+            if v_warp > 0.05 then
+                # streak back toward where the star was a moment ago
+                v_wz = v_wz - v_warp * 6
+                call to_cam
+                if v_cz > 0.5 then
+                    draw_line(v_sx, v_sy, 31.5 + v_cx / v_cz * v_focal, 31.5 - v_cy / v_cz * v_focal, white, v_bri)
+                endif
+            else
+                mplot(v_sx, v_sy, white, v_bri)
+            endif
+        endif
+    endfor v_k
+}
+create_array(v_spz_base, v_nstars, numeric)
+
+# Re-scatter the space stars around the camera (start of each space scene)
+def reset_stars {
+    for v_k in (0, v_nstars - 1, 1)
+        v_spx[v_k] = v_ex + random(-300, 300, 0) / 10
+        v_spy[v_k] = v_ey + random(-300, 300, 0) / 10
+        v_spz_base[v_k] = v_ez - random(10, 900, 0) / 10
+    endfor v_k
+    for v_k in (0, v_nast - 1, 1)
+        v_asx[v_k] = v_ex + random(-120, 120, 0) / 10
+        v_asy[v_k] = v_ey + random(-60, 60, 0) / 10
+        v_asz[v_k] = v_ez - random(60, 600, 0) / 10
+    endfor v_k
+}
+
+# Asteroids drift past like big, tumbling stars
+v_nast = 9
+create_array(v_asx, v_nast, numeric)
+create_array(v_asy, v_nast, numeric)
+create_array(v_asz, v_nast, numeric)
+create_array(v_asr, v_nast, numeric)
+create_array(v_ass, v_nast, numeric)
+for v_k in (0, v_nast - 1, 1)
+    v_asr[v_k] = random(30, 90, 0) / 100
+    v_ass[v_k] = random(5, 7, 0)
+endfor v_k
+def draw_asteroids {
+    for v_k in (0, v_nast - 1, 1)
+        v_wx = v_asx[v_k]
+        v_wy = v_asy[v_k]
+        v_wz = v_asz[v_k]
+        call to_cam
+        if v_cz < 0.8 then
+            v_asx[v_k] = v_ex + random(-120, 120, 0) / 10
+            v_asy[v_k] = v_ey + random(-60, 60, 0) / 10
+            v_asz[v_k] = v_ez - random(400, 600, 0) / 10
+        else
+            v_rp = v_asr[v_k] / v_cz * v_focal
+            if v_rp >= 0.7 then
+                v_ai = max(min(110 - v_cz * 1.6, 90), 10)
+                draw_polygon(31.5 + v_cx / v_cz * v_focal, 31.5 - v_cy / v_cz * v_focal, v_rp, v_ass[v_k], dark_brown, v_ai, v_t * 3 + v_k * 40, true)
+                draw_polygon(31.5 + v_cx / v_cz * v_focal - v_rp * 0.2, 31.5 - v_cy / v_cz * v_focal - v_rp * 0.2, v_rp * 0.6, v_ass[v_k], gray, v_ai * 0.6, v_t * 3 + v_k * 40, true)
+            endif
+        endif
+    endfor v_k
+}
+
+# Ring system around the planet at (v_bx, v_by): two tilted ellipses drawn as
+# line segments. Pass 0 draws the far half (above the centre line, behind the
+# planet), pass 1 the near half (below it, in front of the planet).
+def draw_rings {
+    v_tilt = -0.21
+    v_ct = cos(v_tilt)
+    v_st = sin(v_tilt)
+    for v_rk in (0, 1, 1)
+        v_ra = v_prad * (1.8 - v_rk * 0.25)
+        v_rb = v_prad * (0.42 - v_rk * 0.08)
+        v_rcol = "tan"
+        v_rint = 60
+        if v_rk == 1 then
+            v_rcol = "wood_brown"
+            v_rint = 45
+        endif
+        for v_k in (0, 31, 1)
+            v_a1 = v_k / 32 * 6.283185
+            v_a2 = (v_k + 1) / 32 * 6.283185
+            v_mid = sin((v_a1 + v_a2) * 0.5)
+            if (v_rpass == 0 and v_mid < 0) or (v_rpass == 1 and v_mid >= 0) then
+                v_ex1 = cos(v_a1) * v_ra
+                v_ey1 = sin(v_a1) * v_rb
+                v_ex2 = cos(v_a2) * v_ra
+                v_ey2 = sin(v_a2) * v_rb
+                draw_line(v_bx + v_ex1 * v_ct - v_ey1 * v_st, v_by + v_ex1 * v_st + v_ey1 * v_ct, v_bx + v_ex2 * v_ct - v_ey2 * v_st, v_by + v_ex2 * v_st + v_ey2 * v_ct, v_rcol, v_rint)
+            endif
+        endfor v_k
+    endfor v_rk
+}
+
+# Planet (optionally ringed) or nebula, far away in a fixed direction
+v_nneb = 60
+create_array(v_nbx, v_nneb, numeric)
+create_array(v_nby, v_nneb, numeric)
+create_array(v_nbz, v_nneb, numeric)
+create_array(v_nbi, v_nneb, numeric)
+def draw_backdrop {
+    v_cz = v_bdx * v_fx + v_bdy * v_fy + v_bdz * v_fz
+    if v_cz > 0.2 then
+        v_cx = v_bdx * v_rx + v_bdy * v_ry + v_bdz * v_rz
+        v_cy = v_bdx * v_ux + v_bdy * v_uy + v_bdz * v_uz
+        v_bx = 31.5 + v_cx / v_cz * v_focal
+        v_by = 31.5 - v_cy / v_cz * v_focal
+        if v_backdrop <= 1 then
+            # rings: the far half is drawn first so the planet hides it
+            if v_backdrop == 1 then
+                v_rpass = 0
+                call draw_rings
+            endif
+            # banded planet with its night side away from the sun
+            for v_r in (0 - v_prad, v_prad, 1)
+                v_hw = sqrt(max(v_prad * v_prad - v_r * v_r, 0))
+                v_band = v_pcol
+                v_bi = 60 + sin(v_r * 0.7 + v_pseed) * 15
+                if sin(v_r * 0.45 + v_pseed * 2) > 0.5 then
+                    v_band = v_pcol2
+                endif
+                v_term = v_bx + v_hw * 0.35
+                draw_line(v_bx - v_hw, v_by + v_r, v_term, v_by + v_r, v_band, v_bi)
+                draw_line(v_term, v_by + v_r, v_bx + v_hw, v_by + v_r, v_band, v_bi * 0.25)
+            endfor v_r
+            # then the near half of the rings, in front of the planet
+            if v_backdrop == 1 then
+                v_rpass = 1
+                call draw_rings
+            endif
+        else
+            # nebula: glowing cloud of coloured specks
+            for v_k in (0, v_nneb - 1, 1)
+                draw_circle(v_bx + v_nbx[v_k], v_by + v_nby[v_k], v_nbz[v_k], v_pcol, v_nbi[v_k], true)
+            endfor v_k
+        endif
+    endif
+}
+
+create_array(v_planc, 6, string)
+v_planc[0] = "orange"
+v_planc[1] = "teal"
+v_planc[2] = "crimson"
+v_planc[3] = "royal_blue"
+v_planc[4] = "olive"
+v_planc[5] = "purple"
+create_array(v_stripc, 4, string)
+v_stripc[0] = "cyan"
+v_stripc[1] = "magenta"
+v_stripc[2] = "orange"
+v_stripc[3] = "lime"
+create_array(v_doorcs, 3, string)
+v_doorcs[0] = "gray"
+v_doorcs[1] = "dark_brown"
+v_doorcs[2] = "navy"
+create_array(v_flashc, 4, string)
+v_flashc[0] = "white"
+v_flashc[1] = "sky_blue"
+v_flashc[2] = "lavender"
+v_flashc[3] = "peach"
+
+# Pick everything that changes from one film to the next
+def new_film {
+    call build_ship
+    v_orbit0 = random(0, 628, 0) / 100
+    v_strip = v_stripc[random(0, 3, 0)]
+    v_doorc = v_doorcs[random(0, 2, 0)]
+    v_launch_cam = random(0, 2, 0)
+    v_backdrop = random(0, 3, 0)
+    v_weave = random(0, 1, 0) * 2 - 1
+    v_flash = v_flashc[random(0, 3, 0)]
+    v_pcol = v_planc[random(0, 5, 0)]
+    v_pcol2 = v_planc[random(0, 5, 0)]
+    v_prad = random(10, 18, 0)
+    v_pseed = random(0, 628, 0) / 100
+    # the backdrop sits ahead and a little to one side
+    v_bdx = random(-35, 35, 0) / 100
+    v_bdy = random(5, 30, 0) / 100
+    v_bdz = -1
+    v_bl = sqrt(v_bdx * v_bdx + v_bdy * v_bdy + 1)
+    v_bdx = v_bdx / v_bl
+    v_bdy = v_bdy / v_bl
+    v_bdz = v_bdz / v_bl
+    for v_k in (0, v_nneb - 1, 1)
+        v_a = random(0, 628, 0) / 100
+        v_rr = random(0, 100, 0) / 100
+        v_nbx[v_k] = cos(v_a) * v_rr * 20
+        v_nby[v_k] = sin(v_a) * v_rr * 9
+        v_nbz[v_k] = 1 + (1 - v_rr) * 3
+        v_nbi[v_k] = 8 + (1 - v_rr) * 22
+    endfor v_k
+    v_space_started = 0
+}
+for v_k in (0, v_nstars - 1, 1)
+    v_spx[v_k] = random(-300, 300, 0) / 10
+    v_spy[v_k] = random(-300, 300, 0) / 10
+    v_spz_base[v_k] = 0 - random(0, 900, 0) / 10
+endfor v_k
+
+# ---------------- The film ----------------
+# Each loop is a new film: new ship design, hangar colours, launch shot,
+# space backdrop, flight path and hyperspace colour.
+v_t = 0
+v_scene = 0
+call new_film
+
+def smooth {
+    # v_e in 0..1 -> eased v_e
+    v_e = min(max(v_e, 0), 1)
+    v_e = v_e * v_e * (3 - 2 * v_e)
+}
+
+while true then
+    v_t = v_t + 1 / v_pace
+    if v_t > v_tD then
+        v_t = 0
+        call new_film
+    endif
+    # defaults: ship resting on the pad
+    v_shx = 0
+    v_shy = 0.6
+    v_shz = 0
+    v_syaw = 0
+    v_spitch = 0
+    v_sroll = 0
+    v_door = 0
+    v_glow = 0
+    v_warp = 0
+    v_space = 0
+    # launch camera position (used from phase B on): three different shots
+    if v_launch_cam == 0 then
+        # side view
+        v_cxl = 5.2
+        v_cyl = 1.9
+        v_czl = 4.6
+    elseif v_launch_cam == 1 then
+        # by the doors: the ship flies toward you and roars overhead
+        v_cxl = 1.6
+        v_cyl = 0.7
+        v_czl = -11
+    else
+        # high in a corner of the hangar
+        v_cxl = -8.5
+        v_cyl = 6.3
+        v_czl = 8.5
+    endif
+    if v_t < v_tA then
+        # 1. circle the ship
+        v_a = v_orbit0 + v_t * 0.012
+        v_ex = sin(v_a) * 5.4
+        v_ey = 2.0 + sin(v_t * 0.02) * 0.4
+        v_ez = cos(v_a) * 5.4
+        v_lx = 0
+        v_ly = 0.6
+        v_lz = 0
+    elseif v_t < v_tB then
+        # 2. doors open, engines spool up, camera swings to the launch view
+        v_e = (v_t - v_tA) / (v_tB - v_tA)
+        v_door = 6 * min(v_e * 1.4, 1)
+        v_glow = max(v_e * 1.3 - 0.3, 0)
+        v_a = v_orbit0 + v_tA * 0.012
+        call smooth
+        v_ex = sin(v_a) * 5.4 * (1 - v_e) + v_cxl * v_e
+        v_ey = 2.0 * (1 - v_e) + v_cyl * v_e
+        v_ez = cos(v_a) * 5.4 * (1 - v_e) + v_czl * v_e
+        v_lx = 0
+        v_ly = 0.6 + v_e * 0.8
+        v_lz = 0 - v_e * 4
+        if v_launch_cam == 1 then
+            v_lz = 0
+        endif
+    elseif v_t < v_tC then
+        # 3. launch: lift off, then accelerate out through the doors
+        v_door = 6
+        v_glow = 1
+        v_s = v_t - v_tB
+        v_shy = 0.6 + min(v_s / 40, 1) * 1.6
+        v_go = max(v_s - 30, 0)
+        v_shz = 0 - v_go * v_go * 0.006
+        v_spitch = 0 - min(v_s / 40, 1) * 0.08
+        v_ex = v_cxl
+        v_ey = v_cyl
+        v_ez = v_czl
+        v_lx = v_shx * 0.6
+        v_ly = v_shy * 0.8 + 0.5
+        v_lz = max(v_shz, -16) * 0.8 - 2
+        if v_launch_cam == 1 then
+            # track the ship: it comes toward the camera, passes overhead,
+            # and the camera turns to watch it leave through the doors
+            v_lx = v_shx
+            v_ly = v_shy
+            v_lz = v_shz
+        endif
+    else
+        # 4. space: chase camera, then hyperspace
+        v_space = 1
+        v_glow = 1
+        v_s = v_t - v_tC
+        v_sp = v_s * 0.35
+        v_shx = sin(v_s * 0.02) * 1.5 * v_weave
+        v_shy = 0
+        v_shz = 0 - v_sp
+        v_sroll = sin(v_s * 0.02 + 1.2) * 0.35 * v_weave
+        v_syaw = 0 - cos(v_s * 0.02) * 0.06 * v_weave
+        v_jump = v_tD - v_tC - 90
+        v_ex = v_shx * 0.5
+        v_ey = 1.2
+        v_ez = v_shz + 5
+        if v_s > v_jump then
+            # hyperspace: stars stretch, the ship pulls away from the camera
+            v_k2 = v_s - v_jump
+            v_warp = min(v_k2 / 30, 1)
+            v_shz = v_shz - v_k2 * v_k2 * 0.02
+        endif
+        v_lx = v_shx * 0.5
+        v_ly = 0.3
+        v_lz = v_ez - 8
+    endif
+    call set_camera
+    if v_space == 1 and v_space_started == 0 then
+        call reset_stars
+        v_space_started = 1
+    endif
+    begin_frame
+        if v_space == 0 then
+            call draw_stars_far
+            call draw_hangar
+        else
+            call draw_stars_near
+            if v_backdrop != 2 and v_warp < 0.5 then
+                call draw_backdrop
+            endif
+            if v_backdrop == 2 then
+                call draw_asteroids
+            endif
+        endif
+        call exhaust
+        if v_space == 0 or v_shz > v_ez - 90 then
+            call draw_ship
+        endif
+        # the jump flash
+        if v_space == 1 and v_t > v_tD - 18 then
+            draw_rectangle(0, 0, 64, 64, v_flash, min((v_t - (v_tD - 18)) * 5, 100), true)
+        endif
+    end_frame
+endwhile
+        
