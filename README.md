@@ -4,6 +4,8 @@
 
 This is the **native C++** runtime. Same Pixil language (`.pix`), same show library—rewritten end-to-end so the live path no longer depends on Python.
 
+**You compile it once on the Pi** (there is no prebuilt binary download). After `make`, you only edit `.pix` scripts—you do not write C++ to run a show. Rebuild when you pull runtime changes.
+
 <img src="docs/example_images/20250320_123949.jpg" width="400" alt="Pixil LED Matrix Animation Example">
 
 > Looking for the original Python edition? See **[pixil-led-matrix](https://github.com/kklasmeier/pixil-led-matrix)**. Prefer **this** repo for new installs and daily shows.
@@ -80,17 +82,26 @@ Producer wall time on a Pi 4 is typically **orders of magnitude** below the lega
 
 ## Getting started
 
+### You have to compile it
+
+Unlike the Python edition (`python Pixil.py …`), this runtime is **C++ source**. Clone the repo, install a C++ toolchain, and **build with `make`** on the machine that drives the matrix (typically a Pi 4). That produces `pixil` and `pixil-consumer`. Day-to-day you only change `.pix` files and use `./run`—no recompile unless the engine itself changed.
+
+Optional: `make test` after building.
+
 ### Requirements
-- Raspberry Pi (show hardware: Pi 4 + 64×64 RGB matrix; edit can be elsewhere)
-- g++ ≥ 12 (C++20), GNU make
+- Raspberry Pi (show hardware: Pi 4 + 64×64 RGB matrix; you can edit scripts elsewhere)
+- **g++ ≥ 12 (C++20)** and **GNU make** (to compile)
 - [hzeller/rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) / `librgbmatrix` for hardware (headless builds work without it)
 
-### Build & run
+### Build, then run
 
 ```bash
 git clone https://github.com/kklasmeier/pixil-led-matrix-cpp.git
 cd pixil-led-matrix-cpp
+
+# Compile the runtime (needed once, and again after pulling engine updates)
 nice -n 19 make -j2
+# make test   # optional
 
 # One script for 20 seconds (interactive)
 ./run interactive -- main/Aurora_Borealis.pix -t 0:20
@@ -99,7 +110,7 @@ nice -n 19 make -j2
 ./run start -- main/* -t 5:00
 ```
 
-Paths are relative to `scripts/` unless they are already a file. Details: [docs/OPS.md](docs/OPS.md).
+Paths are relative to `scripts/` unless they are already a file. Full ops notes: [docs/OPS.md](docs/OPS.md).
 
 ### Documentation
 | Doc | What it is |
