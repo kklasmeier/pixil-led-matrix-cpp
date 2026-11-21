@@ -1,0 +1,332 @@
+# Carousel - a painted merry-go-round at a night fair
+#
+# Six painted horses ride round a carousel under a striped canopy. The
+# ride starts up, runs for a while, slows to a stop, rests with every
+# bulb lit, then starts again.
+#   - Horses on the far side shrink, face the other way and pass BEHIND
+#     the mirrored centre column; horses on the near side grow and pass
+#     in front of it.
+#   - Near the sides they turn edge-on, squeezed by a tilt, as they
+#     swing round toward you or away.
+#   - Each horse rises and falls on its brass pole as the ride turns.
+#   - The canopy and column stripes turn with the ride.
+#   - Two rings of bulbs chase each other round the canopy, done by
+#     hiding and showing two layers that are drawn once. The chase
+#     follows the ride's speed, and every bulb stays lit while it rests.
+#
+# What it shows off (layers + sprite transforms):
+#   set_sprite_layer moves each horse between the far and near layers,
+#   set_sprite_z orders horses by depth, set_sprite_scale for distance,
+#   set_sprite_flip for the far side, set_sprite_tilt to turn them
+#   edge-on, and hide_layer / show_layer for the chase lights.
+#
+# Layers: 0 fairground night   3 platform   4 far poles   5 far horses
+#         10 centre column   19 near poles   20 near horses
+#         30 canopy   31 bulbs A   32 bulbs B
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_pi = 3.14159
+
+# ---------------- Horses (original designs) ----------------
+def draw_horse {
+    # facing right in a 16x14 cel; colours v_hb body, v_hm mane, v_hs saddle
+    # tail
+    draw_line(3, 5, 1, 8, v_hm, 90)
+    draw_line(2, 5, 0, 9, v_hm, 70)
+    # body
+    draw_rectangle(3, 4, 9, 5, v_hb, 95, true)
+    draw_line(4, 3, 10, 3, v_hb, 95)
+    draw_line(4, 9, 10, 9, v_hb, 80)
+    # neck and head
+    draw_line(11, 4, 12, 1, v_hb, 95)
+    draw_line(12, 4, 13, 1, v_hb, 95)
+    draw_rectangle(12, 0, 3, 3, v_hb, 95, true)
+    plot(15, 2, v_hb, 90)
+    plot(13, 1, black, 100)
+    plot(12, 0, v_hm, 100)
+    # mane down the neck
+    plot(11, 2, v_hm, 100)
+    plot(11, 3, v_hm, 100)
+    plot(10, 4, v_hm, 100)
+    # saddle and blanket
+    draw_rectangle(6, 3, 4, 3, v_hs, 95, true)
+    draw_line(6, 6, 9, 6, gold, 90)
+    # prancing legs: front pair raised, back pair planted
+    draw_line(11, 8, 13, 10, v_hb, 90)
+    draw_line(13, 10, 13, 12, v_hb, 90)
+    draw_line(10, 9, 11, 13, v_hb, 90)
+    draw_line(4, 9, 3, 13, v_hb, 90)
+    draw_line(6, 9, 6, 13, v_hb, 90)
+    plot(13, 12, black, 100)
+    plot(11, 13, black, 100)
+    plot(3, 13, black, 100)
+    plot(6, 13, black, 100)
+}
+
+define_sprite(horse, 16, 14)
+    sprite_cel(0)
+        v_hb = "white"
+        v_hm = "gold"
+        v_hs = "red"
+        call draw_horse
+    sprite_cel(1)
+        v_hb = "dark_gray"
+        v_hm = "silver"
+        v_hs = "royal_blue"
+        call draw_horse
+    sprite_cel(2)
+        v_hb = "tan"
+        v_hm = "white"
+        v_hs = "purple"
+        call draw_horse
+    sprite_cel(3)
+        v_hb = "pink"
+        v_hm = "magenta"
+        v_hs = "teal"
+        call draw_horse
+    sprite_cel(4)
+        v_hb = "sky_blue"
+        v_hm = "navy"
+        v_hs = "orange"
+        call draw_horse
+    sprite_cel(5)
+        v_hb = "peach"
+        v_hm = "brown"
+        v_hs = "green"
+        call draw_horse
+endsprite
+
+# ---------------- Static scenery ----------------
+def draw_fair {
+    set_layer(0)
+    for v_y in (0, 63, 1)
+        draw_line(0, v_y, 63, v_y, navy, max(30 - v_y * 0.45, 3))
+    endfor v_y
+    for v_i in (0, 24, 1)
+        plot(random(0, 63, 0), random(0, 30, 0), white, random(20, 70, 0))
+    endfor v_i
+    # distant string of fair lights and tents
+    for v_x in (0, 63, 1)
+        v_yy = 24 + sin(v_x * 0.2) * 1.5
+        if v_x % 4 == 0 then
+            plot(v_x, v_yy, (v_x * 7) % 100, 45)
+        endif
+    endfor v_x
+    draw_polygon(6, 31, 6, 3, maroon, 40, 30, true)
+    draw_polygon(58, 31, 6, 3, forest_green, 40, 30, true)
+    # grass
+    draw_rectangle(0, 34, 64, 30, forest_green, 14, true)
+    # platform
+    set_layer(3)
+    draw_ellipse(32, 50, 30, 7, crimson, 70, true)
+    draw_ellipse(32, 49, 29, 6, wood_brown, 55, true)
+    draw_ellipse(32, 50, 30, 7, gold, 60, false)
+    draw_rectangle(2, 50, 61, 4, maroon, 70, true)
+    draw_line(2, 54, 62, 54, gold, 60)
+}
+
+def draw_bulbs {
+    # two interleaved bulb rings on the canopy rim and platform edge
+    set_layer(31)
+    for v_i in (0, 15, 1)
+        v_x = 4 + v_i * 3.7
+        if v_i % 2 == 0 then
+            plot(v_x, 15, yellow, 100)
+            plot(v_x + 1, 53, yellow, 90)
+        else
+            plot(v_x, 16, orange, 100)
+        endif
+    endfor v_i
+    set_layer(32)
+    for v_i in (0, 15, 1)
+        v_x = 5.8 + v_i * 3.7
+        if v_i % 2 == 0 then
+            plot(v_x, 16, white, 100)
+            plot(v_x + 1, 53, white, 90)
+        else
+            plot(v_x, 15, yellow, 100)
+        endif
+    endfor v_i
+}
+
+# ---------------- Turning parts ----------------
+v_nstr = 16
+def draw_canopy {
+    set_layer(30)
+    clear_layer(30)
+    # stripes as fans of lines from the apex to the rim
+    for v_s in (0, v_nstr - 1, 1)
+        v_a0 = v_s * 2 * v_pi / v_nstr + v_rot
+        v_a1 = v_a0 + 2 * v_pi / v_nstr
+        if cos(v_a0) > -0.2 or cos(v_a1) > -0.2 then
+            v_xa = 32 + sin(v_a0) * 29
+            v_xb = 32 + sin(v_a1) * 29
+            v_sc = "red"
+            if v_s % 2 == 1 then
+                v_sc = "white"
+            endif
+            v_lo = min(v_xa, v_xb)
+            v_hi = max(v_xa, v_xb)
+            for v_x in (int(v_lo), int(v_hi), 1)
+                draw_line(32, 1, v_x, 13, v_sc, 80)
+            endfor v_x
+            # scallop under each stripe
+            draw_line(v_lo, 14, v_hi, 14, v_sc, 75)
+            plot((v_lo + v_hi) / 2, 15, v_sc, 60)
+        endif
+    endfor v_s
+    draw_line(3, 13, 61, 13, gold, 80)
+    # flag on top
+    plot(32, 0, gold, 100)
+    v_wv = int(sin(v_t * 0.12) + 1)
+    draw_line(33, 0, 35, v_wv, red, 90)
+}
+
+def draw_column {
+    set_layer(10)
+    clear_layer(10)
+    for v_x in (29, 35, 1)
+        v_u = asin(max(min((v_x - 32) / 3.6, 1), -1)) + v_rot * 2
+        v_band = int((v_u + 20) / 0.7) % 3
+        v_cc = "gold"
+        v_ci = 70 - abs(v_x - 32) * 10
+        if v_band == 1 then
+            v_cc = "white"
+        elseif v_band == 2 then
+            v_cc = "sky_blue"
+        endif
+        draw_line(v_x, 16, v_x, 47, v_cc, v_ci)
+    endfor v_x
+    draw_line(28, 16, 36, 16, gold, 90)
+    draw_line(28, 47, 36, 47, gold, 90)
+}
+
+# ---------------- Horses on the ride ----------------
+v_nh = 6
+create_array(v_hlay, v_nh, numeric)
+for v_i in (0, v_nh - 1, 1)
+    v_hlay[v_i] = -1
+endfor v_i
+
+def place_horses {
+    set_layer(4)
+    clear_layer(4)
+    set_layer(19)
+    clear_layer(19)
+    for v_i in (0, v_nh - 1, 1)
+        v_a = v_rot + v_i * 2 * v_pi / v_nh
+        v_c = cos(v_a)
+        v_sn = sin(v_a)
+        v_hx = 32 + v_sn * 24
+        v_sc = 0.85 + v_c * 0.3
+        v_bob = sin(v_rot * 4 + v_i * 2.1) * 3 * v_sc
+        v_hy = 33 + v_c * 7 + v_bob
+        # far side goes behind the column, near side in front
+        v_want = 5
+        v_pl = 4
+        if v_c > 0 then
+            v_want = 20
+            v_pl = 19
+        endif
+        if v_hlay[v_i] != v_want then
+            set_sprite_layer(horse, v_want, v_i)
+            if v_want == 20 then
+                set_sprite_flip(horse, 0, v_i)
+            else
+                set_sprite_flip(horse, 1, v_i)
+            endif
+            v_hlay[v_i] = v_want
+        endif
+        set_sprite_z(horse, int(v_c * 50) + 50, v_i)
+        # brass pole from the canopy to the floor
+        set_layer(v_pl)
+        draw_line(v_hx, 14, v_hx, 49 + v_c * 5, gold, 45 + v_c * 35)
+        # squeeze edge-on at the sides
+        set_sprite_scale(horse, v_sc, v_i)
+        set_sprite_tilt(horse, 0, v_sn * 62, v_i)
+        move_sprite(horse, v_hx, v_hy, v_i, v_i)
+    endfor v_i
+}
+
+# ---------------- Ride control ----------------
+v_rot = 0
+v_spd = 0
+v_state = 0      # 0 starting, 1 running, 2 slowing, 3 resting
+v_st = 0
+v_top = 0.011
+v_chase = 0
+v_cpos = 0
+v_t = 0
+
+begin_frame
+    call draw_fair
+    call draw_bulbs
+    set_layer(5)
+    for v_i in (0, v_nh - 1, 1)
+        show_sprite(horse, 32, 33, v_i, 0, v_i)
+        set_sprite_anchor(horse, 1, v_i)
+    endfor v_i
+    call draw_canopy
+    call draw_column
+    call place_horses
+end_frame
+
+while true then
+    v_t = v_t + v_k
+    v_st = v_st + v_k
+    if v_state == 0 then
+        v_spd = min(v_spd + 0.00004 * v_k, v_top)
+        if v_spd >= v_top then
+            v_state = 1
+            v_st = 0
+        endif
+    elseif v_state == 1 then
+        if v_st > 1500 then
+            v_state = 2
+            v_st = 0
+        endif
+    elseif v_state == 2 then
+        v_spd = max(v_spd - 0.00003 * v_k, 0)
+        if v_spd <= 0 then
+            v_state = 3
+            v_st = 0
+        endif
+    else
+        if v_st > 360 then
+            v_state = 0
+            v_st = 0
+            v_top = random(9, 14, 0) / 1000
+        endif
+    endif
+    begin_frame(true)
+        if v_spd > 0 then
+            v_rot = v_rot + v_spd * v_k
+            call draw_canopy
+            call draw_column
+            call place_horses
+        endif
+        # chase lights: flip the two bulb layers at a rate set by the speed
+        if v_state == 3 then
+            show_layer(31)
+            show_layer(32)
+            v_chase = -1
+        else
+            v_cpos = v_cpos + (0.03 + v_spd * 10) * v_k
+            v_ph = int(v_cpos) % 2
+            if v_ph != v_chase then
+                v_chase = v_ph
+                if v_ph == 0 then
+                    show_layer(31)
+                    hide_layer(32)
+                else
+                    hide_layer(31)
+                    show_layer(32)
+                endif
+            endif
+        endif
+    end_frame
+endwhile

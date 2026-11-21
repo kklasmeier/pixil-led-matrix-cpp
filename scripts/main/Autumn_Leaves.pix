@@ -1,0 +1,290 @@
+# Autumn Leaves - leaves tumbling down through a park at golden hour
+#
+# A quiet park in autumn sunlight: a big old tree in front, glowing orange
+# and gold trees behind, a lamp post and a bench on the grass. Leaves of
+# several kinds and colours tumble down from the canopy, fluttering and
+# turning over as they fall, spinning, drifting with the breeze. Near
+# leaves are big and fall fast; far ones are small and slow. Gusts of wind
+# now and then sweep a flurry across the scene. Fallen leaves settle on
+# the grass, lie there a while, then fade away.
+#
+# What it shows off (Pixil sprite transforms + layers):
+#   - Each leaf is one small sprite. Its size comes from how near it is
+#     (set_sprite_scale), it flutters by tipping on both axes
+#     (set_sprite_tilt), turns flat (set_sprite_angle), and shows its paler
+#     underside when it flips over (sprite_back_cel).
+#   - Sub-pixel positions keep the slow far leaves gliding smoothly.
+#   - Far leaves fall behind the big tree (layer 5), near leaves in front of
+#     it (layer 20), so they pass behind and in front of the trunk.
+#
+# Layers: 0 sky, park and far trees   5 far leaves   10 big tree
+#         20 near leaves
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_ground = 50
+
+# ---------------- Leaf sprites (front cel 0, paler back cel 1) ----------------
+define_sprite(maple, 9, 9)
+    sprite_cel(0)
+        draw_line(4, 0, 4, 8, 8, 95)
+        draw_line(1, 2, 7, 2, 8, 95)
+        draw_line(0, 4, 8, 4, 8, 95)
+        draw_line(2, 6, 6, 6, 8, 95)
+        draw_line(1, 3, 7, 3, 6, 95)
+        draw_line(2, 5, 6, 5, 6, 95)
+        plot(4, 1, 6, 95)
+        draw_line(4, 1, 4, 7, 2, 70)
+        plot(4, 8, wood_brown, 90)
+    sprite_cel(1)
+        draw_line(4, 0, 4, 8, 11, 70)
+        draw_line(1, 2, 7, 2, 11, 70)
+        draw_line(0, 4, 8, 4, 11, 70)
+        draw_line(2, 6, 6, 6, 11, 70)
+        draw_line(1, 3, 7, 3, 11, 60)
+        draw_line(2, 5, 6, 5, 11, 60)
+        plot(4, 8, wood_brown, 70)
+endsprite
+
+define_sprite(oakleaf, 7, 9)
+    sprite_cel(0)
+        draw_ellipse(3, 4, 2, 4, 14, 95, true, 0)
+        plot(0, 2, 14, 90)
+        plot(6, 3, 14, 90)
+        plot(0, 5, 14, 90)
+        plot(6, 6, 14, 90)
+        draw_line(3, 1, 3, 8, 10, 70)
+    sprite_cel(1)
+        draw_ellipse(3, 4, 2, 4, 15, 65, true, 0)
+        plot(0, 2, 15, 60)
+        plot(6, 3, 15, 60)
+        draw_line(3, 1, 3, 8, 13, 50)
+endsprite
+
+define_sprite(birch, 6, 7)
+    sprite_cel(0)
+        draw_ellipse(3, 3, 2, 3, 16, 95, true, 0)
+        plot(3, 0, 16, 95)
+        draw_line(3, 1, 3, 6, 13, 60)
+    sprite_cel(1)
+        draw_ellipse(3, 3, 2, 3, 17, 65, true, 0)
+        draw_line(3, 1, 3, 6, 16, 50)
+endsprite
+
+define_sprite(redleaf, 7, 8)
+    sprite_cel(0)
+        draw_ellipse(3, 4, 3, 3, 1, 95, true, 0)
+        plot(3, 0, 1, 95)
+        draw_line(3, 1, 3, 7, 97, 70)
+        plot(1, 3, 3, 80)
+    sprite_cel(1)
+        draw_ellipse(3, 4, 3, 3, 4, 65, true, 0)
+        draw_line(3, 1, 3, 7, 3, 50)
+endsprite
+
+sprite_back_cel(maple, 1)
+sprite_back_cel(oakleaf, 1)
+sprite_back_cel(birch, 1)
+sprite_back_cel(redleaf, 1)
+
+# ---------------- Scenery ----------------
+def draw_park {
+    set_layer(0)
+    # warm evening sky
+    for v_y in (0, v_ground, 1)
+        # blue overhead through rose to orange near the ground
+        draw_line(0, v_y, 63, v_y, int(64 + v_y * 0.88) % 100, 28 + v_y * 0.55)
+    endfor v_y
+    draw_circle(12, 34, 6, 13, 45, true)
+    draw_circle(12, 34, 4, 15, 75, true)
+    # far trees: rounded canopies in fall colours
+    for v_i in (0, 7, 1)
+        v_tx = 4 + v_i * 8 + random(-2, 2, 0)
+        v_ty = v_ground - random(12, 20, 0)
+        v_hue = 3 + random(0, 12, 0)
+        draw_line(v_tx, v_ty + 4, v_tx, v_ground, dark_brown, 45)
+        draw_circle(v_tx, v_ty, random(5, 7, 0), v_hue, 35, true)
+        draw_circle(v_tx - 2, v_ty - 2, 3, v_hue + 3, 45, true)
+    endfor v_i
+    # grass with fallen leaf litter
+    for v_y in (v_ground, 63, 1)
+        draw_line(0, v_y, 63, v_y, 24, 22 + (v_y - v_ground) * 1.5)
+    endfor v_y
+    for v_i in (0, 80, 1)
+        plot(random(0, 63, 0), random(v_ground + 1, 63, 0), random(2, 14, 0), random(30, 60, 0))
+    endfor v_i
+    # bench and lamp post
+    draw_line(40, v_ground + 2, 52, v_ground + 2, dark_brown, 70)
+    draw_line(40, v_ground - 1, 52, v_ground - 1, dark_brown, 60)
+    draw_line(41, v_ground + 2, 41, v_ground + 5, black, 90)
+    draw_line(51, v_ground + 2, 51, v_ground + 5, black, 90)
+    draw_line(57, v_ground + 6, 57, v_ground - 18, black, 100)
+    draw_circle(57, v_ground - 19, 2, gold, 70, true)
+}
+
+def draw_big_tree {
+    set_layer(10)
+    # trunk on the left, with a branch reaching across the top
+    for v_x in (0, 6, 1)
+        draw_line(v_x, 63, v_x + 1, 0, dark_brown, 60 + v_x * 3)
+    endfor v_x
+    draw_line(7, 0, 8, 63, wood_brown, 45)
+    draw_line(6, 10, 30, 3, dark_brown, 80)
+    draw_line(6, 11, 30, 4, dark_brown, 70)
+    draw_line(18, 7, 26, 11, dark_brown, 70)
+    # a few clumps of leaves still on the branch
+    draw_circle(28, 4, 3, 6, 70, true)
+    draw_circle(22, 3, 2, 10, 75, true)
+    draw_circle(25, 10, 2, 3, 70, true)
+    draw_circle(12, 6, 3, 8, 70, true)
+}
+
+# ---------------- Leaves ----------------
+v_nleaf = 28
+create_array(v_lx, v_nleaf, numeric)
+create_array(v_ly, v_nleaf, numeric)
+create_array(v_lz, v_nleaf, numeric)      # nearness 0.5 (far) .. 1.6 (near)
+create_array(v_lph, v_nleaf, numeric)     # flutter phase
+create_array(v_lspin, v_nleaf, numeric)
+create_array(v_lang, v_nleaf, numeric)
+create_array(v_lrest, v_nleaf, numeric)   # > 0: lying on the grass
+create_array(v_lkind, v_nleaf, numeric)
+create_array(v_linst, v_nleaf, numeric)   # instance number within its kind
+
+def leaf_name {
+    v_kd = v_lkind[v_i]
+}
+
+def spawn_leaf {
+    v_lx[v_i] = random(-10, 74, 0)
+    v_ly[v_i] = random(-30, -4, 0)
+    v_lz[v_i] = random(50, 160, 0) / 100
+    v_lph[v_i] = random(0, 628, 0) / 100
+    v_lspin[v_i] = random(-30, 30, 0) / 10
+    v_lang[v_i] = random(0, 360, 0)
+    v_lrest[v_i] = 0
+}
+
+def place_leaf {
+    # show / move this leaf sprite with its transform
+    v_ki = v_linst[v_i]
+    v_sc = v_lz[v_i] * 1.1
+    v_tx2 = sin(v_lph[v_i] * 1.3) * 70
+    v_ty2 = v_lph[v_i] * 57 % 360
+    if v_lrest[v_i] > 0 then
+        v_tx2 = 70
+        v_ty2 = 0
+    endif
+    if v_lkind[v_i] == 0 then
+        set_sprite_transform(maple, v_sc, v_lang[v_i], v_ki, v_tx2, v_ty2, 0)
+        move_sprite(maple, v_lx[v_i], v_ly[v_i], v_ki, 0)
+    elseif v_lkind[v_i] == 1 then
+        set_sprite_transform(oakleaf, v_sc, v_lang[v_i], v_ki, v_tx2, v_ty2, 0)
+        move_sprite(oakleaf, v_lx[v_i], v_ly[v_i], v_ki, 0)
+    elseif v_lkind[v_i] == 2 then
+        set_sprite_transform(birch, v_sc, v_lang[v_i], v_ki, v_tx2, v_ty2, 0)
+        move_sprite(birch, v_lx[v_i], v_ly[v_i], v_ki, 0)
+    else
+        set_sprite_transform(redleaf, v_sc, v_lang[v_i], v_ki, v_tx2, v_ty2, 0)
+        move_sprite(redleaf, v_lx[v_i], v_ly[v_i], v_ki, 0)
+    endif
+}
+
+def show_leaves {
+    for v_i in (0, v_nleaf - 1, 1)
+        v_lkind[v_i] = v_i % 4
+        v_linst[v_i] = int(v_i / 4)
+        call spawn_leaf
+        v_ly[v_i] = random(-10, 45, 0)
+        # far leaves behind the big tree, near leaves in front of it
+        if v_lz[v_i] < 1 then
+            set_layer(5)
+        else
+            set_layer(20)
+        endif
+        v_ki = v_linst[v_i]
+        if v_lkind[v_i] == 0 then
+            show_sprite(maple, v_lx[v_i], v_ly[v_i], v_ki, 0, 0)
+            set_sprite_anchor(maple, 1, v_ki)
+        elseif v_lkind[v_i] == 1 then
+            show_sprite(oakleaf, v_lx[v_i], v_ly[v_i], v_ki, 0, 0)
+            set_sprite_anchor(oakleaf, 1, v_ki)
+        elseif v_lkind[v_i] == 2 then
+            show_sprite(birch, v_lx[v_i], v_ly[v_i], v_ki, 0, 0)
+            set_sprite_anchor(birch, 1, v_ki)
+        else
+            show_sprite(redleaf, v_lx[v_i], v_ly[v_i], v_ki, 0, 0)
+            set_sprite_anchor(redleaf, 1, v_ki)
+        endif
+    endfor v_i
+}
+
+def set_leaf_layer {
+    v_ki = v_linst[v_i]
+    v_lay = 20
+    if v_lz[v_i] < 1 then
+        v_lay = 5
+    endif
+    if v_lkind[v_i] == 0 then
+        set_sprite_layer(maple, v_lay, v_ki)
+    elseif v_lkind[v_i] == 1 then
+        set_sprite_layer(oakleaf, v_lay, v_ki)
+    elseif v_lkind[v_i] == 2 then
+        set_sprite_layer(birch, v_lay, v_ki)
+    else
+        set_sprite_layer(redleaf, v_lay, v_ki)
+    endif
+}
+
+def update_leaves {
+    for v_i in (0, v_nleaf - 1, 1)
+        v_z = v_lz[v_i]
+        if v_lrest[v_i] > 0 then
+            # lying on the grass for a while, then gone
+            v_lrest[v_i] = v_lrest[v_i] - v_k
+            if v_lrest[v_i] <= 0 then
+                call spawn_leaf
+                call set_leaf_layer
+            endif
+        else
+            v_lph[v_i] = v_lph[v_i] + 0.05 * v_k
+            # fall, drift with the breeze and sway side to side
+            v_ly[v_i] = v_ly[v_i] + (0.12 + abs(cos(v_lph[v_i] * 1.3)) * 0.1) * v_z * v_k
+            v_lx[v_i] = v_lx[v_i] + (v_wind * v_z + sin(v_lph[v_i]) * 0.25 * v_z) * v_k
+            v_lang[v_i] = v_lang[v_i] + v_lspin[v_i] * (1 + abs(v_wind) * 2) * v_k
+            # land: nearer leaves land lower on the screen
+            v_land = v_ground + (v_z - 0.5) * 11
+            if v_ly[v_i] > v_land then
+                v_ly[v_i] = v_land
+                v_lrest[v_i] = random(90, 260, 0)
+            endif
+            if v_lx[v_i] > 80 then
+                v_lx[v_i] = v_lx[v_i] - 96
+            elseif v_lx[v_i] < -16 then
+                v_lx[v_i] = v_lx[v_i] + 96
+            endif
+        endif
+        call place_leaf
+    endfor v_i
+}
+
+# ---------------- Main ----------------
+v_t = 0
+v_wind = 0
+begin_frame
+    call draw_park
+    call draw_big_tree
+    call show_leaves
+end_frame
+while true then
+    v_t = v_t + v_k
+    # a light breeze, with a strong gust every so often
+    v_gust = max(sin(v_t * 0.0045) - 0.75, 0) * 4
+    v_wind = 0.06 + sin(v_t * 0.013) * 0.05 + v_gust * 0.35
+    begin_frame(true)
+        call update_leaves
+    end_frame
+endwhile

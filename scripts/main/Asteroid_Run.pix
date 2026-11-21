@@ -1,0 +1,386 @@
+# Asteroid Run - flying a starfighter through a tumbling asteroid field
+#
+# Your starfighter barrels through a field of tumbling rocks in front of a
+# ringed planet and a glowing nebula. Asteroids start as specks in the
+# distance, then swell and spin as they rush past, the near ones huge.
+# The ship banks and weaves, the whole view rolling with it, and every so
+# often it locks onto a rock and blasts it apart with twin lasers.
+#
+# What it shows off (Pixil sprite transforms + layers):
+#   - The asteroids are pixel-art sprites drawn once at 16x16. Their size
+#     on screen comes from their distance (set_sprite_scale, up to 8x), they
+#     tumble (set_sprite_angle) and the whole view rolls with the ship.
+#     Centre anchors and sub-pixel positions keep the motion smooth.
+#   - Depth order comes from layers: each asteroid moves to a nearer layer
+#     band as it approaches (set_sprite_layer), so close rocks always pass
+#     in front of far ones.
+#   - The ship is a sprite tilted with set_sprite_angle as it banks.
+#
+# Layers: 0 stars, nebula and planet (shifted a pixel at a time as the
+#           ship drifts)              5 space dust (redrawn)
+#         10-29 asteroids, by distance   40 ship   45 lasers and blasts
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_focal = 32
+v_zfar = 60
+v_speed = 0.4
+
+# ---------------- Sprites ----------------
+define_sprite(rock1, 16, 16)
+    draw_circle(8, 8, 7, gray, 55, true)
+    draw_circle(6, 6, 5, light_gray, 45, true)
+    draw_circle(10, 11, 4, dark_gray, 70, true)
+    draw_circle(5, 10, 2, dark_gray, 80, true)
+    draw_circle(11, 5, 1, dark_gray, 80, true)
+    plot(4, 4, white, 70)
+    plot(13, 9, gray, 60)
+endsprite
+
+define_sprite(rock2, 16, 16)
+    draw_ellipse(8, 8, 7, 5, wood_brown, 55, true, 20)
+    draw_ellipse(6, 6, 5, 3, tan, 40, true, 20)
+    draw_circle(10, 9, 2, dark_brown, 80, true)
+    draw_circle(4, 9, 1, dark_brown, 80, true)
+    draw_circle(9, 5, 1, dark_brown, 70, true)
+    plot(5, 5, peach, 70)
+endsprite
+
+define_sprite(rock3, 16, 16)
+    draw_polygon(8, 8, 7, 7, gray, 55, 10, true)
+    draw_polygon(7, 7, 5, 6, gray, 45, 30, true)
+    draw_circle(9, 10, 2, dark_gray, 80, true)
+    draw_line(4, 6, 7, 4, light_gray, 60)
+    plot(11, 6, dark_gray, 80)
+endsprite
+
+define_sprite(fighter, 15, 9)
+    draw_line(7, 0, 7, 6, white, 90)
+    draw_line(6, 2, 6, 7, silver, 80)
+    draw_line(8, 2, 8, 7, silver, 80)
+    draw_line(0, 7, 6, 4, silver, 85)
+    draw_line(14, 7, 8, 4, silver, 85)
+    draw_line(0, 8, 6, 6, gray, 70)
+    draw_line(14, 8, 8, 6, gray, 70)
+    plot(7, 2, cyan, 100)
+    plot(0, 7, red, 100)
+    plot(14, 7, lime, 100)
+    plot(7, 8, orange, 100)
+endsprite
+
+# ---------------- Backdrop ----------------
+# backdrop pieces are placed once, then the whole backdrop is redrawn a
+# little shifted whenever the ship has drifted far enough to move it a pixel
+create_array(v_nbx, 15, numeric)
+create_array(v_nby, 15, numeric)
+create_array(v_nbr, 15, numeric)
+create_array(v_nbc, 15, numeric)
+create_array(v_nbi, 15, numeric)
+for v_i in (0, 14, 1)
+    v_nbx[v_i] = 8 + random(0, 30, 0)
+    v_nby[v_i] = 6 + random(0, 26, 0)
+    v_nbr[v_i] = random(3, 8, 0)
+    v_nbc[v_i] = 70 + random(0, 18, 0)
+    v_nbi[v_i] = random(9, 18, 0)
+endfor v_i
+create_array(v_bsx, 71, numeric)
+create_array(v_bsy, 71, numeric)
+create_array(v_bsi, 71, numeric)
+for v_i in (0, 70, 1)
+    v_bsx[v_i] = random(0, 63, 0)
+    v_bsy[v_i] = random(0, 63, 0)
+    v_bsi[v_i] = random(10, 70, 0)
+endfor v_i
+v_bgox = 999
+v_bgoy = 999
+
+def draw_backdrop {
+    # v_bgx, v_bgy: whole-pixel shift of the backdrop
+    set_layer(0)
+    clear_layer(0)
+    for v_y in (0, 63, 1)
+        draw_line(0, v_y, 63, v_y, navy, 4)
+    endfor v_y
+    # nebula: soft overlapping clouds
+    for v_i in (0, 14, 1)
+        draw_circle(v_nbx[v_i] + v_bgx, v_nby[v_i] + v_bgy, v_nbr[v_i], v_nbc[v_i], v_nbi[v_i], true)
+    endfor v_i
+    # stars wrap round the edges so the field never runs out
+    for v_i in (0, 70, 1)
+        plot((v_bsx[v_i] + v_bgx + 64) % 64, (v_bsy[v_i] + v_bgy + 64) % 64, white, v_bsi[v_i])
+    endfor v_i
+    # ringed planet
+    v_plx = 48 + v_bgx
+    v_ply = 46 + v_bgy
+    draw_ellipse(v_plx, v_ply, 14, 3, 12, 30, false, -12)
+    draw_circle(v_plx, v_ply, 8, 8, 45, true)
+    draw_circle(v_plx - 3, v_ply - 3, 5, 12, 40, true)
+    draw_line(v_plx - 11, v_ply + 5, v_plx + 9, v_ply - 2, 12, 40)
+}
+
+def nudge_backdrop {
+    # the backdrop is very far away: it shifts only a little as the ship
+    # weaves, opposite to the way the ship moves
+    v_bgx = int(0 - v_camx * 0.6 + 0.5 + 100) - 100
+    v_bgy = int(0 - v_camy * 0.6 + 0.5 + 100) - 100
+    if v_bgx != v_bgox or v_bgy != v_bgoy then
+        v_bgox = v_bgx
+        v_bgoy = v_bgy
+        call draw_backdrop
+    endif
+}
+
+v_camx = 0
+v_camy = 0
+
+# ---------------- Asteroids ----------------
+v_na = 24
+create_array(v_ax, v_na, numeric)
+create_array(v_ay, v_na, numeric)
+create_array(v_az, v_na, numeric)
+create_array(v_ar, v_na, numeric)      # radius in world units
+create_array(v_aang, v_na, numeric)
+create_array(v_aspin, v_na, numeric)
+create_array(v_alay, v_na, numeric)    # layer it is on now
+create_array(v_akind, v_na, numeric)
+create_array(v_ainst, v_na, numeric)
+
+def spawn_rock {
+    v_az[v_i] = v_zfar - random(0, 8, 0)
+    v_ax[v_i] = v_camx + random(-130, 130, 0) / 10
+    v_ay[v_i] = v_camy + random(-100, 100, 0) / 10
+    v_ar[v_i] = random(10, 30, 0) / 10
+    v_aang[v_i] = random(0, 360, 0)
+    v_aspin[v_i] = random(-30, 30, 0) / 10
+}
+
+def rock_layer {
+    v_lay = 10 + min(max(int((v_zfar - v_az[v_i]) / 3), 0), 19)
+    if v_lay != v_alay[v_i] then
+        v_alay[v_i] = v_lay
+        v_ki = v_ainst[v_i]
+        if v_akind[v_i] == 0 then
+            set_sprite_layer(rock1, v_lay, v_ki)
+        elseif v_akind[v_i] == 1 then
+            set_sprite_layer(rock2, v_lay, v_ki)
+        else
+            set_sprite_layer(rock3, v_lay, v_ki)
+        endif
+    endif
+}
+
+def show_rocks {
+    set_layer(10)
+    for v_i in (0, v_na - 1, 1)
+        v_akind[v_i] = v_i % 3
+        v_ainst[v_i] = int(v_i / 3)
+        call spawn_rock
+        v_az[v_i] = random(5, v_zfar, 0)
+        v_alay[v_i] = 10
+        v_ki = v_ainst[v_i]
+        if v_akind[v_i] == 0 then
+            show_sprite(rock1, 32, 32, v_ki, 0, 0)
+            set_sprite_anchor(rock1, 1, v_ki)
+        elseif v_akind[v_i] == 1 then
+            show_sprite(rock2, 32, 32, v_ki, 0, 0)
+            set_sprite_anchor(rock2, 1, v_ki)
+        else
+            show_sprite(rock3, 32, 32, v_ki, 0, 0)
+            set_sprite_anchor(rock3, 1, v_ki)
+        endif
+    endfor v_i
+}
+
+def project {
+    # world (v_wx, v_wy, v_wz) -> rolled screen position (v_sx, v_sy)
+    v_rx = (v_wx - v_camx) / v_wz * v_focal
+    v_ry = (v_wy - v_camy) / v_wz * v_focal
+    v_sx = 32 + v_rx * v_cr - v_ry * v_srl
+    v_sy = 30 + v_rx * v_srl + v_ry * v_cr
+}
+
+def update_rocks {
+    for v_i in (0, v_na - 1, 1)
+        v_az[v_i] = v_az[v_i] - v_speed * v_k
+        v_aang[v_i] = v_aang[v_i] + v_aspin[v_i] * v_k
+        v_wx = v_ax[v_i]
+        v_wy = v_ay[v_i]
+        v_wz = v_az[v_i]
+        call project
+        if v_az[v_i] < 1 or v_sx < -50 or v_sx > 114 or v_sy < -50 or v_sy > 114 then
+            call spawn_rock
+            v_wx = v_ax[v_i]
+            v_wy = v_ay[v_i]
+            v_wz = v_az[v_i]
+            call project
+        endif
+        call rock_layer
+        # 16 pixels of art should cover the rock's size on screen
+        v_sc = min(max(v_ar[v_i] * 2 * v_focal / v_az[v_i] / 14, 0.1), 8)
+        v_ki = v_ainst[v_i]
+        if v_akind[v_i] == 0 then
+            set_sprite_transform(rock1, v_sc, v_aang[v_i] + v_roll * 57, v_ki)
+            move_sprite(rock1, v_sx, v_sy, v_ki, 0)
+        elseif v_akind[v_i] == 1 then
+            set_sprite_transform(rock2, v_sc, v_aang[v_i] + v_roll * 57, v_ki)
+            move_sprite(rock2, v_sx, v_sy, v_ki, 0)
+        else
+            set_sprite_transform(rock3, v_sc, v_aang[v_i] + v_roll * 57, v_ki)
+            move_sprite(rock3, v_sx, v_sy, v_ki, 0)
+        endif
+    endfor v_i
+}
+
+# ---------------- Dust, lasers, blasts ----------------
+v_nd = 24
+create_array(v_dx, v_nd, numeric)
+create_array(v_dy, v_nd, numeric)
+create_array(v_dz, v_nd, numeric)
+for v_i in (0, v_nd - 1, 1)
+    v_dx[v_i] = random(-100, 100, 0) / 10
+    v_dy[v_i] = random(-100, 100, 0) / 10
+    v_dz[v_i] = random(10, 300, 0) / 10
+endfor v_i
+
+def draw_dust {
+    set_layer(5)
+    clear_layer(5)
+    for v_i in (0, v_nd - 1, 1)
+        v_dz[v_i] = v_dz[v_i] - v_speed * 1.2 * v_k
+        if v_dz[v_i] < 0.8 then
+            v_dz[v_i] = 30
+            v_dx[v_i] = v_camx + random(-100, 100, 0) / 10
+            v_dy[v_i] = v_camy + random(-100, 100, 0) / 10
+        endif
+        v_wx = v_dx[v_i]
+        v_wy = v_dy[v_i]
+        v_wz = v_dz[v_i]
+        call project
+        v_x1 = v_sx
+        v_y1 = v_sy
+        v_wz = v_dz[v_i] + 1.5
+        call project
+        draw_line(v_x1, v_y1, v_sx, v_sy, light_gray, min(140 / v_dz[v_i], 60))
+    endfor v_i
+}
+
+v_las_t = 0
+v_las_i = -1
+v_boom_t = 0
+v_nfrag = 16
+create_array(v_fx, v_nfrag, numeric)
+create_array(v_fy, v_nfrag, numeric)
+create_array(v_fvx, v_nfrag, numeric)
+create_array(v_fvy, v_nfrag, numeric)
+
+def draw_fx {
+    set_layer(45)
+    clear_layer(45)
+    # engine glow behind the ship
+    draw_circle(32 + sin(v_roll) * 1, 58, 1.5 + sin(v_t * 0.9) * 0.5, cyan, 80, true)
+    # pick a target now and then: a rock ahead, not too close
+    v_las_clock = v_las_clock - v_k
+    if v_las_clock <= 0 and v_las_t <= 0 then
+        v_las_clock = random(90, 180, 0)
+        v_best = -1
+        for v_i in (0, v_na - 1, 1)
+            if v_az[v_i] > 10 and v_az[v_i] < 30 and abs(v_ax[v_i] - v_camx) < 8 and abs(v_ay[v_i] - v_camy) < 6 then
+                v_best = v_i
+            endif
+        endfor v_i
+        if v_best >= 0 then
+            v_las_i = v_best
+            v_las_t = 10
+        endif
+    endif
+    if v_las_t > 0 then
+        v_las_t = v_las_t - v_k
+        v_i = v_las_i
+        v_wx = v_ax[v_i]
+        v_wy = v_ay[v_i]
+        v_wz = v_az[v_i]
+        call project
+        v_lc = "lime"
+        if int(v_las_t) % 2 == 0 then
+            v_lc = "spring_green"
+        endif
+        draw_line(26, 58, v_sx, v_sy, v_lc, 90)
+        draw_line(38, 58, v_sx, v_sy, v_lc, 90)
+        if v_las_t <= 0 then
+            # the rock bursts apart and a new one takes its place far away
+            v_boom_t = 30
+            v_bx = v_sx
+            v_by = v_sy
+            for v_j in (0, v_nfrag - 1, 1)
+                v_fx[v_j] = v_sx
+                v_fy[v_j] = v_sy
+                v_a = random(0, 628, 0) / 100
+                v_fvx[v_j] = cos(v_a) * random(20, 90, 0) / 100
+                v_fvy[v_j] = sin(v_a) * random(20, 90, 0) / 100
+            endfor v_j
+            call spawn_rock
+        endif
+    endif
+    if v_boom_t > 0 then
+        v_boom_t = v_boom_t - v_k
+        v_e = 1 - v_boom_t / 30
+        draw_circle(v_bx, v_by, 1 + v_e * 6, orange, 80 * (1 - v_e), true)
+        draw_circle(v_bx, v_by, 0.5 + v_e * 3, yellow, 90 * (1 - v_e), true)
+        for v_j in (0, v_nfrag - 1, 1)
+            v_fx[v_j] = v_fx[v_j] + v_fvx[v_j] * v_k
+            v_fy[v_j] = v_fy[v_j] + v_fvy[v_j] * v_k
+            plot(v_fx[v_j], v_fy[v_j], gold, 90 * (1 - v_e))
+        endfor v_j
+    endif
+}
+
+# ---------------- Main ----------------
+v_t = 0
+v_vx = 0
+v_vy = 0
+v_roll = 0
+v_cr = 1
+v_srl = 0
+v_las_clock = 120
+begin_frame
+    call nudge_backdrop
+    call show_rocks
+    set_layer(40)
+    show_sprite(fighter, 32, 54, 0, 0, 0)
+    set_sprite_anchor(fighter, 1, 0)
+end_frame
+while true then
+    v_t = v_t + v_k
+    # weave: steer away from the nearest rock in the way, else drift about
+    v_tx = sin(v_t * 0.011) * 4
+    v_ty = sin(v_t * 0.007 + 1) * 3
+    for v_i in (0, v_na - 1, 1)
+        if v_az[v_i] > 1 and v_az[v_i] < 9 then
+            v_ddx = v_camx - v_ax[v_i]
+            v_ddy = v_camy - v_ay[v_i]
+            v_dd = sqrt(v_ddx * v_ddx + v_ddy * v_ddy) + 0.01
+            if v_dd < v_ar[v_i] + 2 then
+                v_tx = v_camx + v_ddx / v_dd * 5
+                v_ty = v_camy + v_ddy / v_dd * 5
+            endif
+        endif
+    endfor v_i
+    v_vx = v_vx + ((v_tx - v_camx) * 0.01 - v_vx * 0.08) * v_k
+    v_vy = v_vy + ((v_ty - v_camy) * 0.01 - v_vy * 0.08) * v_k
+    v_camx = v_camx + v_vx * v_k
+    v_camy = v_camy + v_vy * v_k
+    v_roll = v_roll + (min(max(v_vx * 4, -0.6), 0.6) - v_roll) * 0.08 * v_k
+    v_cr = cos(v_roll)
+    v_srl = sin(v_roll)
+    begin_frame(true)
+        call nudge_backdrop
+        call update_rocks
+        call draw_dust
+        call draw_fx
+        set_sprite_angle(fighter, 0 - v_roll * 40, 0)
+        move_sprite(fighter, 32, 54 + v_vy * 6, 0, 0)
+    end_frame
+endwhile

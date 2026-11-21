@@ -1,0 +1,601 @@
+# Card Magic - a close-up card routine on green felt
+#
+# A magician's routine plays out on a felt table, over and over:
+#   1. The deck deals eight cards face down into two rows, each one
+#      spinning as it slides into place.
+#   2. The cards flip face up one after another: four aces and four kings.
+#   3. A velvet cloth sweeps over them. Under the cloth the cards change
+#      places, then rise up THROUGH the cloth, and the cloth slides away.
+#   4. The cards gather into a fan, overlapping neatly from left to right.
+#   5. One card is chosen: it lifts out of the fan, grows large, spins and
+#      flips in a burst of sparkles, then drops back in.
+#   6. A riffle shuffle: the cards spring into one pile with a squash as
+#      each lands, interleaving as they stack.
+#   7. A whirlwind: the pile spirals up into a spinning ring of cards and
+#      collapses back into the deck.
+#
+# What it shows off (layers + sprite transforms, every command):
+#   - Card flips use tilt with a back cel; spins use angle; the chosen card
+#     grows with scale; landings squash with a separate vertical scale.
+#   - Overlap order in the fan and the shuffle uses set_sprite_z.
+#   - The chosen card moves to a front layer with set_sprite_layer.
+#   - "Through the cloth": the whole cards layer is moved in front of the
+#     cloth with reorder_layer - no redrawing - and moved back afterwards.
+#   - Sparkles are a layer redrawn each frame; the cloth is shown, redrawn
+#     and hidden.
+#
+# Layers: 0 felt table   10 cards (18 while they are above the cloth)
+#         15 velvet cloth   20 the chosen card   30 sparkles
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_ncard = 8
+
+# ---------------- Card art ----------------
+# 5x5 suit symbols as 0/1 patterns, and 3x5 letters A and K
+create_array(v_pip, 100, numeric)
+def set_pip {
+    # suit v_s, row v_r, five cells in v_r0..v_r4
+    v_b = v_s * 25 + v_r * 5
+    v_pip[v_b] = v_r0
+    v_pip[v_b + 1] = v_r1
+    v_pip[v_b + 2] = v_r2
+    v_pip[v_b + 3] = v_r3
+    v_pip[v_b + 4] = v_r4
+}
+def pip_row {
+    v_r0 = v_a0
+    v_r1 = v_a1
+    v_r2 = v_a2
+    v_r3 = v_a3
+    v_r4 = v_a4
+    call set_pip
+}
+# 0 spade
+v_s = 0
+v_r = 0
+v_a0 = 0
+v_a1 = 0
+v_a2 = 1
+v_a3 = 0
+v_a4 = 0
+call pip_row
+v_r = 1
+v_a1 = 1
+v_a3 = 1
+call pip_row
+v_r = 2
+v_a0 = 1
+v_a4 = 1
+call pip_row
+v_r = 3
+call pip_row
+v_r = 4
+v_a0 = 0
+v_a1 = 0
+v_a3 = 0
+v_a4 = 0
+call pip_row
+# 1 heart
+v_s = 1
+v_r = 0
+v_a0 = 0
+v_a1 = 1
+v_a2 = 0
+v_a3 = 1
+v_a4 = 0
+call pip_row
+v_r = 1
+v_a0 = 1
+v_a2 = 1
+v_a4 = 1
+call pip_row
+v_r = 2
+call pip_row
+v_r = 3
+v_a0 = 0
+v_a4 = 0
+call pip_row
+v_r = 4
+v_a1 = 0
+v_a3 = 0
+call pip_row
+# 2 diamond
+v_s = 2
+v_r = 0
+v_a0 = 0
+v_a1 = 0
+v_a2 = 1
+v_a3 = 0
+v_a4 = 0
+call pip_row
+v_r = 1
+v_a1 = 1
+v_a3 = 1
+call pip_row
+v_r = 2
+v_a0 = 1
+v_a4 = 1
+call pip_row
+v_r = 3
+v_a0 = 0
+v_a4 = 0
+call pip_row
+v_r = 4
+v_a1 = 0
+v_a3 = 0
+call pip_row
+# 3 club
+v_s = 3
+v_r = 0
+v_a0 = 0
+v_a1 = 1
+v_a2 = 1
+v_a3 = 1
+v_a4 = 0
+call pip_row
+v_r = 1
+v_a0 = 1
+v_a4 = 1
+call pip_row
+v_r = 2
+call pip_row
+v_r = 3
+v_a0 = 0
+v_a1 = 0
+v_a3 = 0
+v_a4 = 0
+call pip_row
+v_r = 4
+v_a1 = 1
+v_a3 = 1
+call pip_row
+
+create_array(v_ltr, 30, numeric)
+# A
+v_ltr[0] = 0
+v_ltr[1] = 1
+v_ltr[2] = 0
+v_ltr[3] = 1
+v_ltr[4] = 0
+v_ltr[5] = 1
+v_ltr[6] = 1
+v_ltr[7] = 1
+v_ltr[8] = 1
+v_ltr[9] = 1
+v_ltr[10] = 0
+v_ltr[11] = 1
+v_ltr[12] = 1
+v_ltr[13] = 0
+v_ltr[14] = 1
+# K
+v_ltr[15] = 1
+v_ltr[16] = 0
+v_ltr[17] = 1
+v_ltr[18] = 1
+v_ltr[19] = 1
+v_ltr[20] = 0
+v_ltr[21] = 1
+v_ltr[22] = 0
+v_ltr[23] = 0
+v_ltr[24] = 1
+v_ltr[25] = 1
+v_ltr[26] = 0
+v_ltr[27] = 1
+v_ltr[28] = 0
+v_ltr[29] = 1
+
+def card_face {
+    # draw a face: suit v_s, letter v_l (0 A, 1 K), colour v_fc
+    draw_rectangle(0, 0, 10, 14, white, 95, true)
+    draw_rectangle(0, 0, 10, 14, light_gray, 70, false)
+    for v_yy in (0, 4, 1)
+        for v_xx in (0, 4, 1)
+            if v_pip[v_s * 25 + v_yy * 5 + v_xx] == 1 then
+                plot(2 + v_xx + 1, 5 + v_yy, v_fc, 100)
+            endif
+        endfor v_xx
+    endfor v_yy
+    for v_yy in (0, 4, 1)
+        for v_xx in (0, 2, 1)
+            if v_ltr[v_l * 15 + v_yy * 3 + v_xx] == 1 then
+                plot(1 + v_xx, 1 + v_yy, v_fc, 100)
+            endif
+        endfor v_xx
+    endfor v_yy
+    if v_l == 1 then
+        # a gold crown mark on the kings
+        draw_line(6, 1, 8, 1, gold, 90)
+        plot(6, 2, gold, 90)
+        plot(8, 2, gold, 90)
+    endif
+}
+
+define_sprite(card, 10, 14)
+    sprite_cel(0)
+        # back: navy with a red lattice and a border
+        draw_rectangle(0, 0, 10, 14, navy, 95, true)
+        draw_rectangle(1, 1, 8, 12, crimson, 70, false)
+        for v_yy in (2, 11, 2)
+            for v_xx in (2 + v_yy % 4 / 2, 7, 2)
+                plot(v_xx, v_yy, red, 80)
+            endfor v_xx
+        endfor v_yy
+        plot(4, 6, gold, 90)
+        plot(5, 7, gold, 90)
+    sprite_cel(1)
+        v_s = 0
+        v_l = 0
+        v_fc = "black"
+        call card_face
+    sprite_cel(2)
+        v_s = 1
+        v_l = 0
+        v_fc = "red"
+        call card_face
+    sprite_cel(3)
+        v_s = 2
+        v_l = 0
+        v_fc = "red"
+        call card_face
+    sprite_cel(4)
+        v_s = 3
+        v_l = 0
+        v_fc = "black"
+        call card_face
+    sprite_cel(5)
+        v_s = 0
+        v_l = 1
+        v_fc = "black"
+        call card_face
+    sprite_cel(6)
+        v_s = 1
+        v_l = 1
+        v_fc = "red"
+        call card_face
+    sprite_cel(7)
+        v_s = 2
+        v_l = 1
+        v_fc = "red"
+        call card_face
+    sprite_cel(8)
+        v_s = 3
+        v_l = 1
+        v_fc = "black"
+        call card_face
+endsprite
+sprite_back_cel(card, 0)
+
+# ---------------- Table and cloth ----------------
+def draw_table {
+    set_layer(0)
+    for v_y in (0, 63, 1)
+        for v_x in (0, 63, 8)
+            v_d = sqrt((v_x + 4 - 32) * (v_x + 4 - 32) + (v_y - 30) * (v_y - 30))
+            draw_line(v_x, v_y, v_x + 7, v_y, forest_green, max(38 - v_d * 0.7, 8))
+        endfor v_x
+    endfor v_y
+    draw_rectangle(0, 0, 64, 64, wood_brown, 50, false)
+    draw_rectangle(1, 1, 62, 62, dark_brown, 40, false)
+}
+
+def draw_cloth {
+    # velvet cloth covering x from v_clx0 to v_clx1
+    set_layer(15)
+    clear_layer(15)
+    if v_clx1 > v_clx0 then
+        draw_rectangle(v_clx0, 8, v_clx1 - v_clx0, 40, maroon, 85, true)
+        for v_f in (0, 5, 1)
+            draw_line(v_clx0, 10 + v_f * 7, v_clx1, 11 + v_f * 7, crimson, 45)
+        endfor v_f
+        draw_line(v_clx0, 47, v_clx1, 47, gold, 80)
+        draw_line(v_clx0, 8, v_clx1, 8, gold, 80)
+    endif
+}
+
+# ---------------- Cards ----------------
+create_array(v_cx, v_ncard, numeric)
+create_array(v_cy, v_ncard, numeric)
+create_array(v_ca, v_ncard, numeric)
+create_array(v_cs, v_ncard, numeric)
+create_array(v_ct, v_ncard, numeric)      # tilt (180 = face down)
+create_array(v_tx, v_ncard, numeric)
+create_array(v_ty, v_ncard, numeric)
+create_array(v_ta, v_ncard, numeric)
+create_array(v_ts, v_ncard, numeric)
+create_array(v_tt, v_ncard, numeric)
+create_array(v_cdel, v_ncard, numeric)    # start delay for this card in the phase
+create_array(v_csq, v_ncard, numeric)     # squash amount
+create_array(v_cface, v_ncard, numeric)   # which face cel (1-8)
+create_array(v_slot, v_ncard, numeric)    # grid slot
+
+def set_target {
+    v_tx[v_i] = v_gx
+    v_ty[v_i] = v_gy
+    v_ta[v_i] = v_ga
+    v_ts[v_i] = v_gs
+    v_tt[v_i] = v_gt
+}
+
+def grid_pos {
+    # slot v_sl -> (v_gx, v_gy)
+    v_gx = 11 + (v_sl % 4) * 14
+    v_gy = 19 + int(v_sl / 4) * 20
+}
+
+v_phase = -1
+v_pt = 0
+v_plen = 0
+v_chosen = 0
+
+def start_phase {
+    v_pt = 0
+    v_phase = (v_phase + 1) % 7
+    if v_phase == 0 then
+        # deal from the deck face down, spinning into place
+        v_plen = 300
+        for v_i in (0, v_ncard - 1, 1)
+            v_cx[v_i] = 32
+            v_cy[v_i] = 30
+            v_ca[v_i] = 0
+            v_cs[v_i] = 1
+            v_ct[v_i] = 180
+            v_slot[v_i] = v_i
+            v_sl = v_i
+            call grid_pos
+            v_ga = 0
+            v_gs = 1
+            v_gt = 180
+            call set_target
+            v_ca[v_i] = 0 - 360
+            v_cdel[v_i] = v_i * 22
+            set_sprite_z(card, v_ncard - v_i, v_i)
+        endfor v_i
+    elseif v_phase == 1 then
+        # turn them face up one by one
+        v_plen = 260
+        for v_i in (0, v_ncard - 1, 1)
+            v_tt[v_i] = 0
+            v_cdel[v_i] = v_i * 20
+        endfor v_i
+    elseif v_phase == 2 then
+        # the cloth trick
+        v_plen = 520
+    elseif v_phase == 3 then
+        # gather into a fan, overlapping left to right
+        v_plen = 280
+        for v_i in (0, v_ncard - 1, 1)
+            v_f = v_slot[v_i] - 3.5
+            v_gx = 32 + v_f * 4.5
+            v_gy = 40 + abs(v_f) * abs(v_f) * 0.35
+            v_ga = v_f * 9
+            v_gs = 1.15
+            v_gt = 0
+            call set_target
+            v_cdel[v_i] = v_slot[v_i] * 6
+            set_sprite_z(card, v_slot[v_i], v_i)
+        endfor v_i
+    elseif v_phase == 4 then
+        # one card is chosen
+        v_plen = 360
+        v_chosen = random(0, v_ncard - 1, 0)
+        set_sprite_layer(card, 20, v_chosen)
+        for v_i in (0, v_ncard - 1, 1)
+            v_cdel[v_i] = 0
+        endfor v_i
+    elseif v_phase == 5 then
+        # riffle into one pile with a squash as each lands
+        v_plen = 300
+        for v_i in (0, v_ncard - 1, 1)
+            v_gx = 32
+            v_gy = 30 - v_i * 0.4
+            v_ga = random(-6, 6, 0)
+            v_gs = 1.2
+            v_gt = 0
+            call set_target
+            # alternate from the two halves of the fan
+            if v_slot[v_i] < 4 then
+                v_ord = v_slot[v_i] * 2
+            else
+                v_ord = (v_slot[v_i] - 4) * 2 + 1
+            endif
+            v_cdel[v_i] = v_ord * 16
+            set_sprite_z(card, v_ord, v_i)
+        endfor v_i
+    else
+        # whirlwind and back into the deck
+        v_plen = 420
+    endif
+}
+
+def update_cards {
+    v_pt = v_pt + v_k
+    if v_pt > v_plen then
+        call start_phase
+    endif
+    if v_phase == 2 then
+        # cloth sweeps across, cards trade places beneath it, rise through,
+        # then the cloth slides away
+        if v_pt < 70 then
+            v_clx0 = 4
+            v_clx1 = 4 + v_pt / 70 * 56
+            call draw_cloth
+            if v_pt < 2 then
+                show_layer(15)
+            endif
+        elseif v_pt < 72 then
+            # under cover: shuffle the slots
+            for v_i in (0, v_ncard - 1, 1)
+                v_j = random(0, v_ncard - 1, 0)
+                v_tmp = v_slot[v_i]
+                v_slot[v_i] = v_slot[v_j]
+                v_slot[v_j] = v_tmp
+            endfor v_i
+            for v_i in (0, v_ncard - 1, 1)
+                v_sl = v_slot[v_i]
+                call grid_pos
+                v_tx[v_i] = v_gx
+                v_ty[v_i] = v_gy
+                v_cdel[v_i] = 0
+            endfor v_i
+        elseif v_pt > 240 and v_pt < 242 then
+            # the whole cards layer moves in front of the cloth
+            reorder_layer(10, 18)
+            v_sparks = 30
+        elseif v_pt > 360 and v_pt < 440 then
+            v_clx0 = 4 + (v_pt - 360) / 80 * 56
+            v_clx1 = 60
+            call draw_cloth
+        elseif v_pt >= 440 and v_pt < 442 then
+            hide_layer(15)
+            reorder_layer(18, 10)
+        endif
+    endif
+    if v_phase == 4 then
+        # chosen card rises, grows, spins, flips, then settles back
+        v_i = v_chosen
+        if v_pt < 90 then
+            v_tx[v_i] = 32
+            v_ty[v_i] = 26
+            v_ts[v_i] = 2.6
+            v_ta[v_i] = 0
+        elseif v_pt < 210 then
+            v_f = (v_pt - 90) / 120
+            v_ca[v_i] = v_f * 720
+            v_ta[v_i] = v_ca[v_i]
+            v_ct[v_i] = sin(v_f * 3.1416) * 180
+            v_tt[v_i] = v_ct[v_i]
+            if v_pt < 92 then
+                v_sparks = 40
+            endif
+        elseif v_pt < 214 then
+            v_ca[v_i] = 0
+            v_ta[v_i] = 0
+            v_ct[v_i] = 0
+            v_tt[v_i] = 0
+            v_sparks = 25
+        elseif v_pt > 270 then
+            v_f = v_slot[v_i] - 3.5
+            v_tx[v_i] = 32 + v_f * 4.5
+            v_ty[v_i] = 40 + abs(v_f) * abs(v_f) * 0.35
+            v_ta[v_i] = v_f * 9
+            v_ts[v_i] = 1.15
+            if v_pt > 340 then
+                set_sprite_layer(card, 10, v_i)
+            endif
+        endif
+    endif
+    if v_phase == 6 then
+        # spiral up into a spinning ring, then collapse into the deck
+        for v_i in (0, v_ncard - 1, 1)
+            v_f = min(v_pt / 300, 1)
+            v_rad = sin(v_f * 3.1416) * 22
+            v_an = v_pt * 0.05 + v_i * 0.785
+            v_tx[v_i] = 32 + cos(v_an) * v_rad
+            v_ty[v_i] = 30 + sin(v_an) * v_rad * 0.75
+            v_ta[v_i] = v_an * 57.3 + 90
+            v_ts[v_i] = 1 + sin(v_f * 3.1416) * 0.3
+            if v_pt > 300 then
+                v_tt[v_i] = 180
+                v_ta[v_i] = 0
+                v_tx[v_i] = 32
+                v_ty[v_i] = 30 - v_i * 0.3
+                v_ts[v_i] = 1
+            endif
+            v_cdel[v_i] = 0
+        endfor v_i
+    endif
+    # ease every card toward its target
+    for v_i in (0, v_ncard - 1, 1)
+        if v_pt >= v_cdel[v_i] then
+            v_e = 0.12 * v_k
+            v_ox = v_cx[v_i]
+            v_oy = v_cy[v_i]
+            v_cx[v_i] = v_cx[v_i] + (v_tx[v_i] - v_cx[v_i]) * v_e
+            v_cy[v_i] = v_cy[v_i] + (v_ty[v_i] - v_cy[v_i]) * v_e
+            v_ca[v_i] = v_ca[v_i] + (v_ta[v_i] - v_ca[v_i]) * v_e
+            v_cs[v_i] = v_cs[v_i] + (v_ts[v_i] - v_cs[v_i]) * v_e
+            v_ct[v_i] = v_ct[v_i] + (v_tt[v_i] - v_ct[v_i]) * v_e * 0.9
+            # a squash as it lands in the riffle
+            if v_phase == 5 and abs(v_tx[v_i] - v_cx[v_i]) + abs(v_ty[v_i] - v_cy[v_i]) < 0.6 and abs(v_ox - v_tx[v_i]) + abs(v_oy - v_ty[v_i]) >= 0.6 then
+                v_csq[v_i] = 1
+            endif
+        endif
+        v_csq[v_i] = max(v_csq[v_i] - 0.06 * v_k, 0)
+        v_sq = sin(v_csq[v_i] * 3.1416) * 0.35
+        set_sprite_transform(card, v_cs[v_i] * (1 + v_sq * 0.6), v_ca[v_i], v_i, 0, v_ct[v_i], 0)
+        set_sprite_scale(card, v_cs[v_i] * (1 + v_sq * 0.6), v_i, v_cs[v_i] * (1 - v_sq))
+        move_sprite(card, v_cx[v_i], v_cy[v_i], v_i, v_cface[v_i])
+    endfor v_i
+}
+
+# ---------------- Sparkles ----------------
+v_nsp = 30
+create_array(v_spx, v_nsp, numeric)
+create_array(v_spy, v_nsp, numeric)
+create_array(v_spvx, v_nsp, numeric)
+create_array(v_spvy, v_nsp, numeric)
+create_array(v_spl, v_nsp, numeric)
+for v_i in (0, v_nsp - 1, 1)
+    v_spl[v_i] = 0
+endfor v_i
+v_sparks = 0
+
+def draw_sparkles {
+    set_layer(30)
+    clear_layer(30)
+    if v_sparks > 0 then
+        for v_i in (0, v_nsp - 1, 1)
+            if v_spl[v_i] <= 0 and v_sparks > 0 then
+                v_sparks = v_sparks - 1
+                v_spx[v_i] = 32 + random(-6, 6, 0)
+                v_spy[v_i] = 28 + random(-6, 6, 0)
+                v_a = random(0, 628, 0) / 100
+                v_spvx[v_i] = cos(v_a) * random(30, 90, 0) / 100
+                v_spvy[v_i] = sin(v_a) * random(30, 90, 0) / 100
+                v_spl[v_i] = random(20, 40, 0)
+            endif
+        endfor v_i
+        v_sparks = 0
+    endif
+    for v_i in (0, v_nsp - 1, 1)
+        if v_spl[v_i] > 0 then
+            v_spl[v_i] = v_spl[v_i] - v_k
+            v_spx[v_i] = v_spx[v_i] + v_spvx[v_i] * v_k
+            v_spy[v_i] = v_spy[v_i] + v_spvy[v_i] * v_k
+            v_sc = "gold"
+            if v_i % 3 == 0 then
+                v_sc = "white"
+            endif
+            plot(v_spx[v_i], v_spy[v_i], v_sc, min(v_spl[v_i] * 4, 100))
+        endif
+    endfor v_i
+}
+
+# ---------------- Main ----------------
+v_t = 0
+v_clx0 = 0
+v_clx1 = 0
+begin_frame
+    call draw_table
+    call draw_cloth
+    hide_layer(15)
+    set_layer(10)
+    for v_i in (0, v_ncard - 1, 1)
+        v_cface[v_i] = v_i + 1
+        v_csq[v_i] = 0
+        show_sprite(card, 32, 30, v_i, 0, v_cface[v_i])
+        set_sprite_anchor(card, 1, v_i)
+    endfor v_i
+end_frame
+call start_phase
+while true then
+    v_t = v_t + v_k
+    begin_frame(true)
+        call update_cards
+        call draw_sparkles
+    end_frame
+endwhile

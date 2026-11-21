@@ -1,0 +1,339 @@
+# Treasure Fountain - a chest bursting with spinning gold
+#
+# In a dark, torch-lit vault an open treasure chest glows. Gold coins and
+# coloured gems burst up out of it in fountains: coins spin like real
+# coins, flashing their edges and turning from heads to tails; gems spin
+# flat and sparkle; and some pieces fly straight at you, growing huge as
+# they tumble past. The rest rain back down into the chest. Every so often
+# the chest erupts in a big burst.
+#
+# What it shows off (Pixil sprite transforms + layers):
+#   - Coins spin edge-over-edge with set_sprite_tilt; past 90 degrees the
+#     tails side shows (sprite_back_cel) and edge-on they flash as a thin
+#     sliver.
+#   - Pieces coming toward you grow with set_sprite_scale; gems turn with
+#     set_sprite_angle. Centre anchors keep every piece pivoting about its
+#     middle, and sub-pixel positions keep the motion smooth.
+#   - Coins fly out from INSIDE the chest: they live on a layer between the
+#     back of the chest and its front panel, so the front panel covers
+#     them as they drop back in. Pieces flying at you switch to a layer in
+#     front of everything.
+#
+# Layers: 0 vault walls   3 torch flames (redrawn)   5 chest back and its glow
+#         10 coins and gems in the chest   20 chest front
+#         30 pieces flying at you          40 sparkles (redrawn)
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_chx = 32               # chest centre
+v_chy = 50               # chest rim
+
+# ---------------- Sprites ----------------
+define_sprite(coin, 9, 9)
+    sprite_cel(0)
+        draw_circle(4, 4, 4, 12, 95, true)
+        draw_circle(4, 4, 4, 9, 70, false)
+        draw_circle(4, 4, 2, 15, 90, false)
+        plot(4, 4, 18, 100)
+        plot(3, 2, white, 80)
+    sprite_cel(1)
+        draw_circle(4, 4, 4, 10, 80, true)
+        draw_circle(4, 4, 4, 8, 70, false)
+        draw_line(2, 4, 6, 4, 15, 90)
+        draw_line(4, 2, 4, 6, 15, 90)
+endsprite
+sprite_back_cel(coin, 1)
+
+define_sprite(ruby, 7, 7)
+    draw_polygon(3, 3, 3, 4, red, 95, 45, true)
+    draw_line(3, 1, 5, 3, crimson, 90)
+    plot(2, 2, pink, 100)
+    plot(3, 3, white, 90)
+endsprite
+
+define_sprite(emerald, 7, 7)
+    draw_polygon(3, 3, 3, 6, 30, 95, 0, true)
+    draw_line(1, 3, 5, 3, 36, 80)
+    plot(2, 2, white, 90)
+endsprite
+
+define_sprite(sapphire, 7, 7)
+    draw_polygon(3, 3, 3, 4, 62, 95, 0, true)
+    draw_line(3, 0, 3, 6, 58, 70)
+    plot(2, 2, white, 90)
+endsprite
+
+# ---------------- Vault ----------------
+def draw_vault {
+    set_layer(0)
+    # stone wall in rows of blocks
+    for v_y in (0, 63, 1)
+        draw_line(0, v_y, 63, v_y, dark_gray, 10 + v_y * 0.15)
+    endfor v_y
+    for v_r in (0, 9, 1)
+        v_y = v_r * 6
+        draw_line(0, v_y, 63, v_y, black, 60)
+        v_off = (v_r % 2) * 5
+        for v_x in (v_off, 63, 10)
+            draw_line(v_x, v_y, v_x, v_y + 5, black, 60)
+        endfor v_x
+    endfor v_r
+    # floor
+    for v_y in (54, 63, 1)
+        draw_line(0, v_y, 63, v_y, wood_brown, 14 + (v_y - 54) * 1.2)
+    endfor v_y
+    # torch brackets
+    draw_line(5, 24, 5, 30, dark_brown, 80)
+    draw_line(58, 24, 58, 30, dark_brown, 80)
+}
+
+def draw_chest_back {
+    set_layer(5)
+    # open lid tilted back and the dark inside, glowing gold
+    for v_r in (0, 8, 1)
+        draw_line(v_chx - 12 + v_r * 0.3, v_chy - 9 + v_r, v_chx + 12 - v_r * 0.3, v_chy - 9 + v_r, wood_brown, 35 + v_r * 2)
+    endfor v_r
+    draw_line(v_chx - 12, v_chy - 9, v_chx + 12, v_chy - 9, gold, 60)
+    draw_ellipse(v_chx, v_chy, 11, 2, 12, 60, true, 0)
+    draw_ellipse(v_chx, v_chy, 13, 6, 12, 14, true, 0)
+}
+
+def draw_chest_front {
+    set_layer(20)
+    draw_rectangle(v_chx - 12, v_chy, 25, 9, wood_brown, 60, true)
+    draw_line(v_chx - 12, v_chy, v_chx + 12, v_chy, gold, 80)
+    draw_line(v_chx - 12, v_chy + 4, v_chx + 12, v_chy + 4, gold, 55)
+    draw_line(v_chx - 12, v_chy, v_chx - 12, v_chy + 8, gold, 70)
+    draw_line(v_chx + 12, v_chy, v_chx + 12, v_chy + 8, gold, 70)
+    draw_rectangle(v_chx - 2, v_chy + 2, 5, 4, gold, 85, true)
+    plot(v_chx, v_chy + 4, black, 100)
+    # a few coins spilled on the floor
+    draw_ellipse(v_chx - 17, 60, 2, 1, 12, 70, true, 0)
+    draw_ellipse(v_chx + 16, 61, 2, 1, 12, 70, true, 0)
+    draw_ellipse(v_chx + 19, 59, 2, 1, 12, 60, true, 0)
+}
+
+# ---------------- Treasure pieces ----------------
+# kinds: 0 coin, 1 ruby, 2 emerald, 3 sapphire
+v_np = 22
+create_array(v_px, v_np, numeric)
+create_array(v_py, v_np, numeric)
+create_array(v_pz, v_np, numeric)      # nearness (1 = at the chest)
+create_array(v_pvx, v_np, numeric)
+create_array(v_pvy, v_np, numeric)
+create_array(v_pvz, v_np, numeric)
+create_array(v_pspin, v_np, numeric)
+create_array(v_pspd, v_np, numeric)
+create_array(v_pwob, v_np, numeric)
+create_array(v_pkind, v_np, numeric)
+create_array(v_pinst, v_np, numeric)
+create_array(v_pwait, v_np, numeric)   # > 0: waiting inside the chest
+create_array(v_pfront, v_np, numeric)  # 1 when moved to the front layer
+
+def piece_layer {
+    v_ki = v_pinst[v_i]
+    if v_pkind[v_i] == 0 then
+        set_sprite_layer(coin, v_lay, v_ki)
+    elseif v_pkind[v_i] == 1 then
+        set_sprite_layer(ruby, v_lay, v_ki)
+    elseif v_pkind[v_i] == 2 then
+        set_sprite_layer(emerald, v_lay, v_ki)
+    else
+        set_sprite_layer(sapphire, v_lay, v_ki)
+    endif
+}
+
+def launch {
+    # throw piece v_i up out of the chest; v_power for big bursts
+    v_px[v_i] = v_chx + random(-8, 8, 0)
+    v_py[v_i] = v_chy + 1
+    v_pz[v_i] = 1
+    v_pvx[v_i] = random(-40, 40, 0) / 100 * v_power
+    v_pvy[v_i] = 0 - random(80, 125, 0) / 100 * v_power
+    v_pvz[v_i] = random(-5, 8, 0) / 1000
+    # now and then one flies straight at you
+    if random(0, 99, 0) < 18 then
+        v_pvz[v_i] = random(25, 45, 0) / 1000
+        v_pvx[v_i] = v_pvx[v_i] * 0.4
+    endif
+    v_pspin[v_i] = random(0, 360, 0)
+    v_pspd[v_i] = random(8, 18, 0) * (random(0, 1, 0) * 2 - 1)
+    v_pwob[v_i] = random(0, 628, 0) / 100
+    v_pwait[v_i] = 0
+    if v_pfront[v_i] == 1 then
+        v_pfront[v_i] = 0
+        v_lay = 10
+        call piece_layer
+    endif
+}
+
+def show_pieces {
+    set_layer(10)
+    for v_i in (0, v_np - 1, 1)
+        if v_i < 12 then
+            v_pkind[v_i] = 0
+            v_pinst[v_i] = v_i
+        else
+            v_pkind[v_i] = 1 + (v_i - 12) % 3
+            v_pinst[v_i] = int((v_i - 12) / 3)
+        endif
+        v_ki = v_pinst[v_i]
+        if v_pkind[v_i] == 0 then
+            show_sprite(coin, v_chx, v_chy + 6, v_ki, 0, 0)
+            set_sprite_anchor(coin, 1, v_ki)
+        elseif v_pkind[v_i] == 1 then
+            show_sprite(ruby, v_chx, v_chy + 6, v_ki, 0, 0)
+            set_sprite_anchor(ruby, 1, v_ki)
+        elseif v_pkind[v_i] == 2 then
+            show_sprite(emerald, v_chx, v_chy + 6, v_ki, 0, 0)
+            set_sprite_anchor(emerald, 1, v_ki)
+        else
+            show_sprite(sapphire, v_chx, v_chy + 6, v_ki, 0, 0)
+            set_sprite_anchor(sapphire, 1, v_ki)
+        endif
+        v_pfront[v_i] = 0
+        v_px[v_i] = v_chx
+        v_py[v_i] = v_chy + 6
+        v_pz[v_i] = 1
+        v_pwait[v_i] = random(0, 160, 0)
+    endfor v_i
+}
+
+def update_pieces {
+    for v_i in (0, v_np - 1, 1)
+        if v_pwait[v_i] > 0 then
+            v_pwait[v_i] = v_pwait[v_i] - v_k
+            if v_pwait[v_i] <= 0 then
+                v_power = 1
+                call launch
+            endif
+        else
+            v_px[v_i] = v_px[v_i] + v_pvx[v_i] * v_k
+            v_py[v_i] = v_py[v_i] + v_pvy[v_i] * v_k
+            v_pz[v_i] = v_pz[v_i] + v_pvz[v_i] * v_k
+            v_pvy[v_i] = v_pvy[v_i] + 0.02 * v_k
+            v_pspin[v_i] = v_pspin[v_i] + v_pspd[v_i] * v_k
+            # spread outward from the middle of the screen as it nears you
+            if v_pvz[v_i] > 0.01 then
+                v_px[v_i] = v_px[v_i] + (v_px[v_i] - 32) * v_pvz[v_i] * 0.8 * v_k
+                v_py[v_i] = v_py[v_i] + (v_py[v_i] - 30) * v_pvz[v_i] * 0.5 * v_k
+                if v_pfront[v_i] == 0 and v_pz[v_i] > 1.4 then
+                    v_pfront[v_i] = 1
+                    v_lay = 30
+                    call piece_layer
+                endif
+            endif
+            # back into the chest, or flown past you / off the screen
+            if (v_py[v_i] > v_chy + 3 and v_pvy[v_i] > 0 and v_pfront[v_i] == 0) or v_pz[v_i] > 5 or v_py[v_i] > 72 or v_px[v_i] < -20 or v_px[v_i] > 84 then
+                v_pwait[v_i] = random(20, 140, 0)
+                v_px[v_i] = v_chx
+                v_py[v_i] = v_chy + 6
+                v_pz[v_i] = 1
+                if v_pfront[v_i] == 1 then
+                    v_pfront[v_i] = 0
+                    v_lay = 10
+                    call piece_layer
+                endif
+            endif
+        endif
+        # place it: size from nearness, coins spin on edge, gems spin flat
+        v_ki = v_pinst[v_i]
+        v_sc = min(v_pz[v_i], 7.5)
+        if v_pkind[v_i] == 0 then
+            set_sprite_transform(coin, v_sc, sin(v_pwob[v_i] + v_t * 0.05) * 20, v_ki, sin(v_pspin[v_i] * 0.02) * 25, v_pspin[v_i], 0)
+            move_sprite(coin, v_px[v_i], v_py[v_i], v_ki, 0)
+        elseif v_pkind[v_i] == 1 then
+            set_sprite_transform(ruby, v_sc, v_pspin[v_i], v_ki, 0, 0, 0)
+            move_sprite(ruby, v_px[v_i], v_py[v_i], v_ki, 0)
+        elseif v_pkind[v_i] == 2 then
+            set_sprite_transform(emerald, v_sc, v_pspin[v_i], v_ki, 0, 0, 0)
+            move_sprite(emerald, v_px[v_i], v_py[v_i], v_ki, 0)
+        else
+            set_sprite_transform(sapphire, v_sc, v_pspin[v_i], v_ki, 0, 0, 0)
+            move_sprite(sapphire, v_px[v_i], v_py[v_i], v_ki, 0)
+        endif
+    endfor v_i
+}
+
+# sparkles and torch flames, redrawn each frame
+v_nsp = 18
+create_array(v_spx, v_nsp, numeric)
+create_array(v_spy, v_nsp, numeric)
+create_array(v_spl, v_nsp, numeric)
+for v_i in (0, v_nsp - 1, 1)
+    v_spl[v_i] = 0
+endfor v_i
+
+def draw_sparkles {
+    # torch flames on the wall, behind all the treasure
+    set_layer(3)
+    clear_layer(3)
+    for v_s in (0, 1, 1)
+        v_fx = 5 + v_s * 53
+        v_fh = 4 + random(0, 2, 0)
+        draw_circle(v_fx, 20, 3, 8, 25, true)
+        draw_line(v_fx, 23, v_fx + random(-1, 1, 0), 23 - v_fh, orange, 95)
+        draw_line(v_fx - 1, 23, v_fx - 1, 21, red, 80)
+        draw_line(v_fx + 1, 23, v_fx + 1, 21, red, 80)
+        plot(v_fx, 22, yellow, 100)
+        plot(v_fx, 21, white, 80)
+    endfor v_s
+    set_layer(40)
+    clear_layer(40)
+    # glints over the chest and on flying pieces
+    for v_i in (0, v_nsp - 1, 1)
+        if v_spl[v_i] <= 0 and random(0, 99, 0) < 6 then
+            v_spl[v_i] = 12
+            v_j = random(0, v_np - 1, 0)
+            if v_pwait[v_j] <= 0 then
+                v_spx[v_i] = v_px[v_j] + random(-2, 2, 0)
+                v_spy[v_i] = v_py[v_j] + random(-2, 2, 0)
+            else
+                v_spx[v_i] = v_chx + random(-10, 10, 0)
+                v_spy[v_i] = v_chy - random(0, 3, 0)
+            endif
+        endif
+        if v_spl[v_i] > 0 then
+            v_spl[v_i] = v_spl[v_i] - v_k
+            v_si = v_spl[v_i] * 8
+            plot(v_spx[v_i], v_spy[v_i], white, min(v_si, 100))
+            if v_spl[v_i] > 6 then
+                plot(v_spx[v_i] - 1, v_spy[v_i], 15, v_si * 0.5)
+                plot(v_spx[v_i] + 1, v_spy[v_i], 15, v_si * 0.5)
+                plot(v_spx[v_i], v_spy[v_i] - 1, 15, v_si * 0.5)
+                plot(v_spx[v_i], v_spy[v_i] + 1, 15, v_si * 0.5)
+            endif
+        endif
+    endfor v_i
+}
+
+# ---------------- Main ----------------
+v_t = 0
+v_burst_clock = 600
+begin_frame
+    call draw_vault
+    call draw_chest_back
+    call draw_chest_front
+    call show_pieces
+end_frame
+while true then
+    v_t = v_t + v_k
+    # every so often the chest erupts: everything waiting goes up at once
+    v_burst_clock = v_burst_clock - v_k
+    if v_burst_clock <= 0 then
+        v_burst_clock = random(500, 900, 0)
+        for v_i in (0, v_np - 1, 1)
+            if v_pwait[v_i] > 0 then
+                v_power = 1.25
+                call launch
+            endif
+        endfor v_i
+    endif
+    begin_frame(true)
+        call update_pieces
+        call draw_sparkles
+    end_frame
+endwhile
