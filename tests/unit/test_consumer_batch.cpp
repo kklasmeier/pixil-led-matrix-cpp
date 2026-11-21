@@ -109,7 +109,7 @@ TEST(consumer_sprite_batch_show_hide) {
     api.execute_command("sprite_draw(dot, plot, 1, 1, red, 100)");
     api.execute_command("endsprite");
 
-    // Pack: OP_SHOW + name_len + "dot" + x,y,instance,cel
+    // Pack: OP_SHOW + name_len + "dot" + x,y,instance,cel,z
     std::vector<uint8_t> rec;
     rec.push_back(1);  // OP_SHOW
     rec.push_back(3);
@@ -124,6 +124,7 @@ TEST(consumer_sprite_batch_show_hide) {
     put16(6);
     rec.push_back(0);    // instance
     rec.push_back(255);  // cel none
+    put16(0);            // z_index
     api.begin_frame(false);
     api.sprite_batch_bytes(rec);
     api.end_frame();

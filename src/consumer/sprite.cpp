@@ -125,7 +125,7 @@ SpriteInstance* SpriteManager::get_instance(const std::string& name, int instanc
 }
 
 SpriteInstance* SpriteManager::create_instance(const std::string& name, int instance_id, int x, int y,
-                                               int z_index, int cel_index) {
+                                               int z_index, int cel_index, uint16_t layer) {
     MatrixSprite* tmpl = get_template(name);
     if (!tmpl) return nullptr;
     if (cel_index < 0 || cel_index >= tmpl->cel_count()) return nullptr;
@@ -136,6 +136,7 @@ SpriteInstance* SpriteManager::create_instance(const std::string& name, int inst
     inst.x = x;
     inst.y = y;
     inst.z_index = z_index;
+    inst.layer = layer;
     inst.current_cel = cel_index;
     bucket.emplace(instance_id, inst);
     z_order_.emplace_back(name, instance_id);
@@ -168,6 +169,48 @@ std::vector<std::pair<std::string, int>> SpriteManager::iter_draw_order() const 
     out.reserve(rows.size());
     for (auto& r : rows) out.emplace_back(std::move(r.name), r.id);
     return out;
+}
+
+std::vector<std::pair<std::string, int>> SpriteManager::iter_draw_order_for_layer(uint16_t layer) const {
+    struct Row {
+        int z;
+        int creation;
+        std::string name;
+        int id;
+    };
+    std::vector<Row> rows;
+    for (int i = 0; i < static_cast<int>(z_order_.size()); ++i) {
+        const auto& [name, id] = z_order_[static_cast<size_t>(i)];
+        auto it = instances_.find(name);
+        if (it == instances_.end()) continue;
+        auto jt = it->second.find(id);
+        if (jt == it->second.end() || jt->second.layer != layer) continue;
+        rows.push_back({jt->second.z_index, i, name, id});
+    }
+    std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+        if (a.z != b.z) return a.z < b.z;
+        return a.creation < b.creation;
+    });
+    std::vector<std::pair<std::string, int>> out;
+    out.reserve(rows.size());
+    for (auto& r : rows) out.emplace_back(std::move(r.name), r.id);
+    return out;
+}
+
+void SpriteManager::hide_sprites_on_layer(uint16_t layer) {
+    for (auto& [name, bucket] : instances_) {
+        for (auto& [id, inst] : bucket) {
+            if (inst.layer == layer) inst.visible = false;
+        }
+    }
+}
+
+void SpriteManager::reassign_layer(uint16_t from_layer, uint16_t to_layer) {
+    for (auto& [name, bucket] : instances_) {
+        for (auto& [id, inst] : bucket) {
+            if (inst.layer == from_layer) inst.layer = to_layer;
+        }
+    }
 }
 
 void SpriteManager::dispose_instance(const std::string& name, int instance_id) {

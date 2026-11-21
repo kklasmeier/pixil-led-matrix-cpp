@@ -1,0 +1,525 @@
+# Layered Aquarium - a fish tank built from drawing layers and sprites
+#
+# A tank with a kelp forest at the back, a stone arch in the middle and
+# sand and plants at the front. Fish swim between those planes: a little
+# school threads behind the arch and shows through its opening, striped
+# fish cruise between the arch and the front plants, a big fish crosses
+# behind everything one way and in front of everything on the way back, a
+# jellyfish drifts behind the kelp and a crab scuttles behind the front
+# plants. Every so often the tank lights click off: the scene switches to
+# its moonlit version and glowing plankton appears, then the lights come
+# back on.
+#
+# What it shows off (Pixil drawing layers):
+#   - All the scenery is drawn ONCE, onto its own layer, then kept. Each
+#     frame only the bubbles layer is cleared and redrawn and the sprites
+#     move.
+#   - Sprites live on layers, so they pass behind and in front of the
+#     scenery: back kelp 10 < school 15 < arch 20 < striped fish 25 <
+#     front plants 30 < big fish (when in front) 35.
+#   - The big fish changes layer with set_sprite_layer each time it turns.
+#   - Day and night versions of the scenery are both drawn at start; the
+#     lights switch with hide_layer / show_layer, with no redrawing.
+#
+# Layers:
+#   0  water (day)          1  water (night)
+#   5  sunbeams (day only)  7  jellyfish sprite
+#   10 kelp (day)           11 kelp (night)
+#   15 school sprites
+#   20 arch (day)           21 arch (night)
+#   25 striped fish + crab sprites
+#   30 sand and plants (day)  31 sand and plants (night)
+#   35 big fish when in front
+#   40 bubbles (cleared and redrawn each frame)
+#   45 glowing plankton (night only)
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_day_len = 1800           # frames with the lights on (at the design pace)
+v_night_len = 1100         # frames with the lights off
+v_sandy = 55               # top of the sand
+
+# ---------------- Sprites ----------------
+# cels 0,1 face right (tail flapping), cels 2,3 face left
+define_sprite(minnow, 5, 3)
+    sprite_cel(0)
+        draw_line(1, 1, 3, 1, silver, 90)
+        plot(2, 0, sky_blue, 80)
+        plot(4, 1, white, 100)
+        plot(0, 0, gray, 70)
+        plot(0, 2, gray, 70)
+    sprite_cel(1)
+        draw_line(1, 1, 3, 1, silver, 90)
+        plot(2, 0, sky_blue, 80)
+        plot(4, 1, white, 100)
+        plot(0, 1, gray, 70)
+    sprite_cel(2)
+        draw_line(1, 1, 3, 1, silver, 90)
+        plot(2, 0, sky_blue, 80)
+        plot(0, 1, white, 100)
+        plot(4, 0, gray, 70)
+        plot(4, 2, gray, 70)
+    sprite_cel(3)
+        draw_line(1, 1, 3, 1, silver, 90)
+        plot(2, 0, sky_blue, 80)
+        plot(0, 1, white, 100)
+        plot(4, 1, gray, 70)
+endsprite
+
+define_sprite(stripey, 9, 7)
+    sprite_cel(0)
+        draw_ellipse(5, 3, 3, 2, gold, 95, true, 0)
+        draw_line(4, 1, 4, 5, black, 100)
+        draw_line(6, 1, 6, 5, black, 100)
+        draw_line(5, 0, 3, 0, orange, 80)
+        draw_line(0, 1, 2, 3, orange, 85)
+        draw_line(0, 5, 2, 3, orange, 85)
+        plot(7, 2, black, 100)
+    sprite_cel(1)
+        draw_ellipse(5, 3, 3, 2, gold, 95, true, 0)
+        draw_line(4, 1, 4, 5, black, 100)
+        draw_line(6, 1, 6, 5, black, 100)
+        draw_line(5, 0, 3, 0, orange, 80)
+        draw_line(0, 2, 2, 3, orange, 85)
+        draw_line(0, 4, 2, 3, orange, 85)
+        plot(7, 2, black, 100)
+    sprite_cel(2)
+        draw_ellipse(3, 3, 3, 2, gold, 95, true, 0)
+        draw_line(4, 1, 4, 5, black, 100)
+        draw_line(2, 1, 2, 5, black, 100)
+        draw_line(3, 0, 5, 0, orange, 80)
+        draw_line(8, 1, 6, 3, orange, 85)
+        draw_line(8, 5, 6, 3, orange, 85)
+        plot(1, 2, black, 100)
+    sprite_cel(3)
+        draw_ellipse(3, 3, 3, 2, gold, 95, true, 0)
+        draw_line(4, 1, 4, 5, black, 100)
+        draw_line(2, 1, 2, 5, black, 100)
+        draw_line(3, 0, 5, 0, orange, 80)
+        draw_line(8, 2, 6, 3, orange, 85)
+        draw_line(8, 4, 6, 3, orange, 85)
+        plot(1, 2, black, 100)
+endsprite
+
+define_sprite(bigfish, 15, 8)
+    sprite_cel(0)
+        draw_ellipse(8, 4, 5, 3, royal_blue, 90, true, 0)
+        draw_ellipse(9, 5, 3, 1, sky_blue, 70, true, 0)
+        draw_line(6, 1, 10, 0, azure, 80)
+        draw_line(0, 1, 3, 4, royal_blue, 85)
+        draw_line(0, 7, 3, 4, royal_blue, 85)
+        draw_line(0, 2, 0, 6, azure, 70)
+        plot(11, 3, white, 100)
+        plot(12, 3, black, 100)
+        draw_line(13, 5, 12, 5, navy, 80)
+    sprite_cel(1)
+        draw_ellipse(8, 4, 5, 3, royal_blue, 90, true, 0)
+        draw_ellipse(9, 5, 3, 1, sky_blue, 70, true, 0)
+        draw_line(6, 1, 10, 0, azure, 80)
+        draw_line(1, 2, 3, 4, royal_blue, 85)
+        draw_line(1, 6, 3, 4, royal_blue, 85)
+        draw_line(1, 2, 1, 6, azure, 70)
+        plot(11, 3, white, 100)
+        plot(12, 3, black, 100)
+        draw_line(13, 5, 12, 5, navy, 80)
+    sprite_cel(2)
+        draw_ellipse(6, 4, 5, 3, royal_blue, 90, true, 0)
+        draw_ellipse(5, 5, 3, 1, sky_blue, 70, true, 0)
+        draw_line(8, 1, 4, 0, azure, 80)
+        draw_line(14, 1, 11, 4, royal_blue, 85)
+        draw_line(14, 7, 11, 4, royal_blue, 85)
+        draw_line(14, 2, 14, 6, azure, 70)
+        plot(3, 3, white, 100)
+        plot(2, 3, black, 100)
+        draw_line(1, 5, 2, 5, navy, 80)
+    sprite_cel(3)
+        draw_ellipse(6, 4, 5, 3, royal_blue, 90, true, 0)
+        draw_ellipse(5, 5, 3, 1, sky_blue, 70, true, 0)
+        draw_line(8, 1, 4, 0, azure, 80)
+        draw_line(13, 2, 11, 4, royal_blue, 85)
+        draw_line(13, 6, 11, 4, royal_blue, 85)
+        draw_line(13, 2, 13, 6, azure, 70)
+        plot(3, 3, white, 100)
+        plot(2, 3, black, 100)
+        draw_line(1, 5, 2, 5, navy, 80)
+endsprite
+
+define_sprite(crab, 9, 5)
+    sprite_cel(0)
+        draw_ellipse(4, 2, 3, 1, red, 90, true, 0)
+        plot(3, 0, white, 100)
+        plot(5, 0, white, 100)
+        draw_line(0, 1, 1, 2, crimson, 90)
+        draw_line(8, 1, 7, 2, crimson, 90)
+        plot(2, 4, crimson, 80)
+        plot(4, 4, crimson, 80)
+        plot(6, 4, crimson, 80)
+    sprite_cel(1)
+        draw_ellipse(4, 2, 3, 1, red, 90, true, 0)
+        plot(3, 0, white, 100)
+        plot(5, 0, white, 100)
+        draw_line(0, 0, 1, 2, crimson, 90)
+        draw_line(8, 0, 7, 2, crimson, 90)
+        plot(1, 4, crimson, 80)
+        plot(3, 4, crimson, 80)
+        plot(5, 4, crimson, 80)
+        plot(7, 4, crimson, 80)
+endsprite
+
+define_sprite(jelly, 7, 9)
+    sprite_cel(0)
+        draw_ellipse(3, 2, 3, 2, violet, 60, true, 0)
+        draw_ellipse(3, 1, 1, 1, pink, 60, true, 0)
+        draw_line(1, 4, 1, 7, lavender, 40)
+        draw_line(3, 4, 3, 8, lavender, 40)
+        draw_line(5, 4, 5, 7, lavender, 40)
+    sprite_cel(1)
+        draw_ellipse(3, 2, 2, 2, violet, 60, true, 0)
+        draw_ellipse(3, 1, 1, 1, pink, 60, true, 0)
+        draw_line(2, 4, 1, 8, lavender, 40)
+        draw_line(3, 4, 3, 8, lavender, 40)
+        draw_line(4, 4, 5, 8, lavender, 40)
+endsprite
+
+# ---------------- Scenery (drawn once per version) ----------------
+v_ph1 = random(0, 628, 0) / 100
+create_array(v_kx, 7, numeric)
+create_array(v_kh, 7, numeric)
+for v_i in (0, 6, 1)
+    v_kx[v_i] = 4 + v_i * 9 + random(-2, 2, 0)
+    v_kh[v_i] = random(26, 40, 0)
+endfor v_i
+
+def draw_water {
+    # v_lum: 1 lights on, about 0.35 moonlight
+    for v_y in (0, 63, 1)
+        draw_line(0, v_y, 63, v_y, 54 + int(v_y * 0.12), (34 - v_y * 0.33) * v_lum + 3)
+    endfor v_y
+    # far rocks
+    for v_x in (0, 63, 1)
+        v_h = 6 + sin(v_x * 0.15 + v_ph1) * 3 + sin(v_x * 0.37) * 1.5
+        draw_line(v_x, v_sandy - v_h, v_x, v_sandy, navy, 18 * v_lum + 2)
+    endfor v_x
+}
+
+def draw_sunbeams {
+    for v_b in (0, 3, 1)
+        v_bx = 6 + v_b * 16
+        for v_y in (0, 50, 1)
+            v_xx = v_bx + v_y * 0.35
+            # same colour as the water there, just brighter
+            draw_line(v_xx, v_y, v_xx + 2 + v_y * 0.04, v_y, 54 + int(v_y * 0.12), 34 - v_y * 0.33 + 14 - v_y * 0.2)
+        endfor v_y
+    endfor v_b
+}
+
+def draw_kelp {
+    for v_i in (0, 6, 1)
+        v_x = v_kx[v_i]
+        v_y = v_sandy + 1
+        for v_s in (1, v_kh[v_i], 1)
+            v_nx = v_kx[v_i] + sin(v_s * 0.25 + v_i) * 1.6
+            v_ny = v_sandy + 1 - v_s
+            draw_line(v_x, v_y, v_nx, v_ny, forest_green, 45 * v_lum + 4)
+            if v_s % 4 == 0 then
+                draw_line(v_nx, v_ny, v_nx + 2 - (v_s % 8) / 2, v_ny - 1, green, 35 * v_lum + 3)
+            endif
+            v_x = v_nx
+            v_y = v_ny
+        endfor v_s
+    endfor v_i
+}
+
+def draw_arch {
+    # two stone pillars and a curved top; the opening stays see-through
+    draw_rectangle(18, 32, 7, v_sandy - 32 + 1, gray, 45 * v_lum + 4, true)
+    draw_rectangle(41, 34, 7, v_sandy - 34 + 1, gray, 45 * v_lum + 4, true)
+    for v_r in (0, 5, 1)
+        draw_arc(18, 33 - v_r * 0.4, 47, 35 - v_r * 0.4, 9 + v_r, gray, (45 - v_r * 2) * v_lum + 4)
+    endfor v_r
+    # shading and moss
+    draw_line(18, 33, 18, v_sandy, light_gray, 30 * v_lum + 3)
+    draw_line(41, 35, 41, v_sandy, light_gray, 30 * v_lum + 3)
+    draw_line(24, 33, 24, v_sandy, dark_gray, 50 * v_lum + 3)
+    draw_line(47, 35, 47, v_sandy, dark_gray, 50 * v_lum + 3)
+    for v_m in (0, 8, 1)
+        plot(19 + v_m % 5, 40 + v_m * 2, olive, 50 * v_lum + 3)
+        plot(42 + (v_m * 3) % 5, 41 + v_m * 2, olive, 50 * v_lum + 3)
+    endfor v_m
+    # corals on top of the arch
+    draw_line(27, 24, 26, 20, magenta, 70 * v_lum + 5)
+    draw_line(27, 24, 29, 19, magenta, 70 * v_lum + 5)
+    draw_line(29, 19, 30, 17, pink, 70 * v_lum + 5)
+    draw_circle(38, 23, 2, orange, 70 * v_lum + 5, true)
+    draw_circle(38, 22, 1, gold, 70 * v_lum + 5, true)
+}
+
+def draw_front {
+    # sand
+    for v_x in (0, 63, 1)
+        v_t2 = v_sandy + sin(v_x * 0.2 + v_ph1) * 1.2
+        draw_line(v_x, v_t2, v_x, 63, tan, 38 * v_lum + 4)
+        plot(v_x, v_t2, peach, 45 * v_lum + 4)
+    endfor v_x
+    # shells and pebbles
+    draw_ellipse(10, 60, 2, 1, white, 50 * v_lum + 3, true, 0)
+    draw_ellipse(51, 61, 1, 1, salmon, 60 * v_lum + 3, true, 0)
+    draw_ellipse(33, 59, 2, 1, gray, 40 * v_lum + 3, true, 0)
+    # front plants at both sides and a small one in the middle
+    for v_p in (0, 2, 1)
+        if v_p == 0 then
+            v_px = 4
+            v_ph2 = 22
+        elseif v_p == 1 then
+            v_px = 58
+            v_ph2 = 26
+        else
+            v_px = 36
+            v_ph2 = 10
+        endif
+        for v_l in (-2, 2, 1)
+            v_x = v_px
+            v_y = v_sandy + 2
+            for v_s in (1, v_ph2 - abs(v_l) * 4, 1)
+                v_nx = v_px + v_l * v_s * 0.18 + sin(v_s * 0.4 + v_l) * 0.8
+                v_ny = v_sandy + 2 - v_s
+                draw_line(v_x, v_y, v_nx, v_ny, green, (60 - abs(v_l) * 8) * v_lum + 4)
+                v_x = v_nx
+                v_y = v_ny
+            endfor v_s
+        endfor v_l
+    endfor v_p
+}
+
+def draw_plankton {
+    for v_i in (0, 40, 1)
+        plot(random(0, 63, 0), random(4, 52, 0), spring_green, random(20, 55, 0))
+    endfor v_i
+}
+
+def build_layers {
+    # lights on
+    v_lum = 1
+    set_layer(0)
+    call draw_water
+    set_layer(5)
+    call draw_sunbeams
+    set_layer(10)
+    call draw_kelp
+    set_layer(20)
+    call draw_arch
+    set_layer(30)
+    call draw_front
+    # lights off
+    v_lum = 0.32
+    set_layer(1)
+    call draw_water
+    set_layer(11)
+    call draw_kelp
+    set_layer(21)
+    call draw_arch
+    set_layer(31)
+    call draw_front
+    set_layer(45)
+    call draw_plankton
+    # start with the lights on
+    hide_layer(1)
+    hide_layer(11)
+    hide_layer(21)
+    hide_layer(31)
+    hide_layer(45)
+}
+
+def lights_off {
+    hide_layer(0)
+    hide_layer(5)
+    hide_layer(10)
+    hide_layer(20)
+    hide_layer(30)
+    show_layer(1)
+    show_layer(11)
+    show_layer(21)
+    show_layer(31)
+    show_layer(45)
+}
+
+def lights_on {
+    show_layer(0)
+    show_layer(5)
+    show_layer(10)
+    show_layer(20)
+    show_layer(30)
+    hide_layer(1)
+    hide_layer(11)
+    hide_layer(21)
+    hide_layer(31)
+    hide_layer(45)
+}
+
+# ---------------- Creatures ----------------
+v_nsch = 5
+create_array(v_sox, v_nsch, numeric)
+create_array(v_soy, v_nsch, numeric)
+for v_i in (0, v_nsch - 1, 1)
+    v_sox[v_i] = random(-60, 60, 0) / 10
+    v_soy[v_i] = random(-30, 30, 0) / 10
+endfor v_i
+v_sx = 10
+v_sdir = 1
+
+create_array(v_stx, 2, numeric)
+create_array(v_sty, 2, numeric)
+create_array(v_std, 2, numeric)
+v_stx[0] = 5
+v_sty[0] = 42
+v_std[0] = 1
+v_stx[1] = 50
+v_sty[1] = 28
+v_std[1] = -1
+
+v_bfx = -16
+v_bfy = 30
+v_bfd = 1
+v_bflayer = 15
+
+v_crx = 30
+v_crd = 1
+v_crwait = 0
+
+v_jx = 12
+v_jy = 20
+
+v_nbub = 8
+create_array(v_bbx, v_nbub, numeric)
+create_array(v_bby, v_nbub, numeric)
+for v_i in (0, v_nbub - 1, 1)
+    v_bbx[v_i] = 33 + random(-2, 2, 0)
+    v_bby[v_i] = random(5, 58, 0)
+endfor v_i
+
+def show_creatures {
+    set_layer(7)
+    show_sprite(jelly, int(v_jx), int(v_jy), 0, 0, 0)
+    set_layer(15)
+    for v_i in (0, v_nsch - 1, 1)
+        show_sprite(minnow, 10, 30, v_i, 0, 0)
+    endfor v_i
+    show_sprite(bigfish, int(v_bfx), int(v_bfy), 0, 0, 0)
+    set_layer(25)
+    show_sprite(stripey, 5, 42, 0, 0, 0)
+    show_sprite(stripey, 50, 28, 1, 0, 2)
+    show_sprite(crab, int(v_crx), v_sandy - 3, 0, 0, 0)
+}
+
+def move_creatures {
+    v_flap = int(v_t * 0.12) % 2
+    # school: a leader sweeps through the arch opening, the rest follow
+    v_sx = v_sx + v_sdir * 0.22 * v_k
+    if v_sx > 58 then
+        v_sdir = -1
+    endif
+    if v_sx < 2 then
+        v_sdir = 1
+    endif
+    v_sy = 37 + sin(v_t * 0.017) * 5
+    for v_i in (0, v_nsch - 1, 1)
+        v_fx = v_sx + v_sox[v_i] + sin(v_t * 0.03 + v_i) * 1.5
+        v_fy = v_sy + v_soy[v_i] + cos(v_t * 0.04 + v_i * 2) * 1
+        v_cel = (v_flap + v_i) % 2
+        if v_sdir < 0 then
+            v_cel = v_cel + 2
+        endif
+        move_sprite(minnow, int(v_fx), int(v_fy), v_i, v_cel)
+    endfor v_i
+    # striped fish cruise back and forth
+    for v_i in (0, 1, 1)
+        v_stx[v_i] = v_stx[v_i] + v_std[v_i] * 0.15 * v_k
+        if v_stx[v_i] > 55 then
+            v_std[v_i] = -1
+        endif
+        if v_stx[v_i] < 0 then
+            v_std[v_i] = 1
+        endif
+        v_cel = v_flap
+        if v_std[v_i] < 0 then
+            v_cel = v_cel + 2
+        endif
+        move_sprite(stripey, int(v_stx[v_i]), int(v_sty[v_i] + sin(v_t * 0.02 + v_i * 3) * 2), v_i, v_cel)
+    endfor v_i
+    # big fish: behind everything one way, in front of everything coming back
+    v_bfx = v_bfx + v_bfd * 0.2 * v_k
+    if v_bfx > 70 or v_bfx < -18 then
+        v_bfd = 0 - v_bfd
+        v_bfy = random(18, 44, 0)
+        if v_bflayer == 15 then
+            v_bflayer = 35
+        else
+            v_bflayer = 15
+        endif
+        set_sprite_layer(bigfish, v_bflayer, 0)
+    endif
+    v_cel = v_flap
+    if v_bfd < 0 then
+        v_cel = v_cel + 2
+    endif
+    move_sprite(bigfish, int(v_bfx), int(v_bfy + sin(v_t * 0.015) * 2), 0, v_cel)
+    # crab scuttles sideways along the sand, stopping now and then
+    if v_crwait > 0 then
+        v_crwait = v_crwait - v_k
+        move_sprite(crab, int(v_crx), v_sandy - 3, 0, 0)
+    else
+        v_crx = v_crx + v_crd * 0.12 * v_k
+        if v_crx > 54 or v_crx < 1 or random(0, 999, 0) < 4 then
+            v_crd = 0 - v_crd
+            v_crwait = random(30, 120, 0)
+        endif
+        move_sprite(crab, int(v_crx), v_sandy - 3, 0, int(v_t * 0.15) % 2)
+    endif
+    # jellyfish drifts and pulses behind the kelp
+    v_jx = 12 + sin(v_t * 0.004) * 10
+    v_jy = 18 + sin(v_t * 0.011) * 6
+    move_sprite(jelly, int(v_jx), int(v_jy), 0, int(v_t * 0.04) % 2)
+}
+
+def draw_bubbles {
+    # the one layer redrawn every frame
+    set_layer(40)
+    clear_layer(40)
+    for v_i in (0, v_nbub - 1, 1)
+        v_bby[v_i] = v_bby[v_i] - 0.25 * v_k
+        if v_bby[v_i] < 1 then
+            v_bby[v_i] = 58
+            v_bbx[v_i] = 33 + random(-2, 2, 0)
+        endif
+        plot(v_bbx[v_i] + sin(v_bby[v_i] * 0.5 + v_i) * 0.8, v_bby[v_i], white, 60)
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+v_t = 0
+v_lights = 1
+v_lt = 0
+begin_frame
+    call build_layers
+    call show_creatures
+end_frame
+while true then
+    v_t = v_t + v_k
+    v_lt = v_lt + v_k
+    begin_frame(true)
+        if v_lights == 1 and v_lt > v_day_len then
+            call lights_off
+            v_lights = 0
+            v_lt = 0
+        elseif v_lights == 0 and v_lt > v_night_len then
+            call lights_on
+            v_lights = 1
+            v_lt = 0
+        endif
+        call move_creatures
+        call draw_bubbles
+    end_frame
+endwhile

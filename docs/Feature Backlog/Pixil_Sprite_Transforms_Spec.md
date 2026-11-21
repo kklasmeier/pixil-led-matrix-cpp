@@ -2,7 +2,7 @@
 
 **Status:** Proposal, ready for implementation after Layers Phase 1
 **Repo:** kklasmeier/pixil-led-matrix-cpp
-**Depends on:** `Pixil_Layers_Spec.md` Phase 1, which provides the shared z axis for sprites and drawing
+**Depends on:** `Pixil_Layers_Spec.md` Phase 1 (drawing layers; sprites attach to a layer, `z_index` orders within that layer)
 **Areas touched:** interpreter (`src/runtime/machine.cpp` command table), `src/emit/sprite_batch.*`, consumer (`sprite.h/.cpp`, `api.cpp` sprite blit, `batch_decode.cpp`, `parse.cpp`), docs, tests
 
 ---
@@ -109,7 +109,7 @@ while true then
             # project to screen, scale by distance, tumble
             v_s = 40 / v_z[v_i]
             set_sprite_transform(rock, v_s * 0.25, v_t * 3 + v_i * 60, v_i)
-            set_sprite_depth(rock, int(255 - v_z[v_i] * 4), v_i)
+            set_sprite_layer(rock, int(255 - v_z[v_i] * 4), v_i)
             move_sprite(rock, 32 + v_x[v_i] * v_s, 24 + v_y[v_i] * v_s, v_i)
         endfor v_i
     end_frame
@@ -221,9 +221,9 @@ Positions stay exact even with the cache: sub-pixel x and y are applied when the
 
 ## 8. Interaction with layers
 
-- A transformed sprite composites at its `z_index` in the layer stack exactly like an untransformed one (Layers spec §4.2).
-- `set_sprite_depth` (from the Layers spec) plus transforms is the full 3D billboard recipe: depth from distance, scale from distance.
-- With the per-column depths a raycaster uses, a billboard is correctly clipped behind wall edges, because each wall column is its own layer z. (This needs depth-bucketed raycaster drawing; see Layers spec §10.2.)
+- A transformed sprite composites on its layer like an untransformed one (drawing on that layer first, then sprites by `z_index`).
+- `set_sprite_layer` / layer choice from distance, plus transforms, is the billboard recipe: which band from distance, scale from distance, `z_index` only for ties on the same band.
+- A raycaster can put each wall column on its own layer number from distance so billboards sit on intervening layers and stay hidden behind nearer walls.
 
 ---
 

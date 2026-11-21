@@ -22,6 +22,8 @@ enum DrawOp : uint8_t {
     OP_POLYGON = 5,
     OP_ELLIPSE = 6,
     OP_ARC = 7,
+    OP_SET_LAYER = 8,
+    OP_CLEAR_LAYER = 9,
 };
 
 class DrawBatch {

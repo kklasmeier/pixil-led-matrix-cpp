@@ -17,6 +17,8 @@ constexpr uint8_t OP_CIRCLE = 4;
 constexpr uint8_t OP_POLYGON = 5;
 constexpr uint8_t OP_ELLIPSE = 6;
 constexpr uint8_t OP_ARC = 7;
+constexpr uint8_t OP_SET_LAYER = 8;
+constexpr uint8_t OP_CLEAR_LAYER = 9;
 
 constexpr uint8_t kIntensityDefault = 255;
 constexpr uint32_t kBurnoutNone = 0xFFFFFFFFu;
@@ -64,6 +66,9 @@ size_t record_size(uint8_t op) {
             return 25;
         case OP_ARC:
             return 25;
+        case OP_SET_LAYER:
+        case OP_CLEAR_LAYER:
+            return 3;  // op + uint16 layer
         default:
             return 0;
     }
@@ -177,6 +182,12 @@ void apply_draw_batch(MatrixApi& api, const std::vector<uint8_t>& bytes) {
                 api.draw_arc(x0, y0, x1, y1, bulge, color_from_id(cid), inten, fill, bo, mode_of(p[19]));
                 break;
             }
+            case OP_SET_LAYER:
+                api.set_layer(static_cast<int>(ru16(p)));
+                break;
+            case OP_CLEAR_LAYER:
+                api.clear_layer(static_cast<int>(ru16(p)));
+                break;
             default:
                 break;
         }
@@ -217,20 +228,28 @@ void apply_sprite_batch(MatrixApi& api, const std::vector<uint8_t>& bytes) {
             api.hide_sprite(name, instance_id);
             continue;
         }
-        if (op == OP_SHOW || op == OP_MOVE) {
-            if (off + 6 > n) throw std::runtime_error("truncated show/move sprite record");
+        if (op == OP_SHOW) {
+            // OP_SHOW packs z as int16 after cel (same trailer as OP_MOVE_Z).
+            if (off + 8 > n) throw std::runtime_error("truncated show_sprite record");
+            int x = ri16(bytes.data() + off);
+            int y = ri16(bytes.data() + off + 2);
+            int instance_id = bytes[off + 4];
+            uint8_t cel_b = bytes[off + 5];
+            int z = ri16(bytes.data() + off + 6);
+            off += 8;
+            std::optional<int> cel = cel_b == 255 ? std::optional<int>{} : std::optional<int>{int(cel_b)};
+            api.show_sprite(name, x, y, instance_id, z, cel);
+            continue;
+        }
+        if (op == OP_MOVE) {
+            if (off + 6 > n) throw std::runtime_error("truncated move_sprite record");
             int x = ri16(bytes.data() + off);
             int y = ri16(bytes.data() + off + 2);
             int instance_id = bytes[off + 4];
             uint8_t cel_b = bytes[off + 5];
             off += 6;
             std::optional<int> cel = cel_b == 255 ? std::optional<int>{} : std::optional<int>{int(cel_b)};
-            if (op == OP_SHOW) {
-                // Batch show packs no z; unpack yields z=0 when cel present.
-                api.show_sprite(name, x, y, instance_id, 0, cel);
-            } else {
-                api.move_sprite(name, x, y, instance_id, cel, std::nullopt);
-            }
+            api.move_sprite(name, x, y, instance_id, cel, std::nullopt);
             continue;
         }
         if (op == OP_MOVE_Z) {

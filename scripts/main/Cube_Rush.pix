@@ -1,0 +1,504 @@
+# Cube Rush - skimming a neon cube field at breakneck speed
+#
+# A little ship races low over an endless plain studded with glowing
+# cubes. It weaves and banks hard between them, the horizon tilting with
+# every turn, while the cubes rush up and whip past. The speed keeps
+# building; the colour scheme of the field shifts as you cross into new
+# zones; and every so often the field opens into a slalom gate of tall
+# pillars to thread at full speed.
+#
+# How it is built:
+#   - Each cube is eight corners in 3D. Only the faces that can face you
+#     are drawn (the front, the top, and whichever side you are on), so a
+#     cube is at most three filled shapes and they never overlap each other.
+#   - Cubes are sorted far to near and drawn in that order.
+#   - The camera rolls with the ship, so the sky / ground split is worked
+#     out along the true horizon line, and the ground grid is drawn as 3D
+#     lines.
+#   - Cubes that pass behind are recycled far ahead, so the field never
+#     ends.
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_focal = 34
+v_near = 0.35
+v_ncube = 34
+v_far = 70                 # cubes live up to this far ahead
+v_fogz = 62
+
+# ---------------- Cubes ----------------
+create_array(v_qx, v_ncube, numeric)
+create_array(v_qz, v_ncube, numeric)
+create_array(v_qs, v_ncube, numeric)     # half width
+create_array(v_qh, v_ncube, numeric)     # height
+create_array(v_qc, v_ncube, numeric)     # palette slot 0-2
+create_array(v_ord, v_ncube, numeric)
+create_array(v_qd, v_ncube, numeric)     # depth for sorting
+
+# colour schemes: three cube colours each
+create_array(v_pal, 15, numeric)
+def set_pal {
+    v_pal[v_pi * 3] = v_c0
+    v_pal[v_pi * 3 + 1] = v_c1
+    v_pal[v_pi * 3 + 2] = v_c2
+}
+v_pi = 0
+v_c0 = 85
+v_c1 = 50
+v_c2 = 70
+call set_pal
+v_pi = 1
+v_c0 = 8
+v_c1 = 15
+v_c2 = 95
+call set_pal
+v_pi = 2
+v_c0 = 33
+v_c1 = 45
+v_c2 = 60
+call set_pal
+v_pi = 3
+v_c0 = 75
+v_c1 = 90
+v_c2 = 2
+call set_pal
+v_pi = 4
+v_c0 = 55
+v_c1 = 15
+v_c2 = 40
+call set_pal
+v_zone = 0
+v_zone_t = 0
+
+v_slalom = 0          # > 0 while a slalom gate is being laid out
+v_gate_n = 0
+
+def place_cube {
+    # cube v_i somewhere ahead
+    v_qz[v_i] = v_cz0 + v_far - random(0, 12, 0)
+    if v_slalom > 0 then
+        # two rows of tall pillars with a winding gap
+        v_gate_n = v_gate_n + 1
+        v_gx = v_cx0 + sin(v_gate_n * 0.6) * 6
+        if v_gate_n % 2 == 0 then
+            v_qx[v_i] = v_gx - 4.2
+        else
+            v_qx[v_i] = v_gx + 4.2
+        endif
+        v_qz[v_i] = v_cz0 + v_far
+        v_qs[v_i] = 0.8
+        v_qh[v_i] = 5
+        v_slalom = v_slalom - 1
+    else
+        v_qx[v_i] = v_cx0 + random(-280, 280, 0) / 10
+        v_qs[v_i] = random(6, 13, 0) / 10
+        v_qh[v_i] = v_qs[v_i] * 2 * random(8, 16, 0) / 10
+    endif
+    v_qc[v_i] = random(0, 2, 0)
+}
+
+# ---------------- Camera ----------------
+v_cx0 = 0                  # ship position
+v_cz0 = 0
+v_cy0 = 1.1
+v_vx = 0
+v_roll = 0
+v_speed = 0.5
+v_t = 0
+
+def to_cam {
+    v_dx = v_wx - v_cx0
+    v_dy = v_wy - v_cy0
+    v_dz = v_wz - v_cz0
+    # roll only (the ship always looks straight ahead)
+    v_cx = v_dx * v_cr + v_dy * v_srl
+    v_cy = v_dy * v_cr - v_dx * v_srl
+    v_cz = v_dz
+}
+
+# ---------------- Filling ----------------
+create_array(v_px8, 8, numeric)
+create_array(v_py8, 8, numeric)
+create_array(v_rowl, 64, numeric)
+create_array(v_rowr, 64, numeric)
+create_array(v_fx, 4, numeric)
+create_array(v_fy, 4, numeric)
+create_array(v_fz, 4, numeric)
+
+def fill_poly {
+    v_ymn = 99
+    v_ymx = -99
+    for v_kk in (0, v_no - 1, 1)
+        v_ymn = min(v_ymn, v_py8[v_kk])
+        v_ymx = max(v_ymx, v_py8[v_kk])
+    endfor v_kk
+    v_ya = max(int(v_ymn + 0.5), 0)
+    v_yb = min(int(v_ymx + 0.5), 63)
+    if v_ya <= v_yb then
+        for v_yy in (v_ya, v_yb, 1)
+            v_rowl[v_yy] = 999
+            v_rowr[v_yy] = -999
+        endfor v_yy
+        for v_kk in (0, v_no - 1, 1)
+            v_k2 = (v_kk + 1) % v_no
+            v_x0 = v_px8[v_kk]
+            v_y0 = v_py8[v_kk]
+            v_x1 = v_px8[v_k2]
+            v_y1 = v_py8[v_k2]
+            v_e0 = max(int(min(v_y0, v_y1) + 0.5), v_ya)
+            v_e1 = min(int(max(v_y0, v_y1) + 0.5), v_yb)
+            v_dyy = v_y1 - v_y0
+            if abs(v_dyy) < 0.0001 then
+                v_dyy = 0.0001
+            endif
+            v_sl = (v_x1 - v_x0) / v_dyy
+            for v_yy in (v_e0, v_e1, 1)
+                v_xx = v_x0 + v_sl * min(max(v_yy - v_y0, min(0, v_dyy)), max(0, v_dyy))
+                v_rowl[v_yy] = min(v_rowl[v_yy], v_xx)
+                v_rowr[v_yy] = max(v_rowr[v_yy], v_xx)
+            endfor v_yy
+        endfor v_kk
+        for v_yy in (v_ya, v_yb, 1)
+            v_xl = max(int(v_rowl[v_yy] + 0.5), 0)
+            v_xr = min(int(v_rowr[v_yy] + 0.5), 63)
+            if v_xl <= v_xr then
+                draw_line(v_xl, v_yy, v_xr, v_yy, v_fc, v_fi)
+            endif
+        endfor v_yy
+    endif
+}
+
+def draw_face {
+    # 4 world corners in v_fx/v_fy/v_fz: clip at the near plane, project, fill
+    v_no = 0
+    for v_kk in (0, 3, 1)
+        v_k2 = (v_kk + 1) % 4
+        v_wx = v_fx[v_kk]
+        v_wy = v_fy[v_kk]
+        v_wz = v_fz[v_kk]
+        call to_cam
+        v_ax = v_cx
+        v_ay = v_cy
+        v_az = v_cz
+        v_wx = v_fx[v_k2]
+        v_wy = v_fy[v_k2]
+        v_wz = v_fz[v_k2]
+        call to_cam
+        if v_az >= v_near then
+            v_px8[v_no] = 31.5 + v_ax / v_az * v_focal
+            v_py8[v_no] = v_hy - v_ay / v_az * v_focal
+            v_no = v_no + 1
+        endif
+        if (v_az >= v_near) != (v_cz >= v_near) then
+            v_f = (v_near - v_az) / (v_cz - v_az)
+            v_px8[v_no] = 31.5 + (v_ax + (v_cx - v_ax) * v_f) / v_near * v_focal
+            v_py8[v_no] = v_hy - (v_ay + (v_cy - v_ay) * v_f) / v_near * v_focal
+            v_no = v_no + 1
+        endif
+    endfor v_kk
+    if v_no >= 3 then
+        call fill_poly
+    endif
+}
+
+def draw_cube {
+    v_cbx0 = v_qx[v_i] - v_qs[v_i]
+    v_cbx1 = v_qx[v_i] + v_qs[v_i]
+    v_cbz0 = v_qz[v_i] - v_qs[v_i]
+    v_cbz1 = v_qz[v_i] + v_qs[v_i]
+    v_top = v_qh[v_i]
+    v_fog = max(1 - (v_qz[v_i] - v_cz0) / v_fogz, 0)
+    v_fog = v_fog * v_fog
+    if v_fog > 0.02 then
+        v_fc = v_pal[v_zone * 3 + v_qc[v_i]]
+        # side face on the camera's side
+        if v_cx0 < v_cbx0 or v_cx0 > v_cbx1 then
+            v_sx = v_cbx0
+            if v_cx0 > v_cbx1 then
+                v_sx = v_cbx1
+            endif
+            v_fx[0] = v_sx
+            v_fy[0] = 0
+            v_fz[0] = v_cbz0
+            v_fx[1] = v_sx
+            v_fy[1] = 0
+            v_fz[1] = v_cbz1
+            v_fx[2] = v_sx
+            v_fy[2] = v_top
+            v_fz[2] = v_cbz1
+            v_fx[3] = v_sx
+            v_fy[3] = v_top
+            v_fz[3] = v_cbz0
+            v_fi = 38 * v_fog + 3
+            call draw_face
+        endif
+        # top, when we fly above it
+        if v_cy0 > v_top then
+            v_fx[0] = v_cbx0
+            v_fy[0] = v_top
+            v_fz[0] = v_cbz0
+            v_fx[1] = v_cbx1
+            v_fy[1] = v_top
+            v_fz[1] = v_cbz0
+            v_fx[2] = v_cbx1
+            v_fy[2] = v_top
+            v_fz[2] = v_cbz1
+            v_fx[3] = v_cbx0
+            v_fy[3] = v_top
+            v_fz[3] = v_cbz1
+            v_fi = 90 * v_fog + 5
+            call draw_face
+        endif
+        # front
+        v_fx[0] = v_cbx0
+        v_fy[0] = 0
+        v_fz[0] = v_cbz0
+        v_fx[1] = v_cbx1
+        v_fy[1] = 0
+        v_fz[1] = v_cbz0
+        v_fx[2] = v_cbx1
+        v_fy[2] = v_top
+        v_fz[2] = v_cbz0
+        v_fx[3] = v_cbx0
+        v_fy[3] = v_top
+        v_fz[3] = v_cbz0
+        v_fi = 62 * v_fog + 4
+        call draw_face
+        # glowing top edge
+        if v_fog > 0.2 and v_qz[v_i] - v_cz0 > v_near + v_qs[v_i] then
+            v_wx = v_cbx0
+            v_wy = v_top
+            v_wz = v_cbz0
+            call to_cam
+            v_ex0 = 31.5 + v_cx / v_cz * v_focal
+            v_ey0 = v_hy - v_cy / v_cz * v_focal
+            v_wx = v_cbx1
+            call to_cam
+            draw_line(v_ex0, v_ey0, 31.5 + v_cx / v_cz * v_focal, v_hy - v_cy / v_cz * v_focal, white, 70 * v_fog)
+        endif
+    endif
+}
+
+# ---------------- Sky and ground ----------------
+def draw_sky_ground {
+    # world up in camera space is (sin roll, cos roll, 0) rotated; a screen
+    # point is sky if its ray points upward
+    v_wux = v_srl
+    v_wuy = v_cr
+    for v_sy in (0, 63, 1)
+        v_yy = 0 - (v_sy - v_hy) / v_focal
+        v_base = v_wuy * v_yy
+        v_glow = max(1 - abs(v_base) * 4, 0)
+        v_si = 10 + v_glow * 22
+        v_gi = 6 + v_glow * 10
+        if abs(v_wux) < 0.0001 then
+            if v_base > 0 then
+                draw_line(0, v_sy, 63, v_sy, v_skyc, v_si)
+            else
+                draw_line(0, v_sy, 63, v_sy, navy, v_gi)
+            endif
+        else
+            v_sx0 = 31.5 - v_base / v_wux * v_focal
+            v_xs = min(max(int(v_sx0 + 0.5), 0), 64)
+            if v_wux < 0 then
+                if v_xs > 0 then
+                    draw_line(0, v_sy, v_xs - 1, v_sy, v_skyc, v_si)
+                endif
+                if v_xs < 64 then
+                    draw_line(v_xs, v_sy, 63, v_sy, navy, v_gi)
+                endif
+            else
+                if v_xs > 0 then
+                    draw_line(0, v_sy, v_xs - 1, v_sy, navy, v_gi)
+                endif
+                if v_xs < 64 then
+                    draw_line(v_xs, v_sy, 63, v_sy, v_skyc, v_si)
+                endif
+            endif
+        endif
+    endfor v_sy
+}
+
+def line3 {
+    v_wx = v_ax3
+    v_wy = v_ay3
+    v_wz = v_az3
+    call to_cam
+    v_c1x = v_cx
+    v_c1y = v_cy
+    v_c1z = v_cz
+    v_wx = v_bx3
+    v_wy = v_by3
+    v_wz = v_bz3
+    call to_cam
+    if v_c1z >= v_near or v_cz >= v_near then
+        if v_c1z < v_near then
+            v_f = (v_near - v_c1z) / (v_cz - v_c1z)
+            v_c1x = v_c1x + (v_cx - v_c1x) * v_f
+            v_c1y = v_c1y + (v_cy - v_c1y) * v_f
+            v_c1z = v_near
+        elseif v_cz < v_near then
+            v_f = (v_near - v_cz) / (v_c1z - v_cz)
+            v_cx = v_cx + (v_c1x - v_cx) * v_f
+            v_cy = v_cy + (v_c1y - v_cy) * v_f
+            v_cz = v_near
+        endif
+        draw_line(31.5 + v_c1x / v_c1z * v_focal, v_hy - v_c1y / v_c1z * v_focal, 31.5 + v_cx / v_cz * v_focal, v_hy - v_cy / v_cz * v_focal, v_lc, v_li)
+    endif
+}
+
+def draw_grid {
+    # lines across the ground, sliding toward you
+    v_lc = v_gridc
+    v_gz0 = floor(v_cz0 / 4) * 4
+    for v_g in (1, 12, 1)
+        v_zz = v_gz0 + v_g * 4
+        v_li = max(30 * (1 - (v_zz - v_cz0) / 50), 0)
+        if v_li > 2 then
+            v_ax3 = v_cx0 - 40
+            v_ay3 = 0
+            v_az3 = v_zz
+            v_bx3 = v_cx0 + 40
+            v_by3 = 0
+            v_bz3 = v_zz
+            call line3
+        endif
+    endfor v_g
+    # lines running away from you
+    v_gx0 = floor(v_cx0 / 4) * 4
+    v_li = 18
+    for v_g in (-6, 6, 1)
+        v_ax3 = v_gx0 + v_g * 4
+        v_ay3 = 0
+        v_az3 = v_cz0 + 0.5
+        v_bx3 = v_ax3
+        v_by3 = 0
+        v_bz3 = v_cz0 + 48
+        call line3
+    endfor v_g
+}
+
+def draw_ship {
+    # your little ship just below the middle, banking with the turns
+    v_sc = 31.5
+    v_sy0 = 52
+    v_ca = cos(v_roll * 1.5)
+    v_sa = sin(v_roll * 1.5)
+    v_wl = 7
+    v_lxs = v_sc - v_wl * v_ca
+    v_lys = v_sy0 - v_wl * v_sa
+    v_rxs = v_sc + v_wl * v_ca
+    v_rys = v_sy0 + v_wl * v_sa
+    v_px8[0] = v_lxs
+    v_py8[0] = v_lys
+    v_px8[1] = v_sc + v_sa * 4
+    v_py8[1] = v_sy0 - v_ca * 4
+    v_px8[2] = v_rxs
+    v_py8[2] = v_rys
+    v_px8[3] = v_sc - v_sa * 1.5
+    v_py8[3] = v_sy0 + v_ca * 1.5
+    v_no = 4
+    v_fc = "silver"
+    v_fi = 60
+    call fill_poly
+    draw_line(v_lxs, v_lys, v_sc + v_sa * 4, v_sy0 - v_ca * 4, white, 80)
+    draw_line(v_sc + v_sa * 4, v_sy0 - v_ca * 4, v_rxs, v_rys, gray, 70)
+    v_ef = 70 + sin(v_t * 1.3) * 25
+    draw_circle(v_sc - v_sa * 0.5, v_sy0 + v_ca * 1.8, 1.5, cyan, v_ef, true)
+    plot(v_lxs, v_lys, red, 100)
+    plot(v_rxs, v_rys, lime, 100)
+}
+
+# ---------------- Flight ----------------
+def autopilot {
+    # find the nearest cube in our path and steer into the clearest side
+    v_push = 0
+    v_best = 99
+    for v_i in (0, v_ncube - 1, 1)
+        v_dz2 = v_qz[v_i] - v_cz0
+        if v_dz2 > 0 and v_dz2 < 14 + v_speed * 10 then
+            v_dx2 = v_qx[v_i] - v_cx0
+            v_need = v_qs[v_i] + 1.4
+            if abs(v_dx2) < v_need and v_dz2 < v_best then
+                v_best = v_dz2
+                if v_dx2 > 0 then
+                    v_push = 0 - (v_need - v_dx2 + 0.5)
+                else
+                    v_push = v_need + v_dx2 + 0.5
+                endif
+            endif
+        endif
+    endfor v_i
+    # gentle weaving when nothing is in the way
+    v_want = sin(v_t * 0.013) * 0.08
+    if v_best < 99 then
+        v_want = v_push * 0.09
+    endif
+    v_vx = v_vx + (v_want - v_vx) * 0.12 * v_k
+    v_cx0 = v_cx0 + v_vx * v_k * (0.6 + v_speed)
+    v_roll = v_roll + (min(max(0 - v_vx * 3, -0.6), 0.6) - v_roll) * 0.1 * v_k
+}
+
+# ---------------- Main loop ----------------
+for v_i in (0, v_ncube - 1, 1)
+    call place_cube
+    v_qz[v_i] = v_cz0 + random(8, v_far, 0)
+endfor v_i
+v_skyc = 75
+v_gridc = 85
+while true then
+    v_t = v_t + v_k
+    # speed builds up, then eases back for another run-up
+    v_speed = 0.45 + min(v_t % 3000, 2400) / 2400 * 0.55
+    v_cz0 = v_cz0 + v_speed * v_k
+    v_cy0 = 1.1 + sin(v_t * 0.02) * 0.15
+    call autopilot
+    # new zone colours every so often
+    v_zone_t = v_zone_t + v_k
+    if v_zone_t > 900 then
+        v_zone_t = 0
+        v_zone = (v_zone + 1) % 5
+        v_skyc = int(v_pal[v_zone * 3 + 2] + 50) % 100
+        v_gridc = v_pal[v_zone * 3]
+        v_slalom = 14
+    endif
+    # recycle cubes that are behind us
+    for v_i in (0, v_ncube - 1, 1)
+        if v_qz[v_i] < v_cz0 - 1 or abs(v_qx[v_i] - v_cx0) > 34 then
+            call place_cube
+        endif
+    endfor v_i
+    v_cr = cos(v_roll)
+    v_srl = sin(v_roll)
+    v_hy = 26
+    # sort cubes far to near
+    v_n = 0
+    for v_i in (0, v_ncube - 1, 1)
+        if v_qz[v_i] > v_cz0 - 0.5 then
+            v_ord[v_n] = v_i
+            v_qd[v_i] = v_qz[v_i] - v_cz0
+            v_n = v_n + 1
+        endif
+    endfor v_i
+    for v_a in (1, v_n - 1, 1)
+        v_j = v_a
+        while v_j > 0 and v_qd[v_ord[v_j - 1]] < v_qd[v_ord[v_j]] then
+            v_tmp = v_ord[v_j]
+            v_ord[v_j] = v_ord[v_j - 1]
+            v_ord[v_j - 1] = v_tmp
+            v_j = v_j - 1
+        endwhile
+    endfor v_a
+    begin_frame
+        call draw_sky_ground
+        call draw_grid
+        for v_a in (0, v_n - 1, 1)
+            v_i = v_ord[v_a]
+            call draw_cube
+        endfor v_a
+        call draw_ship
+    end_frame
+endwhile

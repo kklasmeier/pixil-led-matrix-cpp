@@ -436,7 +436,8 @@ TEST(script_get_datetime_and_str) {
     int weekend = static_cast<int>(r.var("v_weekend").as_int());
     CHECK(weekend == 0 || weekend == 1);
     CHECK(r.var("v_text").is_str());
-    CHECK_EQ(r.var("v_text").as_str(), "15");
+    std::string text = r.var("v_text").as_str();
+    CHECK_EQ(text, "15");
 }
 
 double cell(const Machine& machine, const SymbolTable& symbols, const char* name, size_t i) {

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -47,7 +49,20 @@ public:
 
     // BurnoutManager pixel access (executor only).
     Rgb peek_drawing(int x, int y) const;
-    void draw_for_burnout(int x, int y, Rgb rgb);
+    Rgb peek_layer(uint16_t layer, int x, int y) const;
+    void draw_for_burnout(uint16_t layer, int x, int y, Rgb rgb);
+    uint16_t current_layer() const { return current_layer_; }
+
+    void set_layer(int layer);
+    void clear_layer(int layer);
+    void delete_layer(int layer);
+    void hide_layer(int layer);
+    void show_layer(int layer);
+    void reorder_layer(int from_layer, int to_layer);
+    void dispose_all_layers();
+
+    void set_sprite_layer(const std::string& name, int layer, int instance_id = 0);
+    void set_sprite_z(const std::string& name, int z_index, int instance_id = 0);
 
     void plot(int x, int y, const ColorArg& color, int intensity,
               std::optional<int> burnout_ms = std::nullopt, BurnoutMode burnout_mode = BurnoutMode::Instant);
@@ -121,15 +136,30 @@ private:
     void maybe_swap();
     void pace_after_present();
     void note_present();  // end_frame / maybe_swap only
+    struct DrawLayer {
+        Buffer pixels{};
+        bool visible = true;
+    };
+
+    void ensure_layer(uint16_t layer);
+    Buffer& current_buffer();
+    const Buffer& current_buffer() const;
+    Buffer& layer_buffer(uint16_t layer);
+    const Buffer& layer_buffer(uint16_t layer) const;
+    void fill_buffer_transparent(Buffer& buf);
+    void overlay_layer_onto(Buffer& dst, const Buffer& src) const;
     void blit_for_display();
     void blit_sprites_onto_surface();
+    void blit_sprites_for_layer(uint16_t layer);
+    void compose_layers_onto(Buffer& dst) const;
     void refresh_display();  // immediate-mode full composite
     void present_sprite_update();
     void register_burnout(std::vector<std::pair<int, int>> points, Rgb rgb, std::optional<int> burnout_ms,
                           BurnoutMode mode);
 
     std::unique_ptr<MatrixSurface> surface_;
-    Buffer drawing_{};
+    std::map<uint16_t, DrawLayer> layers_;
+    uint16_t current_layer_ = 0;
     bool frame_mode_ = false;
     bool preserve_ = false;
     double target_fps_ = 0.0;

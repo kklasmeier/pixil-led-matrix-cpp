@@ -9,13 +9,13 @@
 namespace pixil::consumer {
 
 void BurnoutManager::add(std::vector<std::pair<int, int>> points, std::vector<Rgb> colors, int duration_ms,
-                         BurnoutMode mode, double now_sec) {
+                         BurnoutMode mode, double now_sec, uint16_t layer) {
     if (points.empty() || duration_ms < 0) return;
     if (colors.size() != points.size()) {
         colors.assign(points.size(), Rgb{0, 0, 0});
         for (size_t i = 0; i < points.size(); ++i) {
             auto [x, y] = points[i];
-            if (x >= 0 && y >= 0 && x < kWidth && y < kHeight) colors[i] = api_.peek_drawing(x, y);
+            if (x >= 0 && y >= 0 && x < kWidth && y < kHeight) colors[i] = api_.peek_layer(layer, x, y);
         }
     }
 
@@ -44,6 +44,7 @@ void BurnoutManager::add(std::vector<std::pair<int, int>> points, std::vector<Rg
     obj->start_time = now_sec;
     obj->removal_time = now_sec + duration_ms / 1000.0;
     obj->mode = mode;
+    obj->layer = layer;
     obj->points = std::move(points);
     obj->pixel_colors = std::move(colors);
     obj->last_pixel_colors = obj->pixel_colors;
@@ -52,7 +53,7 @@ void BurnoutManager::add(std::vector<std::pair<int, int>> points, std::vector<Rg
 
     for (size_t i = 0; i < obj->points.size(); ++i) {
         auto [x, y] = obj->points[i];
-        auto key = std::make_pair(x, y);
+        auto key = PixKey{layer, x, y};
         auto& entries = pixel_index_[key];
         // Drop underlayers that can never resurface (expire no later than this object).
         entries.erase(std::remove_if(entries.begin(), entries.end(),
@@ -60,10 +61,10 @@ void BurnoutManager::add(std::vector<std::pair<int, int>> points, std::vector<Rg
                       entries.end());
         entries.emplace_back(obj, obj->removal_time);
 
-        Rgb current = api_.peek_drawing(x, y);
+        Rgb current = api_.peek_layer(layer, x, y);
         Rgb want = obj->pixel_colors[i];
         if (current.r != want.r || current.g != want.g || current.b != want.b) {
-            api_.draw_for_burnout(x, y, want);
+            api_.draw_for_burnout(layer, x, y, want);
             obj->last_pixel_colors[i] = want;
         }
     }
@@ -72,8 +73,8 @@ void BurnoutManager::add(std::vector<std::pair<int, int>> points, std::vector<Rg
     objects_.push_back(std::move(obj));
 }
 
-bool BurnoutManager::is_pixel_owner(int x, int y, const Object* obj, double now) const {
-    auto it = pixel_index_.find({x, y});
+bool BurnoutManager::is_pixel_owner(uint16_t layer, int x, int y, const Object* obj, double now) const {
+    auto it = pixel_index_.find({layer, x, y});
     if (it == pixel_index_.end() || it->second.empty()) return false;
     for (auto rit = it->second.rbegin(); rit != it->second.rend(); ++rit) {
         if (rit->second > now) return rit->first.get() == obj;
@@ -96,6 +97,7 @@ void BurnoutManager::update_active_fades(double now) {
     if (active_fades_.empty()) return;
 
     struct Vis {
+        uint16_t layer;
         int x, y;
         Object* obj;
         int point_index;
@@ -106,9 +108,10 @@ void BurnoutManager::update_active_fades(double now) {
             if (rit->second <= now) continue;
             Object* obj = rit->first.get();
             if (obj->mode != BurnoutMode::Fade) break;
-            auto pit = obj->point_indexes.find(key);
+            auto [layer, x, y] = key;
+            auto pit = obj->point_indexes.find({x, y});
             if (pit != obj->point_indexes.end())
-                visible.push_back({key.first, key.second, obj, pit->second});
+                visible.push_back({layer, x, y, obj, pit->second});
             break;
         }
     }
@@ -128,15 +131,15 @@ void BurnoutManager::update_active_fades(double now) {
             intensity = it->second;
         }
 
-        if (!is_pixel_owner(v.x, v.y, v.obj, now)) continue;
+        if (!is_pixel_owner(v.layer, v.x, v.y, v.obj, now)) continue;
         Rgb expected = v.obj->last_pixel_colors[static_cast<size_t>(v.point_index)];
-        Rgb current = api_.peek_drawing(v.x, v.y);
+        Rgb current = api_.peek_layer(v.layer, v.x, v.y);
         if (current.r != expected.r || current.g != expected.g || current.b != expected.b) continue;
 
         Rgb src = v.obj->pixel_colors[static_cast<size_t>(v.point_index)];
         Rgb color{static_cast<uint8_t>(src.r * intensity), static_cast<uint8_t>(src.g * intensity),
                   static_cast<uint8_t>(src.b * intensity)};
-        api_.draw_for_burnout(v.x, v.y, color);
+        api_.draw_for_burnout(v.layer, v.x, v.y, color);
         v.obj->last_pixel_colors[static_cast<size_t>(v.point_index)] = color;
         pixels_updated = true;
     }
@@ -147,7 +150,7 @@ void BurnoutManager::clear_object(const std::shared_ptr<Object>& obj, double now
     bool pixels_changed = false;
     for (int point_index = 0; point_index < static_cast<int>(obj->points.size()); ++point_index) {
         auto [x, y] = obj->points[static_cast<size_t>(point_index)];
-        auto key = std::make_pair(x, y);
+        auto key = PixKey{obj->layer, x, y};
         auto it = pixel_index_.find(key);
         if (it == pixel_index_.end()) continue;
         auto& entries = it->second;
@@ -167,7 +170,7 @@ void BurnoutManager::clear_object(const std::shared_ptr<Object>& obj, double now
         }
 
         Rgb expected = obj->last_pixel_colors[static_cast<size_t>(point_index)];
-        Rgb current = api_.peek_drawing(x, y);
+        Rgb current = api_.peek_layer(obj->layer, x, y);
         bool was_visible =
             was_top && current.r == expected.r && current.g == expected.g && current.b == expected.b;
 
@@ -188,12 +191,12 @@ void BurnoutManager::clear_object(const std::shared_ptr<Object>& obj, double now
             }
         }
         if (!under) {
-            api_.draw_for_burnout(x, y, {kTransparentR, kTransparentG, kTransparentB});
+            api_.draw_for_burnout(obj->layer, x, y, {kTransparentR, kTransparentG, kTransparentB});
         } else {
-            auto pit = under->point_indexes.find(key);
+            auto pit = under->point_indexes.find({x, y});
             if (pit == under->point_indexes.end()) continue;
             Rgb color = color_at(*under, pit->second, now);
-            api_.draw_for_burnout(x, y, color);
+            api_.draw_for_burnout(obj->layer, x, y, color);
             under->last_pixel_colors[static_cast<size_t>(pit->second)] = color;
         }
         pixels_changed = true;
@@ -227,6 +230,59 @@ void BurnoutManager::clear_all() {
     pixel_index_.clear();
     active_fades_.clear();
     changes_made_ = false;
+}
+
+void BurnoutManager::clear_layer(uint16_t layer) {
+    std::vector<std::shared_ptr<Object>> doomed;
+    for (auto& obj : objects_) {
+        if (obj->layer == layer) doomed.push_back(obj);
+    }
+    for (auto& obj : doomed) {
+        // Drop index entries without rewriting pixels (layer buffer is being cleared).
+        for (auto [x, y] : obj->points) {
+            auto key = PixKey{layer, x, y};
+            auto it = pixel_index_.find(key);
+            if (it == pixel_index_.end()) continue;
+            auto& entries = it->second;
+            entries.erase(std::remove_if(entries.begin(), entries.end(),
+                                         [&](const auto& e) { return e.first.get() == obj.get(); }),
+                          entries.end());
+            if (entries.empty()) pixel_index_.erase(it);
+        }
+        active_fades_.erase(obj.get());
+    }
+    if (!doomed.empty()) {
+        objects_.erase(std::remove_if(objects_.begin(), objects_.end(),
+                                      [&](const std::shared_ptr<Object>& o) { return o->layer == layer; }),
+                       objects_.end());
+    }
+}
+
+void BurnoutManager::rekey_layer(uint16_t from_layer, uint16_t to_layer) {
+    if (from_layer == to_layer) return;
+    std::vector<std::shared_ptr<Object>> movers;
+    for (auto& obj : objects_) {
+        if (obj->layer == from_layer) movers.push_back(obj);
+    }
+    for (auto& obj : movers) {
+        for (auto [x, y] : obj->points) {
+            auto from_key = PixKey{from_layer, x, y};
+            auto it = pixel_index_.find(from_key);
+            if (it == pixel_index_.end()) continue;
+            auto& from_entries = it->second;
+            std::vector<std::pair<std::shared_ptr<Object>, double>> moved;
+            for (auto& e : from_entries) {
+                if (e.first.get() == obj.get()) moved.push_back(e);
+            }
+            from_entries.erase(std::remove_if(from_entries.begin(), from_entries.end(),
+                                              [&](const auto& e) { return e.first.get() == obj.get(); }),
+                               from_entries.end());
+            if (from_entries.empty()) pixel_index_.erase(it);
+            auto& to_entries = pixel_index_[PixKey{to_layer, x, y}];
+            to_entries.insert(to_entries.end(), moved.begin(), moved.end());
+        }
+        obj->layer = to_layer;
+    }
 }
 
 bool BurnoutManager::check_and_reset_changes() {

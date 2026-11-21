@@ -48,6 +48,7 @@ struct SpriteInstance {
     int x = 0;
     int y = 0;
     int z_index = 0;
+    uint16_t layer = 0;
     int current_cel = 0;
     bool visible = false;
 
@@ -67,8 +68,11 @@ public:
     MatrixSprite* get_template(const std::string& name);
     SpriteInstance* get_instance(const std::string& name, int instance_id);
     SpriteInstance* create_instance(const std::string& name, int instance_id, int x, int y, int z_index,
-                                    int cel_index);
+                                    int cel_index, uint16_t layer = 0);
     std::vector<std::pair<std::string, int>> iter_draw_order() const;
+    std::vector<std::pair<std::string, int>> iter_draw_order_for_layer(uint16_t layer) const;
+    void hide_sprites_on_layer(uint16_t layer);
+    void reassign_layer(uint16_t from_layer, uint16_t to_layer);
     void dispose_instance(const std::string& name, int instance_id);
     void dispose_all();
 

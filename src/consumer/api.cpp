@@ -25,21 +25,156 @@ double now_sec() {
 
 MatrixApi::MatrixApi(std::unique_ptr<MatrixSurface> surface)
     : surface_(std::move(surface)), backgrounds_(sprites_), text_(*this), burnout_(*this) {
-    for (auto& p : drawing_) p = {kTransparentR, kTransparentG, kTransparentB};
+    ensure_layer(0);
 }
 
-Rgb MatrixApi::peek_drawing(int x, int y) const {
+void MatrixApi::fill_buffer_transparent(Buffer& buf) {
+    for (auto& p : buf) p = {kTransparentR, kTransparentG, kTransparentB};
+}
+
+void MatrixApi::ensure_layer(uint16_t layer) {
+    auto [it, inserted] = layers_.try_emplace(layer);
+    if (inserted) fill_buffer_transparent(it->second.pixels);
+}
+
+Buffer& MatrixApi::current_buffer() { return layer_buffer(current_layer_); }
+const Buffer& MatrixApi::current_buffer() const { return layer_buffer(current_layer_); }
+
+Buffer& MatrixApi::layer_buffer(uint16_t layer) {
+    ensure_layer(layer);
+    return layers_[layer].pixels;
+}
+
+const Buffer& MatrixApi::layer_buffer(uint16_t layer) const {
+    auto it = layers_.find(layer);
+    if (it == layers_.end()) {
+        static Buffer empty = [] {
+            Buffer b{};
+            for (auto& p : b) p = {kTransparentR, kTransparentG, kTransparentB};
+            return b;
+        }();
+        return empty;
+    }
+    return it->second.pixels;
+}
+
+void MatrixApi::set_layer(int layer) {
+    if (layer < 0 || layer > 65535) throw std::runtime_error("set_layer layer must be 0..65535");
+    current_layer_ = static_cast<uint16_t>(layer);
+    ensure_layer(current_layer_);
+}
+
+void MatrixApi::clear_layer(int layer) {
+    if (layer < 0 || layer > 65535) throw std::runtime_error("clear_layer layer must be 0..65535");
+    auto id = static_cast<uint16_t>(layer);
+    ensure_layer(id);
+    fill_buffer_transparent(layers_[id].pixels);
+    burnout_.clear_layer(id);
+}
+
+void MatrixApi::delete_layer(int layer) {
+    if (layer < 0 || layer > 65535) throw std::runtime_error("delete_layer layer must be 0..65535");
+    auto id = static_cast<uint16_t>(layer);
+    if (!layers_.count(id)) return;
+    sprites_.hide_sprites_on_layer(id);
+    burnout_.clear_layer(id);
+    layers_.erase(id);
+    if (current_layer_ == id) {
+        current_layer_ = 0;
+        ensure_layer(0);
+    } else if (layers_.empty()) {
+        ensure_layer(0);
+    }
+}
+
+void MatrixApi::hide_layer(int layer) {
+    if (layer < 0 || layer > 65535) throw std::runtime_error("hide_layer layer must be 0..65535");
+    auto id = static_cast<uint16_t>(layer);
+    auto it = layers_.find(id);
+    if (it == layers_.end()) return;
+    it->second.visible = false;
+}
+
+void MatrixApi::show_layer(int layer) {
+    if (layer < 0 || layer > 65535) throw std::runtime_error("show_layer layer must be 0..65535");
+    auto id = static_cast<uint16_t>(layer);
+    ensure_layer(id);
+    layers_[id].visible = true;
+}
+
+void MatrixApi::reorder_layer(int from_layer, int to_layer) {
+    if (from_layer < 0 || from_layer > 65535 || to_layer < 0 || to_layer > 65535) {
+        throw std::runtime_error("reorder_layer layers must be 0..65535");
+    }
+    auto from = static_cast<uint16_t>(from_layer);
+    auto to = static_cast<uint16_t>(to_layer);
+    if (from == to) return;
+    auto it = layers_.find(from);
+    if (it == layers_.end()) return;  // missing from → no-op
+
+    if (layers_.count(to)) {
+        // Overwrite: discard old to content; hide its sprites; end its burnouts.
+        sprites_.hide_sprites_on_layer(to);
+        burnout_.clear_layer(to);
+        layers_.erase(to);
+    }
+
+    DrawLayer moved = std::move(it->second);
+    layers_.erase(it);
+    layers_.emplace(to, std::move(moved));
+    sprites_.reassign_layer(from, to);
+    burnout_.rekey_layer(from, to);
+    if (current_layer_ == from) current_layer_ = to;
+}
+
+void MatrixApi::dispose_all_layers() {
+    layers_.clear();
+    current_layer_ = 0;
+    ensure_layer(0);
+    burnout_.clear_all();
+}
+
+void MatrixApi::set_sprite_layer(const std::string& name, int layer, int instance_id) {
+    if (layer < 0 || layer > 65535) throw std::runtime_error("set_sprite_layer layer must be 0..65535");
+    auto id = static_cast<uint16_t>(layer);
+    ensure_layer(id);  // auto-create empty layer if missing
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->layer = id;
+    present_sprite_update();
+}
+
+void MatrixApi::set_sprite_z(const std::string& name, int z_index, int instance_id) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->z_index = z_index;
+    present_sprite_update();
+}
+
+Rgb MatrixApi::peek_drawing(int x, int y) const { return peek_layer(current_layer_, x, y); }
+
+Rgb MatrixApi::peek_layer(uint16_t layer, int x, int y) const {
     if (x < 0 || y < 0 || x >= kWidth || y >= kHeight) return {0, 0, 0};
-    return at(drawing_, x, y);
+    return at(layer_buffer(layer), x, y);
 }
 
-void MatrixApi::draw_for_burnout(int x, int y, Rgb rgb) { draw_pixel(x, y, rgb); }
+void MatrixApi::draw_for_burnout(uint16_t layer, int x, int y, Rgb rgb) {
+    if (x < 0 || y < 0 || x >= kWidth || y >= kHeight) return;
+    at(layer_buffer(layer), x, y) = rgb;
+    if (!frame_mode_ || preserve_) {
+        // Immediate/preserve dual-write only for the current layer (legacy path).
+        if (layer == current_layer_) {
+            surface_->set_pixel(x, y, rgb.r, rgb.g, rgb.b);
+            preserve_pixels_.emplace_back(x, y, rgb.r, rgb.g, rgb.b);
+        }
+    }
+}
 
 void MatrixApi::register_burnout(std::vector<std::pair<int, int>> points, Rgb rgb,
                                  std::optional<int> burnout_ms, BurnoutMode mode) {
     if (!burnout_ms.has_value() || *burnout_ms < 0 || points.empty()) return;
     std::vector<Rgb> colors(points.size(), rgb);
-    burnout_.add(std::move(points), std::move(colors), *burnout_ms, mode, now_sec());
+    burnout_.add(std::move(points), std::move(colors), *burnout_ms, mode, now_sec(), current_layer_);
 }
 
 bool MatrixApi::abort_requested() const {
@@ -50,7 +185,7 @@ bool MatrixApi::abort_requested() const {
 
 void MatrixApi::draw_pixel(int x, int y, Rgb rgb) {
     if (x < 0 || y < 0 || x >= kWidth || y >= kHeight) return;
-    at(drawing_, x, y) = rgb;
+    at(current_buffer(), x, y) = rgb;
     if (!frame_mode_ || preserve_) {
         surface_->set_pixel(x, y, rgb.r, rgb.g, rgb.b);
         preserve_pixels_.emplace_back(x, y, rgb.r, rgb.g, rgb.b);
@@ -85,10 +220,43 @@ void MatrixApi::pace_after_present() {
     last_present_ = now_sec();
 }
 
-void MatrixApi::blit_for_display() { surface_->blit(drawing_); }
+void MatrixApi::overlay_layer_onto(Buffer& dst, const Buffer& src) const {
+    for (int y = 0; y < kHeight; ++y) {
+        for (int x = 0; x < kWidth; ++x) {
+            Rgb d = at(src, x, y);
+            if (!is_transparent(d)) at(dst, x, y) = d;
+        }
+    }
+}
 
-void MatrixApi::blit_sprites_onto_surface() {
-    for (const auto& [name, id] : sprites_.iter_draw_order()) {
+void MatrixApi::compose_layers_onto(Buffer& dst) const {
+    // Fast path: single layer 0 — same cost profile as the old single buffer.
+    if (layers_.size() == 1) {
+        auto it = layers_.begin();
+        if (it->first == 0 && it->second.visible) {
+            overlay_layer_onto(dst, it->second.pixels);
+            return;
+        }
+    }
+    for (const auto& [id, layer] : layers_) {
+        if (!layer.visible) continue;
+        overlay_layer_onto(dst, layer.pixels);
+    }
+}
+
+void MatrixApi::blit_for_display() {
+    if (layers_.size() == 1 && layers_.begin()->first == 0) {
+        surface_->blit(layers_.begin()->second.pixels);
+        return;
+    }
+    Buffer work{};
+    for (auto& p : work) p = {0, 0, 0};
+    compose_layers_onto(work);
+    surface_->blit(work);
+}
+
+void MatrixApi::blit_sprites_for_layer(uint16_t layer) {
+    for (const auto& [name, id] : sprites_.iter_draw_order_for_layer(layer)) {
         SpriteInstance* inst = sprites_.get_instance(name, id);
         if (!inst || !inst->visible || !inst->template_) continue;
         const SpriteCel& cel = inst->current();
@@ -113,21 +281,53 @@ void MatrixApi::blit_sprites_onto_surface() {
     }
 }
 
+void MatrixApi::blit_sprites_onto_surface() {
+    // Paint sprites interleaved with layers: for each layer, drawing was already
+    // composited into the surface buffer; sprites on that layer go next.
+    for (const auto& [id, layer] : layers_) {
+        if (!layer.visible) continue;
+        blit_sprites_for_layer(id);
+    }
+    // Sprites on layers that have no draw buffer yet (auto via show only) —
+    // Phase 1 show assigns current layer which ensure_layer'd; still cover any
+    // sprite layers missing from the map by walking all instances via full order.
+    // (create_instance always lands on an ensured layer via show_sprite.)
+}
+
 void MatrixApi::refresh_display() {
     // Paint composite onto the current (back) canvas; caller may swap.
+    // Fast path: one layer (catalog default) matches the pre-layers composite.
+    if (layers_.size() == 1 && layers_.begin()->first == 0) {
+        const Buffer& drawing = layers_.begin()->second.pixels;
+        if (backgrounds_.has_background()) {
+            Buffer viewport = backgrounds_.get_viewport(kWidth, kHeight);
+            overlay_layer_onto(viewport, drawing);
+            surface_->blit(viewport);
+        } else {
+            surface_->blit(drawing);
+        }
+        blit_sprites_for_layer(0);
+        return;
+    }
+    // Multi-layer: for each layer ascending — pixels, then that layer's sprites.
+    Buffer work{};
     if (backgrounds_.has_background()) {
-        Buffer viewport = backgrounds_.get_viewport(kWidth, kHeight);
+        work = backgrounds_.get_viewport(kWidth, kHeight);
+    } else {
+        for (auto& p : work) p = {0, 0, 0};
+    }
+    surface_->blit(work);
+    for (const auto& [id, layer] : layers_) {
+        if (!layer.visible) continue;
         for (int y = 0; y < kHeight; ++y) {
             for (int x = 0; x < kWidth; ++x) {
-                Rgb d = at(drawing_, x, y);
-                if (!is_transparent(d)) at(viewport, x, y) = d;
+                Rgb d = at(layer.pixels, x, y);
+                if (is_transparent(d)) continue;
+                surface_->set_pixel(x, y, d.r, d.g, d.b);
             }
         }
-        surface_->blit(viewport);
-    } else {
-        blit_for_display();
+        blit_sprites_for_layer(id);
     }
-    blit_sprites_onto_surface();
 }
 
 void MatrixApi::present_sprite_update() {
@@ -154,32 +354,49 @@ void MatrixApi::reset_fps() { set_fps(0); }
 void MatrixApi::begin_frame(bool preserve) {
     frame_mode_ = true;
     preserve_ = preserve;
+    current_layer_ = 0;
     if (!preserve) {
-        for (auto& p : drawing_) p = {kTransparentR, kTransparentG, kTransparentB};
+        for (auto& [id, layer] : layers_) fill_buffer_transparent(layer.pixels);
     }
 }
 
 void MatrixApi::end_frame() {
     if (!frame_mode_) return;
 
+    const bool single0 = layers_.size() == 1 && layers_.begin()->first == 0;
+
     if (backgrounds_.has_background()) {
         Buffer viewport = backgrounds_.get_viewport(kWidth, kHeight);
-        for (int y = 0; y < kHeight; ++y) {
-            for (int x = 0; x < kWidth; ++x) {
-                Rgb d = at(drawing_, x, y);
-                if (!is_transparent(d)) at(viewport, x, y) = d;
-            }
+        if (single0) {
+            overlay_layer_onto(viewport, layers_.begin()->second.pixels);
+            surface_->blit(viewport);
+            blit_sprites_for_layer(0);
+            surface_->swap();
+            surface_->blit(viewport);
+        } else {
+            refresh_display();
+            // Rebuild viewport+layers without sprites for the seeded back buffer.
+            Buffer seed = backgrounds_.get_viewport(kWidth, kHeight);
+            compose_layers_onto(seed);
+            surface_->swap();
+            surface_->blit(seed);
         }
-        surface_->blit(viewport);
-        blit_sprites_onto_surface();
-        surface_->swap();
-        surface_->blit(viewport);
         if (preserve_) {
             for (auto [x, y, r, g, b] : preserve_pixels_) surface_->set_pixel(x, y, r, g, b);
         }
     } else {
-        if (!preserve_) blit_for_display();
-        blit_sprites_onto_surface();
+        if (!preserve_) {
+            if (single0) {
+                surface_->blit(layers_.begin()->second.pixels);
+                blit_sprites_for_layer(0);
+            } else {
+                refresh_display();
+            }
+        } else if (!single0) {
+            refresh_display();
+        } else {
+            blit_sprites_for_layer(0);
+        }
         surface_->swap();
         if (preserve_) {
             blit_for_display();
@@ -191,17 +408,19 @@ void MatrixApi::end_frame() {
     preserve_pixels_.clear();
     frame_mode_ = false;
     preserve_ = false;
+    current_layer_ = 0;
     note_present();
     last_present_was_end_frame_ = true;
     pace_after_present();
-    // Expire Instant burnouts into drawing_ + the seeded back buffer so preserve
+    // Expire Instant burnouts into layer buffers + the seeded back buffer so preserve
     // scripts (Sine_Wave_Color_Flow) show trails without needing an idle inbox.
     // present=false: next framed swap (or busy/idle pump for fades) displays it.
     pump_fade(0.0, true, false);
 }
 
 void MatrixApi::clear() {
-    for (auto& p : drawing_) p = {kTransparentR, kTransparentG, kTransparentB};
+    for (auto& [id, layer] : layers_) fill_buffer_transparent(layer.pixels);
+    current_layer_ = 0;
     surface_->clear();
     frame_mode_ = false;
     preserve_ = false;
@@ -222,7 +441,7 @@ void MatrixApi::blackout() {
         sprites_.dispose_all();
     } catch (...) {
     }
-    for (auto& p : drawing_) p = {kTransparentR, kTransparentG, kTransparentB};
+    dispose_all_layers();
     preserve_pixels_.clear();
     surface_->fill(0, 0, 0);
     surface_->swap();
@@ -332,11 +551,12 @@ void MatrixApi::draw_rectangle(int x, int y, int w, int h, const ColorArg& color
     std::vector<std::pair<int, int>> pts;
     bool track = burnout_ms.has_value() && *burnout_ms >= 0;
     if (fill && frame_mode_ && !preserve_) {
+        Buffer& buf = current_buffer();
         int x0 = std::max(0, x), x1 = std::min(x + w, kWidth);
         int y0 = std::max(0, y), y1 = std::min(y + h, kHeight);
         for (int j = y0; j < y1; ++j)
             for (int i = x0; i < x1; ++i) {
-                at(drawing_, i, j) = rgb;
+                at(buf, i, j) = rgb;
                 if (track) pts.emplace_back(i, j);
             }
     } else {
@@ -492,17 +712,20 @@ void MatrixApi::sprite_draw(const std::string& name, const std::string& cmd, con
 
 void MatrixApi::show_sprite(const std::string& name, int x, int y, int instance_id, int z_index,
                             std::optional<int> cel_idx) {
+    ensure_layer(current_layer_);
     SpriteInstance* instance = sprites_.get_instance(name, instance_id);
     bool is_new = false;
     if (!instance) {
         int initial_cel = cel_idx.value_or(0);
-        instance = sprites_.create_instance(name, instance_id, x, y, z_index, initial_cel);
+        instance =
+            sprites_.create_instance(name, instance_id, x, y, z_index, initial_cel, current_layer_);
         if (!instance) return;
         is_new = true;
     }
     instance->x = x;
     instance->y = y;
     instance->visible = true;
+    instance->layer = current_layer_;
     if (!is_new) instance->z_index = z_index;
     if (cel_idx.has_value()) instance->set_cel(*cel_idx);
     present_sprite_update();
@@ -568,12 +791,17 @@ void MatrixApi::draw_text(int x, int y, const std::string& text, const std::stri
 void MatrixApi::clear_text(int x, int y) { text_.clear_text(x, y); }
 
 std::string MatrixApi::fingerprint() const {
+    // Composite all visible layer pixels (no sprites/backgrounds) so layer-0-only
+    // scripts match the historical single-buffer fingerprint.
+    Buffer composed{};
+    for (auto& p : composed) p = {kTransparentR, kTransparentG, kTransparentB};
+    compose_layers_onto(composed);
     std::vector<uint8_t> payload;
     payload.reserve(kWidth * kHeight * 3);
     bool any = false;
     for (int y = 0; y < kHeight; ++y) {
         for (int x = 0; x < kWidth; ++x) {
-            Rgb p = at(drawing_, x, y);
+            Rgb p = at(composed, x, y);
             if (is_transparent(p)) continue;
             any = true;
             payload.push_back(p.r);

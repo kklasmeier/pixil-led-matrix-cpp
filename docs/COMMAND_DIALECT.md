@@ -73,6 +73,8 @@ default), `burnout:uint32` (`0xFFFFFFFF` = none), `mode:uint8` (`0` instant,
 | 5 | polygon | `<4HfhBIBB3x` x, y, r, sides, rotation:f32, tail, fill | 25 |
 | 6 | ellipse | `<4HfhBIBB3x` x, y, rx, ry, rotation:f32, tail, fill | 25 |
 | 7 | arc | `<4HfhBIBB3x` x0, y0, x1, y1, bulge:f32, tail, fill | 25 |
+| 8 | set_layer | `<H` layer (0..65535) | 3 |
+| 9 | clear_layer | `<H` layer (0..65535) | 3 |
 
 Producer-side clipping (must match bit-for-bit; implemented in
 `src/emit/draw_batch.cpp`, verified by `tests/golden/draw_batch.jsonl`):
@@ -99,7 +101,8 @@ transparent −44.
 
 `sprite_batch` records: op `B` (1 show, 2 move, 3 hide, 4 move+z), `name_len:B`,
 `name` (UTF-8, ≤ 48 bytes), then for show/move `x:h, y:h, instance:B, cel:B`
-(255 = none); move+z adds `z:h`; hide adds `instance:B`.
+(255 = none); **show always packs `z:h` after cel**; move+z adds `z:h`; hide adds
+`instance:B`.
 
 ## 5. Script-side command signatures (generated)
 
@@ -114,7 +117,9 @@ batch packers and consumer handlers receive.
 | `begin_frame` | `preserve_changes:bool?=false` |
 | `chladni_step` | — |
 | `clear` | — |
+| `clear_layer` | `layer:int` |
 | `clear_text` | `x:int`, `y:int` |
+| `delete_layer` | `layer:int` |
 | `define_sprite` | `name:str`, `width:int`, `height:int` |
 | `dispose_all_sprites` | — |
 | `dispose_sprite` | `name:str`, `instance_id:int?=0` |
@@ -131,6 +136,7 @@ batch packers and consumer handlers receive.
 | `grid_fill` | `array:str`, `value:float` |
 | `grid_step` | `program:str` |
 | `hide_background` | `layer:int?` |
+| `hide_layer` | `layer:int` |
 | `hide_sprite` | `name:str`, `instance_id:int?=0` |
 | `ink_step` | — |
 | `mflush` | — |
@@ -150,9 +156,14 @@ batch packers and consumer handlers receive.
 | `particle_verlet_integrate` | `x:str`, `y:str`, `old_x:str`, `old_y:str`, `active:str`, `ax:str?`, `ay:str?`, `damping:float?`, `count:int?` |
 | `plot` | `x:int`, `y:int`, `color:color`, `intensity:int?`, `burnout:float?`, `burnout_mode:str?=instant` |
 | `points_project3d` | `x:str`, `y:str`, `z:str`, `sx:str`, `sy:str`, `ax:float`, `ay:float`, `az:float`, `scale:float`, `camera:float`, `cx:float`, `cy:float`, `depth:str?`, `count:int?` |
+| `reorder_layer` | `from_layer:int`, `to_layer:int` |
 | `rest` | `duration:float` |
 | `set_background` | `sprite_name:str`, `layer:int?=0`, `cel_index:int?=0` |
 | `set_background_offset` | `x:int`, `y:int`, `layer:int?=0`, `cel_index:int?` |
+| `set_layer` | `layer:int` |
+| `set_sprite_layer` | `name:str`, `layer:int`, `instance_id:int?=0` |
+| `set_sprite_z` | `name:str`, `z_index:int`, `instance_id:int?=0` |
+| `show_layer` | `layer:int` |
 | `show_sprite` | `name:str`, `x:int`, `y:int`, `instance_id:int?=0`, `z_index:int?=0`, `cel_idx:int?=0` |
 | `slime_step` | — |
 | `sprite_cel` | `cel_index:int?` |
@@ -166,7 +177,7 @@ batch packers and consumer handlers receive.
 Every verb `CommandExecutor` dispatches. The native producer may emit only these.
 
 <!-- BEGIN GENERATED: consumer-verbs -->
-`begin_frame`, `clear`, `clear_text`, `define_sprite`, `dispose_all_sprites`, `dispose_sprite`, `draw_arc`, `draw_batch`, `draw_circle`, `draw_ellipse`, `draw_line`, `draw_polygon`, `draw_rectangle`, `draw_text`, `end_frame`, `endsprite`, `fps`, `hide_background`, `hide_sprite`, `move_sprite`, `nudge_background`, `plot`, `plot_batch`, `rest`, `set_background`, `set_background_offset`, `show_sprite`, `sprite_batch`, `sprite_cel`, `sprite_draw`, `sync_queue`
+`begin_frame`, `clear`, `clear_layer`, `clear_text`, `delete_layer`, `define_sprite`, `dispose_all_sprites`, `dispose_sprite`, `draw_arc`, `draw_batch`, `draw_circle`, `draw_ellipse`, `draw_line`, `draw_polygon`, `draw_rectangle`, `draw_text`, `end_frame`, `endsprite`, `fps`, `hide_background`, `hide_layer`, `hide_sprite`, `move_sprite`, `nudge_background`, `plot`, `plot_batch`, `reorder_layer`, `rest`, `set_background`, `set_background_offset`, `set_layer`, `set_sprite_layer`, `set_sprite_z`, `show_layer`, `show_sprite`, `sprite_batch`, `sprite_cel`, `sprite_draw`, `sync_queue`
 
 (31 verbs)
 <!-- END GENERATED: consumer-verbs -->

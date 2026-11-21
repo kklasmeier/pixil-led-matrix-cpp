@@ -72,7 +72,10 @@ void SpriteBatch::append(std::string_view cmd, const std::vector<Value>& args) {
     int64_t z = 0;
     uint8_t op = cmd == "show_sprite" ? kOpShow : kOpMove;
     if (cmd == "show_sprite") {
+        // Pack z on OP_SHOW (args[4]); cel remains args[5].
+        if (args.size() > 4) z = rounded_int(args[4]);
         if (args.size() > 5) cel = byte_of(rounded_int(args[5]));
+        with_z = true;
     } else {
         if (args.size() > 4) cel = byte_of(rounded_int(args[4]));
         if (args.size() > 5) {

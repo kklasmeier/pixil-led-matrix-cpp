@@ -248,6 +248,7 @@ int run_consumer(MatrixApi& api, const ConsumerOptions& opts) {
             }
             api.clear();
             api.dispose_all_sprites();
+            api.dispose_all_layers();
             log("script_reset");
             replies.send('R');
             continue;

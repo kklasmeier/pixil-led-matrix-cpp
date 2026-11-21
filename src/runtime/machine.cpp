@@ -62,6 +62,14 @@ const std::unordered_map<std::string, std::vector<Arg>> kArgTypes = {
     {"move_sprite", {Arg::Str, Arg::Int, Arg::Int, Arg::Int, Arg::Int, Arg::Int}},
     {"hide_sprite", {Arg::Str, Arg::Int}},
     {"dispose_sprite", {Arg::Str, Arg::Int}},
+    {"set_layer", {Arg::Int}},
+    {"clear_layer", {Arg::Int}},
+    {"delete_layer", {Arg::Int}},
+    {"hide_layer", {Arg::Int}},
+    {"show_layer", {Arg::Int}},
+    {"reorder_layer", {Arg::Int, Arg::Int}},
+    {"set_sprite_layer", {Arg::Str, Arg::Int, Arg::Int}},
+    {"set_sprite_z", {Arg::Str, Arg::Int, Arg::Int}},
 };
 
 // format_numeric_for_display: a whole-number float shows as an int.
@@ -220,9 +228,9 @@ void render_print(const std::string& content, Env& env) {
 
 std::string format_command(const std::string& name, const std::vector<Value>& args);
 
-const PixArray& numeric_array(const Value& v, const std::string& what) {
+const PixArray& numeric_array(const Value& v, std::string_view what) {
     if (!v.is_array() || v.as_array()->type != ArrayType::Numeric) {
-        throw PixilError(ErrorKind::Value, what + " must be a numeric array");
+        throw PixilError(ErrorKind::Value, std::string(what) + " must be a numeric array");
     }
     return *v.as_array();
 }
@@ -399,19 +407,31 @@ void Machine::pace_rest(double seconds) {
     next_frame_at_ = {};
 }
 
+void Machine::flush_frame_batches() {
+    if (!in_frame_) return;
+    if (!batch_.empty()) {
+        frame_stream_.push_back(batch_.command());
+        batch_.clear();
+    }
+    if (!sprites_.empty()) {
+        frame_stream_.push_back(sprites_.command());
+        sprites_.clear();
+    }
+}
+
 void Machine::finish_frame() {
     if (in_frame_) {
         emit(preserve_ ? "begin_frame(true)" : "begin_frame(false)");
-        if (!batch_.empty()) emit(batch_.command());
-        if (!sprites_.empty()) emit(sprites_.command());
-        for (const auto& extra : frame_extra_) emit(extra);
+        flush_frame_batches();
+        for (const auto& cmd : frame_stream_) emit(cmd);
     }
     emit("end_frame");
     in_frame_ = false;
     preserve_ = false;
+    current_layer_ = 0;
     batch_.clear();
     sprites_.clear();
-    frame_extra_.clear();
+    frame_stream_.clear();
     ++frames;
     if (opt_.max_frames >= 0 && frames >= opt_.max_frames) stopped = true;
     pace_after_frame();
@@ -533,9 +553,10 @@ void Machine::run_stmt(const Stmt& stmt) {
         case StmtKind::BeginFrame:
             batch_.clear();
             sprites_.clear();
-            frame_extra_.clear();
+            frame_stream_.clear();
             in_frame_ = true;
             preserve_ = stmt.preserve;
+            current_layer_ = 0;
             break;
         case StmtKind::EndFrame:
             finish_frame();
@@ -710,8 +731,10 @@ void Machine::run_command(const Stmt& stmt) {
         std::string text = (src.kind == ExprKind::Literal && src.literal.is_int())
                                ? "rest(" + std::to_string(src.literal.as_int()) + ")"
                                : "rest(" + py_float_repr(seconds) + ")";
-        if (in_frame_) frame_extra_.push_back(std::move(text));
-        else {
+        if (in_frame_) {
+            flush_frame_batches();
+            frame_stream_.push_back(std::move(text));
+        } else {
             emit(std::move(text));
             // Sleep here too so get_datetime after rest sees wall time advance
             // (consumer rest alone lets the producer race ahead into the inbox).
@@ -719,10 +742,95 @@ void Machine::run_command(const Stmt& stmt) {
         }
         return;
     }
+    if (stmt.name == "set_layer" || stmt.name == "clear_layer") {
+        if (args.empty()) {
+            throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                   " requires a layer number");
+        }
+        int64_t layer = rounded_int(args[0]);
+        if (layer < 0) {
+            throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                   " layer must be >= 0");
+        }
+        if (layer > 65535) {
+            throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                   " layer must be <= 65535");
+        }
+        const uint16_t layer_u = static_cast<uint16_t>(layer);
+        if (stmt.name == "set_layer") {
+            if (in_frame_ && layer_u != current_layer_) {
+                // Flush so prior sprites keep the previous layer before the switch.
+                flush_frame_batches();
+            }
+            current_layer_ = layer_u;
+        }
+        if (in_frame_) {
+            batch_.append(stmt.name, {Value::integer(layer)});
+            return;
+        }
+        emit(stmt.name + "(" + std::to_string(layer) + ")");
+        return;
+    }
+    if (stmt.name == "delete_layer" || stmt.name == "hide_layer" || stmt.name == "show_layer" ||
+        stmt.name == "reorder_layer" || stmt.name == "set_sprite_layer" || stmt.name == "set_sprite_z") {
+        auto require_layer = [&](const Value& v, const char* which) -> int64_t {
+            int64_t layer = rounded_int(v);
+            if (layer < 0) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                       " " + which + " must be >= 0");
+            }
+            if (layer > 65535) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                       " " + which + " must be <= 65535");
+            }
+            return layer;
+        };
+        if (stmt.name == "delete_layer" || stmt.name == "hide_layer" || stmt.name == "show_layer") {
+            if (args.empty()) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                       " requires a layer number");
+            }
+            int64_t layer = require_layer(args[0], "layer");
+            if (stmt.name == "delete_layer" && static_cast<uint16_t>(layer) == current_layer_) {
+                current_layer_ = 0;
+            }
+        } else if (stmt.name == "reorder_layer") {
+            if (args.size() < 2) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) +
+                                                       ": reorder_layer requires from_layer, to_layer");
+            }
+            int64_t from = require_layer(args[0], "from_layer");
+            int64_t to = require_layer(args[1], "to_layer");
+            if (static_cast<uint16_t>(from) == current_layer_ && from != to) {
+                current_layer_ = static_cast<uint16_t>(to);
+            }
+        } else if (stmt.name == "set_sprite_layer") {
+            if (args.size() < 2) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) +
+                                                       ": set_sprite_layer requires name, layer");
+            }
+            require_layer(args[1], "layer");
+        } else if (stmt.name == "set_sprite_z") {
+            if (args.size() < 2) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) +
+                                                       ": set_sprite_z requires name, z_index");
+            }
+        }
+        std::string text = format_command(stmt.name, args);
+        if (in_frame_) {
+            flush_frame_batches();
+            frame_stream_.push_back(std::move(text));
+        } else {
+            emit(std::move(text));
+        }
+        return;
+    }
     if (stmt.name == "draw_lines" || stmt.name == "move_sprites") {
         auto sink = [&](std::string text) {
-            if (in_frame_) frame_extra_.push_back(std::move(text));
-            else emit(std::move(text));
+            if (in_frame_) {
+                flush_frame_batches();
+                frame_stream_.push_back(std::move(text));
+            } else emit(std::move(text));
         };
         if (stmt.name == "draw_lines") expand_draw_lines(args, in_frame_, batch_, sink);
         else expand_move_sprites(args, in_frame_, sprites_, sink);
@@ -765,8 +873,11 @@ void Machine::run_command(const Stmt& stmt) {
         }
     }
     std::string text = format_command(stmt.name, args);
-    if (in_frame_) frame_extra_.push_back(std::move(text));
-    else emit(std::move(text));
+    if (in_frame_) {
+        // draw_text / clear_text / etc. must see set_layer ops already applied.
+        flush_frame_batches();
+        frame_stream_.push_back(std::move(text));
+    } else emit(std::move(text));
 }
 
 }  // namespace pixil

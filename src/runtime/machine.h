@@ -2,6 +2,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -50,6 +51,7 @@ private:
     void import_module(const Stmt& stmt);
     void emit(std::string cmd);
     void finish_frame();
+    void flush_frame_batches();
     void pace_after_frame();
     void pace_rest(double seconds);
     Value eval_arg(const Expr& expr);
@@ -58,7 +60,9 @@ private:
     RunOptions opt_;
     DrawBatch batch_;
     SpriteBatch sprites_;
-    std::vector<std::string> frame_extra_;
+    // Ordered mid-frame commands (flushed batches + text/extras). Emitted after
+    // begin_frame in finish_frame so producer deferral of begin_frame is preserved.
+    std::vector<std::string> frame_stream_;
     std::unordered_map<std::string, const Stmt*> procs_;
     std::unordered_set<std::string> loaded_;
     std::unordered_map<std::string, std::string> prefixes_;
@@ -67,6 +71,7 @@ private:
     bool preserve_ = false;
     bool in_sprite_ = false;
     std::string sprite_name_;
+    uint16_t current_layer_ = 0;
     std::unique_ptr<GridState> grids_;
     double target_fps_ = 0;
     std::chrono::steady_clock::time_point next_frame_at_{};

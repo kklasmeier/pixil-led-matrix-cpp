@@ -333,6 +333,12 @@ bool DrawBatch::append_record(std::string_view cmd, const std::vector<Value>& a)
         tail(w, color, a.size() > 6 ? &a[6] : &kHundred, opt(a, 8), opt(a, 9), false);
         w.u8(fill_byte(a.size() > 7 ? a[7] : kFalse));
         w.pad(3);
+    } else if (cmd == "set_layer" || cmd == "clear_layer") {
+        need(a, 1, cmd);
+        int64_t layer = trunc_int(a[0]);
+        if (layer < 0 || layer > 65535) arg_error(std::string(cmd) + " layer must be 0..65535");
+        w.u8(cmd == "set_layer" ? OP_SET_LAYER : OP_CLEAR_LAYER);
+        w.u16(static_cast<uint32_t>(layer));
     } else {
         throw PixilError(ErrorKind::Value, "draw_batch does not support command: " + std::string(cmd));
     }

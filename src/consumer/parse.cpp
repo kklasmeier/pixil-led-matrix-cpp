@@ -156,6 +156,48 @@ void parse_and_execute(MatrixApi& api, const std::string& command) {
         api.begin_frame(!args.empty() && parse_bool(args[0]));
         return;
     }
+    if (name == "set_layer") {
+        if (args.empty()) throw std::runtime_error("set_layer needs a layer number");
+        api.set_layer(parse_int(args[0]));
+        return;
+    }
+    if (name == "clear_layer") {
+        if (args.empty()) throw std::runtime_error("clear_layer needs a layer number");
+        api.clear_layer(parse_int(args[0]));
+        return;
+    }
+    if (name == "delete_layer") {
+        if (args.empty()) throw std::runtime_error("delete_layer needs a layer number");
+        api.delete_layer(parse_int(args[0]));
+        return;
+    }
+    if (name == "hide_layer") {
+        if (args.empty()) throw std::runtime_error("hide_layer needs a layer number");
+        api.hide_layer(parse_int(args[0]));
+        return;
+    }
+    if (name == "show_layer") {
+        if (args.empty()) throw std::runtime_error("show_layer needs a layer number");
+        api.show_layer(parse_int(args[0]));
+        return;
+    }
+    if (name == "reorder_layer") {
+        if (args.size() < 2) throw std::runtime_error("reorder_layer needs from_layer, to_layer");
+        api.reorder_layer(parse_int(args[0]), parse_int(args[1]));
+        return;
+    }
+    if (name == "set_sprite_layer") {
+        if (args.size() < 2) throw std::runtime_error("set_sprite_layer needs name, layer");
+        int instance = args.size() > 2 ? parse_int(args[2]) : 0;
+        api.set_sprite_layer(args[0], parse_int(args[1]), instance);
+        return;
+    }
+    if (name == "set_sprite_z") {
+        if (args.size() < 2) throw std::runtime_error("set_sprite_z needs name, z_index");
+        int instance = args.size() > 2 ? parse_int(args[2]) : 0;
+        api.set_sprite_z(args[0], parse_int(args[1]), instance);
+        return;
+    }
     if (name == "plot") {
         if (args.size() < 3) throw std::runtime_error("plot needs x,y,color");
         int inten = args.size() > 3 ? parse_int(args[3]) : 100;
