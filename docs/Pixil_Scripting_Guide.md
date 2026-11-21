@@ -17,29 +17,33 @@ efficient scripting practices matter for smooth animations.
 - Performance: CPU-limited; complex math and large loops affect frame rate
 
 ## TABLE OF CONTENTS
+
+<a id="table-of-contents"></a>
+
 1. [Quick Reference](#1-quick-reference)
-2. [Drawing Commands](#2-drawing-commands)
-3. [Colors](#3-colors)
-4. [Burnout System](#4-burnout-system)
-5. [Variables and Expressions](#5-variables-and-expressions)
-6. [Control Structures](#6-control-structures)
-7. [Arrays](#7-arrays)
-8. [Math Functions](#8-math-functions)
-9. [Procedures](#9-procedures)
-10. [Frame Control](#10-frame-control)
-11. [Batch Plotting](#11-batch-plotting-mplot--mflush)
-12. [Text Commands](#12-text-commands)
-13. [Sprites](#13-sprites)
-14. [Drawing Layers](#14-drawing-layers)
-15. [Background Layers](#15-background-layers)
-16. [Performance Commands](#16-performance-commands)
-17. [Debugging](#17-debugging)
-18. [Common Errors and Troubleshooting](#18-common-errors-and-troubleshooting)
-19. [Performance Tips](#19-performance-tips)
-20. [Native Grid and Field Programs](#20-native-grid-and-field-programs)
-21. [Particle library](#21-particle-library)
-22. [Agent, ink, chladni, and points libraries](#22-agent-ink-chladni-and-points-libraries)
-23. [Script Examples](#23-script-examples)
+2. [How Pixil Runs (Producer / Consumer)](#2-how-pixil-runs-producer--consumer)
+3. [Drawing Commands](#3-drawing-commands)
+4. [Colors](#4-colors)
+5. [Burnout System](#5-burnout-system)
+6. [Variables and Expressions](#6-variables-and-expressions)
+7. [Control Structures](#7-control-structures)
+8. [Arrays](#8-arrays)
+9. [Math Functions](#9-math-functions)
+10. [Procedures and Imports](#10-procedures-and-imports)
+11. [Frame Control](#11-frame-control)
+12. [Batch Plotting](#12-batch-plotting-mplot--mflush)
+13. [Text Commands](#13-text-commands)
+14. [Sprites](#14-sprites)
+15. [Drawing Layers](#15-drawing-layers)
+16. [Background Layers](#16-background-layers)
+17. [Performance Commands](#17-performance-commands)
+18. [Debugging](#18-debugging)
+19. [Common Errors and Troubleshooting](#19-common-errors-and-troubleshooting)
+20. [Performance Tips](#20-performance-tips)
+21. [Native Grid and Field Programs](#21-native-grid-and-field-programs)
+22. [Particle library](#22-particle-library)
+23. [Agent, ink, chladni, and points libraries](#23-agent-ink-chladni-and-points-libraries)
+24. [Script Examples](#24-script-examples)
 
 To run a script on the matrix Pi:
 
@@ -52,6 +56,8 @@ cd ~/Lightshow/pixil-led-matrix-cpp
 `./run` with no arguments plays every script in `scripts/main`. See `docs/OPS.md`.
 
 # 1. QUICK REFERENCE
+
+[↑ Table of Contents](#table-of-contents)
 
 Key Rules:
 - All commands must be on a single line (no line wrapping)
@@ -72,7 +78,7 @@ for v_i in (0, 63, 1)
 endfor v_i
 ```
 
-Native grid and field programs stay built into the language. See section 20.
+Native grid and field programs stay built into the language. See section 21.
 
 ```text
 grid_program life { size 32 cell 2 fields v_grid steps 1 boundary clamp
@@ -89,7 +95,7 @@ endwhile
 Particle, agent, ink, chladni, and points behavior lives in Pixil libraries
 under `scripts/lib/`. A script imports one and calls its procedures. The
 procedures mutate arrays in place and do not draw, except `chladni.step` and
-`ink.step`, which plot. See sections 21 and 22.
+`ink.step`, which plot. See sections 22 and 23.
 
 ```text
 import particle
@@ -110,7 +116,52 @@ call agent.chemotaxis(v_x, v_y, v_dir, v_phero, v_size, 5, 1, 0.55, v_n, 1)
 grid_step(slime)
 ```
 
-# 2. DRAWING COMMANDS
+# 2. HOW PIXIL RUNS (PRODUCER / CONSUMER)
+
+[↑ Table of Contents](#table-of-contents)
+
+Your `.pix` script does not paint the LEDs directly. Two programs share the work:
+
+```text
+  .pix script
+       │
+       ▼
+   pixil  (producer)     parses the script, runs loops/math, queues draw commands
+       │
+       │  command queue (inbox)
+       ▼
+   pixil-consumer        owns the panel (or a headless buffer) and draws
+       │
+       ▼
+   LED matrix
+```
+
+**Producer (`pixil`)** — executes your script: variables, `if`/`for`/`while`,
+procedure calls, `print`. When you `plot`, `draw_*`, `show_sprite`,
+`end_frame`, and so on, it **enqueues** work for the consumer. It can run
+ahead of what is on screen.
+
+**Consumer (`pixil-consumer`)** — pulls from the queue and updates pixels.
+Burnouts and presents happen here. If the inbox fills up, the consumer is
+the bottleneck (see `./run` with `-q` in [docs/OPS.md](OPS.md)).
+
+### Why this matters when you write scripts
+
+| What you notice | Why |
+|---|---|
+| `print` seems “early” | Prints run in the producer immediately; draws may still be queued. Use `sync_queue` before a print that must match the panel ([§19](#19-common-errors-and-troubleshooting)). |
+| Clocks / `get_datetime` look frozen | Without `fps` or `rest`, the producer can queue many frames in one wall-clock second. Pace with `fps` ([§17](#17-performance-commands)). |
+| `begin_frame` / `end_frame` | The producer batches draws; `end_frame` sends them as one unit so the consumer presents a coherent frame. |
+| `rest(1)` actually waits ~1s | The producer sleeps too, so script time and wall time stay aligned. |
+
+You do **not** need to configure this pair yourself: `./run` starts the
+producer, which spawns the consumer. For build/run details see
+[docs/OPS.md](OPS.md); for the IPC design see
+[ADR-001](ADR-001-ipc.md) and [ADR-002](ADR-002-native-consumer.md).
+
+# 3. DRAWING COMMANDS
+
+[↑ Table of Contents](#table-of-contents)
 
 All drawing commands use this pattern:
 ```text
@@ -219,9 +270,17 @@ resets the current layer to 0. Sprite templates and instances survive; layer
 slots stay allocated (empty). Between playlist scripts the consumer also
 disposes all drawing layers so the next show starts clean.
 
-# 3. COLORS
+# 4. COLORS
 
-## Named Colors
+[↑ Table of Contents](#table-of-contents)
+
+## Named Colors (exactly 44)
+
+These are the **only** valid named colours. Names are case-insensitive.
+There is no `dark_green`, `dark_red`, `light_pink`, `cream`, or similar
+aliases — use a listed name or a spectral number 0–99.
+
+```text
 transparent    black         white         gray          light_gray
 dark_gray      silver        red           crimson       maroon
 rose           pink          salmon        coral         brown
@@ -231,6 +290,10 @@ green          olive         spring_green  forest_green  mint
 teal           turquoise     cyan          sky_blue      azure
 blue           navy          royal_blue    ocean_blue    indigo
 purple         violet        magenta       lavender
+```
+
+(`forest_green` and `olive` are the dark greens; `maroon` / `crimson` for
+dark reds; `peach` / `salmon` / `rose` for light pinks.)
 
 ## Using Colors
 ```text
@@ -250,14 +313,20 @@ plot(10, 20, v_color, 100)
 ```
 
 ## Intensity
-- Range: 0-100 (100 is full brightness)
-- Optional parameter, defaults to 100 if not specified
+- Intended range: **1–100** (100 is full brightness)
+- Optional; omit it to get full brightness (100)
+
+**Pitfall:** for normal drawing commands (`plot`, `draw_*`, …) inside a
+frame, intensity is truncated toward zero, and a packed value of **0 is
+treated as 100** (legacy `intensity or 100`). So `0`, `0.5`, or any value
+in `0 … <1` can appear at **full brightness**, not dark. Use at least `1`
+when you mean “barely lit.” (`mplot` keeps byte `0` as true zero.)
 
 Examples:
 ```text
 plot(10, 20, red, 100)         # Full brightness
 plot(10, 20, red, 50)          # Half brightness
-plot(10, 20, red, v_intensity) # Variable intensity
+plot(10, 20, red, v_intensity) # Variable intensity — keep >= 1 if dimming
 ```
 
 ## Transparent Color
@@ -267,14 +336,16 @@ The transparent color erases pixels, allowing background layers to show through.
 plot(10, 20, transparent)
 ```
 
-# 4. BURNOUT SYSTEM
+# 5. BURNOUT SYSTEM
+
+[↑ Table of Contents](#table-of-contents)
 
 Burnout automatically removes drawn objects after a specified time. This is 
 essential for animations as it eliminates manual tracking of pixels.
 
 Burnout lives on the **drawing layer that was current** when the pixel was
 drawn (`set_layer`). Overlay ownership among fading pixels stays within that
-layer; a burnout on layer 10 never jumps in front of layer 20. See section 14.
+layer; a burnout on layer 10 never jumps in front of layer 20. See section 15.
 
 ## Parameters
 - burnout: Duration in milliseconds before removal (-1 for permanent)
@@ -343,7 +414,31 @@ for v_frame in (0, 60, 1)
 endfor v_frame
 ```
 
-# 5. VARIABLES AND EXPRESSIONS
+# 6. VARIABLES AND EXPRESSIONS
+
+[↑ Table of Contents](#table-of-contents)
+
+## Variable management (read this)
+
+Pixil has **one rule with one exception**:
+
+| Where you are | Scalars (`v_x = …`) | Arrays (`v_a[i] = …`) |
+|---|---|---|
+| Main script, loops, `if`/`while` | **Global** — one shared name for the whole script | **Global** — one array object |
+| Procedure with **no** parameters `def foo { }` | **Global** — same names as the script; changes stick | **Global** — same |
+| Procedure **with** parameters `def foo(v_a, …) { }` | **Local** for parameters and any name that procedure assigns — restored when the call returns | Argument arrays are **shared** (not copied). Cell writes stick in the caller’s array |
+
+There is no `local` keyword. You only get locals by declaring parameters on
+`def`. A zero-argument procedure never gets a private scope.
+
+**Why arrays are shared:** Pixil has no `return` value. Libraries pass
+results back by writing into arrays you hand them
+(`call particle.integrate(v_x, …)`). Copying whole arrays on every call
+would also be expensive on a Pi. Scalars are cheap to copy/restore; array
+*contents* are updated in place on purpose.
+
+Full examples: [§10 Procedures — Scope](#scope-this-matters) and
+[Arrays are shared](#arrays-are-shared-how-results-come-back).
 
 ## Variable Naming
 All variables must be prefixed with v_ and are case sensitive.
@@ -393,7 +488,9 @@ draw_circle(v_x, v_y, v_radius, v_color, v_intensity, true)
 draw_circle(v_x + cos(v_angle) * 20, v_y + sin(v_angle) * 20, 5, red, 100, true)
 ```
 
-# 6. CONTROL STRUCTURES
+# 7. CONTROL STRUCTURES
+
+[↑ Table of Contents](#table-of-contents)
 
 ## IF/THEN/ELSE
 
@@ -674,7 +771,9 @@ for v_y in (0, 63, 8)
 endfor v_y
 ```
 
-# 7. ARRAYS
+# 8. ARRAYS
+
+[↑ Table of Contents](#table-of-contents)
 
 Arrays store multiple values of the same type (numeric or string).
 
@@ -722,8 +821,13 @@ draw_text(10, 10, v_words[0], tiny64_font, 12, white, 100)
 - Index must be a number or expression that evaluates to a number
 - Cannot mix types: numeric arrays store numbers, string arrays store text
 - Be careful with array bounds in loops to avoid exceeding the index
+- **Do not reuse an array’s name as a scalar.** `v_x = 5` after
+  `create_array(v_x, 10)` replaces the array with a number; later
+  `v_x[i]` fails. Use a different name (`v_x_pos`, `v_xi`, …).
 
-# 8. MATH FUNCTIONS
+# 9. MATH FUNCTIONS
+
+[↑ Table of Contents](#table-of-contents)
 
 ## Basic Math
 cos(x)      Cosine (radians)
@@ -896,58 +1000,181 @@ EXAMPLES:
 
 Note: Metric names must be passed as literals (in quotes), not variables.
 
-# 9. PROCEDURES
+# 10. PROCEDURES AND IMPORTS
 
-Procedures define reusable blocks of commands.
+[↑ Table of Contents](#table-of-contents)
+
+Procedures are reusable blocks of commands. They **can take parameters**.
+Libraries under `scripts/lib/` are just files of procedures you `import`.
 
 ## Definition
-```text
-def procedure_name {
-```
-    # commands
-}
 
-## Calling
-```text
-call procedure_name
-```
+No parameters (legacy style — shares the script’s variables):
 
-## Notes
-- Procedures don't accept parameters or return values
-- All variables are global and accessible inside procedures
-- Procedures can call other procedures
-- Procedures can contain any valid commands
-
-## Example
 ```text
-# Define a procedure
 def draw_target {
     draw_circle(32, 32, 20, red, 75, true)
-    draw_circle(32, 32, 15, white, 75, true)
-    draw_circle(32, 32, 10, red, 75, true)
-    draw_circle(32, 32, 5, white, 75, true)
-```
+    draw_circle(32, 32, 10, white, 75, true)
 }
+```
+
+With parameters (preferred for reusable logic):
 
 ```text
-# Call the procedure
-call draw_target
+def draw_target(v_x, v_y, v_r) {
+    draw_circle(v_x, v_y, v_r, red, 75, true)
+    draw_circle(v_x, v_y, v_r / 2, white, 75, true)
+}
+```
 
-# Use in loops
+## Calling
+
+```text
+call draw_target
+call draw_target(32, 32, 20)
+call particle.integrate(v_x, v_y, v_vx, v_vy, v_active, 0, 0.15)
+```
+
+Argument count must match the definition. There is no `return` value —
+results go out through **shared arrays** (see below) or by writing into
+caller-owned globals when the procedure has no parameters.
+
+## Scope (this matters)
+
+Also summarized under [§6 Variable management](#variable-management-read-this).
+
+**Not every procedure has locals.** Only a `def` that lists parameters gets
+a temporary scope. Zero-arg procedures share the script’s globals.
+
+| Kind of procedure | Scalars | Arrays passed as arguments |
+|---|---|---|
+| **No parameters** `def foo { … }` | **Global.** `v_x = …` changes the script’s `v_x`. | N/A (no args) — use globals directly |
+| **Has parameters** `def foo(v_a, v_b) { … }` | **Local** for parameters and every name the body assigns. Saved on entry, restored on exit. | **Shared reference** — same array object as the caller. `v_a[i] = …` updates the caller’s data |
+
+**Reads** of a name the procedure never assigns still see the script global
+(handy for constants like `v_width`). Nested `call`s and **recursion** work.
+
+### Zero-arg — everything global (changes stick)
+
+```text
+v_x = 10
+
+def bump {
+    v_x = v_x + 1        # script’s v_x
+}
+call bump
+print(f"{v_x}")          # 11
+```
+
+### With parameters — scalar locals (restored after call)
+
+```text
+v_x = 10
+v_n = 99
+
+def bump(v_n) {
+    v_n = v_n + 1        # local copy of the argument
+    v_x = v_n            # local v_x for this call only
+    print(f"inside {v_x}")
+}
+call bump(5)
+print(f"after {v_x} {v_n}")   # after 10 99 — caller’s scalars unchanged
+```
+
+```text
+def countdown(v_n) {
+    if v_n > 0 then
+        print(f"{v_n}")
+        call countdown(v_n - 1)
+    endif
+}
+call countdown(3)
+```
+
+## Arrays are shared (how results come back)
+
+An array argument is **not** a private copy. The parameter points at the
+caller’s array. Cell writes survive the call; rebinding the parameter name
+itself does not replace the caller’s array variable.
+
+**Why:** there is no `return`, so this is how procedures (and `scripts/lib`)
+hand results back. Sharing also avoids copying large arrays on every call.
+
+```text
+create_array(v_out, 8, numeric)
+
+def fill_row(v_arr, v_n) {
+    for v_i in (0, v_n - 1, 1)
+        v_arr[v_i] = v_i * 10     # mutates caller’s v_out
+    endfor v_i
+}
+
+call fill_row(v_out, 8)    # v_out[0]..[7] are set
+```
+
+Contrast with scalars: `v_n` above is a local number; assigning `v_n = …`
+inside does not change the caller’s `v_n` (if they had one).
+
+## Example
+
+```text
+def draw_target(v_x, v_y) {
+    draw_circle(v_x, v_y, 20, red, 75, true)
+    draw_circle(v_x, v_y, 10, white, 75, true)
+}
+
+call draw_target(32, 32)
+
 for v_i in (0, 3, 1)
-    call draw_target
-    rest(0.5)
-    clear()
+    call draw_target(10 + v_i * 15, 32)
 endfor v_i
 
-# Use in frames
 begin_frame
-    call draw_target
+    call draw_target(32, 32)
     draw_rectangle(0, 0, 64, 5, blue, 75, true)
 end_frame
 ```
 
-# 10. FRAME CONTROL
+## Imports
+
+```text
+import particle
+import agent
+```
+
+Rules:
+
+- `import name` loads `scripts/lib/name.pix` (default library directory).
+  A path works the same way: `import arcade/ai` → `scripts/lib/arcade/ai.pix`.
+- Imported procedures are **prefixed** with the last path segment:
+  `import particle` then `call particle.integrate(...)`.
+- A library file may contain **only** `def` procedures (no top-level drawing
+  or loops).
+- Importing the same path twice is ignored. A second library that wants the
+  **same prefix** is an error.
+- Inside a library, sibling calls must use the prefixed name
+  (`call particle.collide_bounds(...)`), not the bare name.
+
+Full APIs: [§22 Particle library](#22-particle-library) and
+[§23 Agent, ink, chladni, and points](#23-agent-ink-chladni-and-points-libraries).
+
+## Library catalogue (`scripts/lib`)
+
+| Import | Prefix | What it provides |
+|---|---|---|
+| `import particle` | `particle.*` | Motion kernels: `integrate`, `verlet`, `flock`, attractors/springs, collide bounds / circles / static circles. Mutates arrays; does not draw. |
+| `import agent` | `agent.*` | `chemotaxis` — slime-mold style agents on a scent field. |
+| `import points` | `points.*` | `lerp`, `project3d` — point-cloud helpers. |
+| `import ink` | `ink.*` | `step` — ink-in-water particle step; reads script globals and **plots** (call inside a frame). |
+| `import chladni` | `chladni.*` | `step` — Chladni particle step; uses script globals and **plots** (call inside a frame). |
+
+`ink.step` and `chladni.step` take **no parameters** on purpose so they share
+the script’s particle arrays and open-frame `mplot` context.
+
+
+# 11. FRAME CONTROL
+
+[↑ Table of Contents](#table-of-contents)
 
 Frame buffering allows multiple drawing commands to appear simultaneously.
 
@@ -960,7 +1187,7 @@ end_frame             Composite and display everything at once
 
 Both forms reset the **current drawing layer** back to 0 so a HUD
 `set_layer` cannot leak into the next frame. Sprites keep their layer
-assignments. See section 14 for drawing layers.
+assignments. See section 15 for drawing layers.
 
 ## Standard mode (`begin_frame` or `begin_frame(false)`)
 
@@ -1024,7 +1251,9 @@ begin_frame
 end_frame
 ```
 
-# 11. BATCH PLOTTING (mplot / mflush)
+# 12. BATCH PLOTTING (mplot / mflush)
+
+[↑ Table of Contents](#table-of-contents)
 
 `mplot` is how a script sends many pixels as one command. The consumer has no
 `mplot` command. The producer holds the pixels and sends one `draw_batch`.
@@ -1081,7 +1310,9 @@ end_frame
 - Call `mflush()` after `mplot` when no frame is open.
 - Inside a frame, `end_frame` sends the batch. `mflush()` there is optional.
 
-# 12. TEXT COMMANDS
+# 13. TEXT COMMANDS
+
+[↑ Table of Contents](#table-of-contents)
 
 ## DRAW_TEXT
 ```text
@@ -1091,20 +1322,29 @@ draw_text(x, y, text, font_name, font_size, color, intensity, [effect], [modifie
 Parameters:
 - x, y: Position (0-63)
 - text: String to display (in quotes)
-- font_name: Font to use (e.g., tiny64_font)
-- font_size: Size in pixels
+- font_name: Font to use (e.g., `tiny64_font`)
+- font_size: Size in pixels (accepted; native tiny64 path does not scale by this yet)
 - color: Color name or variable
-- intensity: Brightness (0-100)
-- effect: Optional animation effect
-- modifier: Optional effect modifier
+- intensity: Brightness (1–100; see [Intensity](#intensity))
+- effect: Optional — see below
+- modifier: Optional — see below
 
-Effects and Modifiers:
-NORMAL   - LEFT (default), CENTER, RIGHT
-TYPE     - SLOW, MEDIUM (default), FAST
-SCAN     - No modifiers
-SLIDE    - LEFT (default), RIGHT, UP, DOWN
-DISSOLVE - IN (default), OUT
-WIPE     - IN_LEFT, IN_RIGHT, IN_UP, IN_DOWN, OUT_LEFT, OUT_RIGHT, OUT_UP, OUT_DOWN
+### What works on native (this repo)
+
+Only the **NORMAL** path is implemented. Alignment modifiers apply:
+
+| effect | modifier | Result |
+|---|---|---|
+| `NORMAL` (or omit) | omit / `LEFT` | Draw at `x,y` (left edge) |
+| `NORMAL` | `CENTER` | Centre the string on `x` |
+| `NORMAL` | `RIGHT` | Right-align so the end is at `x` |
+
+### Fancy effects (not animated here)
+
+`TYPE`, `SCAN`, `SLIDE`, `DISSOLVE`, and `WIPE` are accepted for script
+compatibility with the Python edition, but on native they **draw as NORMAL**
+(no typewriter / slide / wipe animation). Prefer `NORMAL` + alignment in new
+scripts.
 
 ## Examples
 ```text
@@ -1116,12 +1356,6 @@ draw_text(32, 20, "SCORE", tiny64_font, 12, yellow, 100, NORMAL, CENTER)
 
 # Right-aligned
 draw_text(60, 20, "100", tiny64_font, 12, green, 100, NORMAL, RIGHT)
-
-# Typewriter effect
-draw_text(10, 30, "Loading...", tiny64_font, 12, cyan, 100, TYPE, SLOW)
-
-# Slide in from left
-draw_text(10, 20, "Hello", tiny64_font, 12, white, 75, SLIDE, LEFT)
 ```
 
 ## CLEAR_TEXT
@@ -1135,7 +1369,9 @@ Clears text at the specified coordinates.
 clear_text(10, 20)
 ```
 
-# 13. SPRITES
+# 14. SPRITES
+
+[↑ Table of Contents](#table-of-contents)
 
 Sprites are reusable graphical objects that can be animated and instanced.
 Each instance can also be **scaled, flipped, spun, or tilted** (see
@@ -1240,6 +1476,9 @@ move_sprite(ball, 30, 40, 1)                 # Move instance 1
 move_sprite(ball, 30, 40, 0, 2)              # Jump to cel 2 (no auto-advance)
 move_sprite(ball, 30.25, 40.5, 0)            # Sub-pixel move when transformed
 ```
+
+**Pitfall:** omitting `cel_idx` always advances to the next cel (wraps to 0).
+If you only want to change position, pass the cel explicitly.
 
 ## CEL ANIMATION BEHAVIOR
 - Auto-advance: move_sprite without cel_idx advances to next cel (wraps to 0)
@@ -1405,14 +1644,16 @@ Live walkthrough on the panel: `scripts/tests/Sprite_Transforms_Demo.pix`.
 - Instance IDs are optional (defaults to 0)
 - At `show_sprite`, the instance joins the **current drawing layer**
   (`set_layer`). Among sprites on that same layer, `z_index` decides order.
-  Drawing layers (section 14) put sprites *between* scenery bands — they are
+  Drawing layers (section 15) put sprites *between* scenery bands — they are
   no longer always on top of every plot.
 - Background buffer is preserved when sprites move or hide
 - Transforms are per instance and persist until changed or reset
 - `reset_sprite_transform` does **not** change the anchor
 - Scale is clamped to 0.1…8; use flip (or tilt past 90°) to mirror
 
-# 14. DRAWING LAYERS
+# 15. DRAWING LAYERS
+
+[↑ Table of Contents](#table-of-contents)
 
 Drawing layers let scenery and sprites stack in depth. A fox can walk
 **between** far trees and near trees instead of always sitting on top of
@@ -1565,7 +1806,9 @@ startup flicker). See `scripts/main/Layer_Walk.pix`.
 - `reorder_layer(from, to)` moves burnouts with the buffer.
 - Scripts that never call `set_layer` keep today’s layer-0 burnout behavior.
 
-# 15. BACKGROUND LAYERS
+# 16. BACKGROUND LAYERS
+
+[↑ Table of Contents](#table-of-contents)
 
 Background layers are scrollable, animated planes rendered **behind every
 drawing layer** (always under layer 0).
@@ -1576,7 +1819,7 @@ drawing layer** (always under layer 0).
 - Backgrounds tile/wrap seamlessly
 - Can be any size (tiles if smaller than 64x64, scrolls if larger)
 - For occlusion between drawn scenery and sprites, use drawing layers
-  (section 14), not background planes
+  (section 15), not background planes
 
 ## COMMANDS
 ```text
@@ -1637,28 +1880,31 @@ hide_background
 - dispose_all_sprites(): Destroys all sprite templates including backgrounds
 - Between playlist scripts the consumer also disposes drawing layers
 
-# 16. PERFORMANCE COMMANDS
+# 17. PERFORMANCE COMMANDS
+
+[↑ Table of Contents](#table-of-contents)
 
 ## FPS (RECOMMENDED FOR ANIMATION SPEED)
 ```text
 fps(rate)
 ```
 
-Caps how fast the LED matrix presents frames. Pacing runs in rgb_matrix_lib at each
-display swap (end_frame and immediate-mode draws), so speed is consistent regardless of
-Pi CPU load or Pixil optimizations.
+Caps how fast the **producer** advances after each frame. On this native
+runtime, `pixil` sleeps to hit the target so wall-clock helpers like
+`get_datetime` stay in step with the show (otherwise a fast producer can
+queue hundreds of frames with the same clock second). The consumer still
+presents as commands arrive.
 
-- fps(60)  — at most 60 frames per second (~0.0167s between presents)
-- fps(30)  — at most 30 FPS
-- fps(0)   — unlimited (default; pacing off)
+- `fps(60)` — aim for at most 60 frames per second (~0.0167s between frames)
+- `fps(30)` — at most 30 FPS
+- `fps(0)`  — unlimited (default; producer pacing off)
 
-Default is off. Each script starts with fps(0); set fps in the script when you want a cap.
-You may call fps() anywhere and change it during the show.
+Default is off. Each script starts with `fps(0)`; set `fps` when you want a
+cap. You may change it during the show. Disabled under `--dry-run`.
 
-```text
-if work finishes before the frame budget, the library waits the remainder.
-if work is slower than the budget, it does not add extra delay (no catch-up burst).
-```
+If work finishes before the frame budget, the producer waits the remainder.
+If work is slower than the budget, it does not add extra delay (no catch-up
+burst).
 
 Example (framed animation — preferred):
 
@@ -1671,7 +1917,7 @@ while true then
 endwhile
 ```
 
-Example (legacy immediate draws — fps still applies per swap):
+Example (immediate draws — still paced by the producer when `fps` is set):
 
 ```text
 fps(60)
@@ -1685,8 +1931,11 @@ endfor v_i
 rest(seconds)
 ```
 
-Pauses the consumer for a fixed wall-clock duration. Use for holds and timed pauses,
-not for steady animation speed (use fps for that).
+Pauses for a fixed wall-clock duration. The producer sleeps (so time-based
+script logic advances correctly) and a `rest` command is also sent so the
+consumer holds. Use for holds and timed pauses — not for steady animation
+speed (`fps` is better for that). A `rest` breaks the current `fps`
+cadence; the next `end_frame` starts a fresh interval.
 
 ```text
 rest(1)       # Pause 1 second
@@ -1699,8 +1948,8 @@ rest(v_delay) # Variable delay
 sync_queue
 ```
 
-Waits for all queued commands to complete before continuing. Use when you need 
-to ensure display is updated before proceeding.
+Waits for all queued commands to complete before continuing. Use when you need
+to ensure the display has caught up before proceeding.
 
 ```text
 for v_i in (0, 5, 1)
@@ -1716,26 +1965,18 @@ print("All circles drawn")
 throttle(factor)
 ```
 
-Adjusts delay between queued commands in Pixil (producer side). Less predictable
-with draw_batch / sprite_batch; prefer fps() for animation rate.
-
-- factor = 0: No extra producer delay (fastest queue pacing)
-- factor < 1.0: Faster execution (less delay)
-- factor = 1.0: Default timing
-- factor > 1.0: Slower execution (more delay)
+**Legacy.** On the native runtime, `throttle(...)` is accepted and **ignored**
+(treated like always-fast queue pacing). Prefer `fps()` for animation rate.
+Old scripts may still call `throttle(0)`; that is fine and does nothing here.
 
 ```text
-throttle(0)             # No producer pacing (common in sim scripts)
-throttle(0.3)           # Run faster
-throttle(2.0)           # Run slower
-throttle(v_speed)       # Variable throttle
+throttle(0)             # no-op on native (harmless)
+throttle(0.3)           # also ignored on native
 ```
 
-Use throttle to:
-- Tune legacy scripts that issue many separate queue commands
-- Slow down for debugging
+# 18. DEBUGGING
 
-# 17. DEBUGGING
+[↑ Table of Contents](#table-of-contents)
 
 ## PRINT
 ```text
@@ -1745,16 +1986,20 @@ print(f"value is: {v_variable}")
 
 Outputs text to the console for debugging.
 
+**To show a variable’s value you must use the `f"..."` form.** A plain
+string only prints that text — `print("v_x")` prints the characters
+`v_x`, not the number in `v_x`.
+
 Examples:
 ```text
-print("Starting animation")
-print(f"Position: {v_x}, {v_y}")
+print("Starting animation")           # literal text only
+print(f"Position: {v_x}, {v_y}")      # evaluates braces
 print(f"Array value: {v_data[v_i]}")
 ```
 
 Notes:
-- Use f"..." syntax with curly braces for variables
-- Works with single or double quotes
+- Use `f"..."` (or `f'...'`) with curly braces for variables and expressions
+- Plain `print("...")` does not interpolate
 
 ## IMPORTANT: SYNC_QUEUE WITH PRINT
 Pixil uses a command queue - drawing commands are sent to the queue and 
@@ -1787,10 +2032,34 @@ Use sync_queue before print when:
 - Writing regression tests
 - Any time the print should reflect what's on screen
 
-# 18. COMMON ERRORS AND TROUBLESHOOTING
+# 19. COMMON ERRORS AND TROUBLESHOOTING
 
-Pixil provides helpful error messages when conditions are invalid. Here are common
-errors and how to fix them:
+[↑ Table of Contents](#table-of-contents)
+
+## SCRIPTING PITFALLS (read these first)
+
+These regularly cost debugging time:
+
+1. **Intensity below 1 looks full-bright.** For `plot` / `draw_*` in a frame,
+   intensity is truncated and `0` is treated as `100`. Keep dim values at
+   **≥ 1**. See [Intensity](#intensity).
+2. **`move_sprite` without a cel number advances the cel.** Omit `cel_idx`
+   and multi-cel sprites walk their animation every move. Pass an explicit
+   cel (often the current one) when you only want to move.
+3. **A scalar can shadow an array of the same name.** After
+   `create_array(v_x, n)`, never assign `v_x = …` — that destroys the array.
+4. **`print` needs `f"..."` to show values.** `print("v_x")` prints the
+   literal text `v_x`. Use `print(f"{v_x}")`.
+5. **Named colours are a fixed list of 44.** No `dark_green` / `cream` /
+   etc. See [Named Colors](#named-colors-exactly-44).
+6. **Variable scope:** globals everywhere except parameterized procedures
+   (scalar locals). Array arguments are shared on purpose. See
+   [§6 Variable management](#variable-management-read-this) and
+   [§10 Scope](#scope-this-matters).
+7. **Producer runs ahead of the panel.** `print` and script logic can race
+   draws — see [§2 How Pixil Runs](#2-how-pixil-runs-producer--consumer).
+
+Pixil also provides helpful error messages when conditions are invalid:
 
 ## VARIABLE NOT FOUND
 Error: Variable 'v_xx' not found
@@ -1889,17 +2158,19 @@ Error: Cannot compare str with int using '>'
 Cause: Trying to compare incompatible types.
 Fix: Make sure both sides of the comparison are the same type.
 
-# 19. PERFORMANCE TIPS
+# 20. PERFORMANCE TIPS
+
+[↑ Table of Contents](#table-of-contents)
 
 The Raspberry Pi 4 has limited CPU power. Follow these tips for smooth animations:
 
 ## GENERAL TIPS
 1. Use begin_frame/end_frame for animations; plot() and draw_* batch at end_frame
-2. Use mplot/mflush only when NOT using frame buffering (see section 11)
+2. Use mplot/mflush only when NOT using frame buffering (see section 12)
 3. Use burnout instead of manually clearing pixels
 4. Prefer simpler shapes when possible (circles are more expensive than rectangles)
-5. Use fps() to cap display refresh rate; use throttle() only for legacy queue tuning
-6. For full-grid sims or distance fields, use grid_program / field_program (section 20)
+5. Use fps() to cap frame rate; throttle() is a no-op on native (legacy leftover)
+6. For full-grid sims or distance fields, use grid_program / field_program (section 21)
    instead of per-cell Pixil loops
 
 ## LOOP OPTIMIZATION
@@ -1971,18 +2242,20 @@ distance-field effects (Voronoi, metaballs, ripples), use grid_program and
 ```text
 field_program instead of per-cell Pixil loops. Setup and orchestration stay in
 ```
-Pixil; the producer runs the hot step and render. See section 20.
+Pixil; the producer runs the hot step and render. See section 21.
 
 ## PARTICLE LIBRARY
 For many moving circles, `import particle` and call `particle.integrate` and
 the `particle.collide_*` procedures instead of a per-particle physics loop.
-They mutate numeric arrays and do not draw. See section 21.
+They mutate numeric arrays and do not draw. See section 22.
 
 ## AGENT, INK, CHLADNI, AND POINTS
 `import agent`, `import ink`, `import chladni`, or `import points`, then call
-the procedures in section 22. `grid_step` still diffuses and draws a field.
+the procedures in section 23. `grid_step` still diffuses and draws a field.
 
-# 20. NATIVE GRID AND FIELD PROGRAMS
+# 21. NATIVE GRID AND FIELD PROGRAMS
+
+[↑ Table of Contents](#table-of-contents)
 
 Native grid and field programs accelerate simulations and distance-field
 effects on the 64x64 matrix. Pixil handles seeding, mode changes, and UI;
@@ -2010,11 +2283,11 @@ Keep plain Pixil loops when logic is not expressible in the expression
 language, or when only a handful of objects are updated per frame.
 
 For many independent circles (balls, rocks, marbles), use the particle
-primitives in section 21 instead of per-body Pixil physics. Those commands
+primitives in section 22 instead of per-body Pixil physics. Those commands
 update arrays; they do not render pixels (unlike grid_step / call chladni.step).
 
 For grid-following trail agents (slime mold, ant highways), use
-call agent.chemotaxis in section 22 plus grid_step for diffuse/draw.
+call agent.chemotaxis in section 23 plus grid_step for diffuse/draw.
 
 ## OVERVIEW
 1. Create and seed v_ arrays in Pixil (as usual)
@@ -2396,7 +2669,9 @@ tests/pixil/test_fractal_escape.py
 - grid_program / field_program blocks use brace nesting; inner { } in step/draw
   blocks are supported
 
-# 21. PARTICLE LIBRARY
+# 22. PARTICLE LIBRARY
+
+[↑ Table of Contents](#table-of-contents)
 
 Motion that used to be a builtin `particle_*` command is a procedure in
 `scripts/lib/particle.pix`. The procedures mutate numeric arrays in place and
@@ -2779,17 +3054,19 @@ Example shows:
   scripts/main/Galton_Board.pix
   scripts/main/Hourglass_Marbles.pix
 
-# 22. AGENT, INK, CHLADNI, AND POINTS LIBRARIES
+# 23. AGENT, INK, CHLADNI, AND POINTS LIBRARIES
+
+[↑ Table of Contents](#table-of-contents)
 
 These used to be builtin commands. Each one is now a Pixil library under
 `scripts/lib/`, loaded with `import` and invoked with `call`. The import rules
-in section 21 apply to all of them.
+in section 10 apply to all of them.
 
 `call agent.chemotaxis(...)` senses a flat grid field, steers, moves, and
 optionally deposits into that field. It mutates arrays and does not draw.
 Pair it with `grid_program` / `grid_step` for diffusion, evaporation, and
-rendering (section 20). Keep food placement, phase timing, and palettes in
-the script. Use the particle library (section 21) when motion is physics
+rendering (section 21). Keep food placement, phase timing, and palettes in
+the script. Use the particle library (section 22) when motion is physics
 forces without a grid field.
 
 ```text
@@ -2855,7 +3132,9 @@ call points.lerp(v_a, v_b, v_out, v_t, v_count)
 call points.project3d(v_x, v_y, v_z, v_sx, v_sy, v_ax, v_ay, v_az, v_scale, v_camera, v_cx, v_cy, v_depth, v_count)
 ```
 
-# 23. SCRIPT EXAMPLES
+# 24. SCRIPT EXAMPLES
+
+[↑ Table of Contents](#table-of-contents)
 
 ## SIMPLE BOUNCING BALL
 ```text
