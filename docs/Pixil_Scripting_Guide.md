@@ -17,28 +17,29 @@ efficient scripting practices matter for smooth animations.
 - Performance: CPU-limited; complex math and large loops affect frame rate
 
 ## TABLE OF CONTENTS
-1. Quick Reference
-2. Drawing Commands
-3. Colors
-4. Burnout System
-5. Variables and Expressions
-6. Control Structures
-7. Arrays
-8. Math Functions
-9. Procedures
-10. Frame Control
-11. Batch Plotting
-12. Text Commands
-13. Sprites
-14. Background Layers
-15. Performance Commands
-16. Debugging
-17. Common Errors and Troubleshooting
-18. Performance Tips
-19. Native Grid and Field Programs
-20. Particle library
-21. Agent, ink, chladni, and points libraries
-22. Script Examples
+1. [Quick Reference](#1-quick-reference)
+2. [Drawing Commands](#2-drawing-commands)
+3. [Colors](#3-colors)
+4. [Burnout System](#4-burnout-system)
+5. [Variables and Expressions](#5-variables-and-expressions)
+6. [Control Structures](#6-control-structures)
+7. [Arrays](#7-arrays)
+8. [Math Functions](#8-math-functions)
+9. [Procedures](#9-procedures)
+10. [Frame Control](#10-frame-control)
+11. [Batch Plotting](#11-batch-plotting-mplot--mflush)
+12. [Text Commands](#12-text-commands)
+13. [Sprites](#13-sprites)
+14. [Drawing Layers](#14-drawing-layers)
+15. [Background Layers](#15-background-layers)
+16. [Performance Commands](#16-performance-commands)
+17. [Debugging](#17-debugging)
+18. [Common Errors and Troubleshooting](#18-common-errors-and-troubleshooting)
+19. [Performance Tips](#19-performance-tips)
+20. [Native Grid and Field Programs](#20-native-grid-and-field-programs)
+21. [Particle library](#21-particle-library)
+22. [Agent, ink, chladni, and points libraries](#22-agent-ink-chladni-and-points-libraries)
+23. [Script Examples](#23-script-examples)
 
 To run a script on the matrix Pi:
 
@@ -71,7 +72,7 @@ for v_i in (0, 63, 1)
 endfor v_i
 ```
 
-Native grid and field programs stay built into the language. See section 19.
+Native grid and field programs stay built into the language. See section 20.
 
 ```text
 grid_program life { size 32 cell 2 fields v_grid steps 1 boundary clamp
@@ -88,7 +89,7 @@ endwhile
 Particle, agent, ink, chladni, and points behavior lives in Pixil libraries
 under `scripts/lib/`. A script imports one and calls its procedures. The
 procedures mutate arrays in place and do not draw, except `chladni.step` and
-`ink.step`, which plot. See sections 20 and 21.
+`ink.step`, which plot. See sections 21 and 22.
 
 ```text
 import particle
@@ -213,7 +214,10 @@ draw_arc(10, 32, 54, 32, 12, cyan, 75, true)          # Filled arc
 clear()
 ```
 
-Clears the entire display, hiding all backgrounds and removing all drawn content.
+Clears every drawing layer’s pixels, hides backgrounds, clears burnout, and
+resets the current layer to 0. Sprite templates and instances survive; layer
+slots stay allocated (empty). Between playlist scripts the consumer also
+disposes all drawing layers so the next show starts clean.
 
 # 3. COLORS
 
@@ -267,6 +271,10 @@ plot(10, 20, transparent)
 
 Burnout automatically removes drawn objects after a specified time. This is 
 essential for animations as it eliminates manual tracking of pixels.
+
+Burnout lives on the **drawing layer that was current** when the pixel was
+drawn (`set_layer`). Overlay ownership among fading pixels stays within that
+layer; a burnout on layer 10 never jumps in front of layer 20. See section 14.
 
 ## Parameters
 - burnout: Duration in milliseconds before removal (-1 for permanent)
@@ -945,14 +953,18 @@ Frame buffering allows multiple drawing commands to appear simultaneously.
 
 ## Commands
 ```text
-begin_frame           Start buffering (clears display)
-begin_frame(true)     Start buffering (preserves existing content)
-end_frame             Display all buffered commands at once
+begin_frame           Start buffering (clears every drawing layer’s pixels)
+begin_frame(true)     Start buffering (preserves layer pixels)
+end_frame             Composite and display everything at once
 ```
+
+Both forms reset the **current drawing layer** back to 0 so a HUD
+`set_layer` cannot leak into the next frame. Sprites keep their layer
+assignments. See section 14 for drawing layers.
 
 ## Standard mode (`begin_frame` or `begin_frame(false)`)
 
-- Clears the display before buffering
+- Clears every drawing layer’s pixels before buffering (layer slots stay)
 - All commands are buffered until `end_frame`
 - Only new content is visible after `end_frame`
 - Do not use `clear()` inside a frame. It causes flicker
@@ -967,9 +979,9 @@ end_frame
 
 ## Preserve mode (`begin_frame(true)`)
 
-- Keeps existing display content
-- New commands overlay on top
-- Useful for layered animations
+- Keeps existing layer pixels
+- New commands overlay on the current layer
+- Useful for retained scenery with moving sprites / scrolling backgrounds
 
 ```text
 draw_circle(32, 32, 20, red, 100, true)
@@ -1262,18 +1274,177 @@ move_sprite(enemy, 52, 10, 2)
 - Coordinates inside sprites are relative to top-left (0,0)
 - Sprite names don't use quotes
 - Instance IDs are optional (defaults to 0)
-- Sprites render above all background and drawing operations
+- At `show_sprite`, the instance joins the **current drawing layer**
+  (`set_layer`). Among sprites on that same layer, `z_index` decides order.
+  Drawing layers (section 14) put sprites *between* scenery bands — they are
+  no longer always on top of every plot.
 - Background buffer is preserved when sprites move or hide
 
-# 14. BACKGROUND LAYERS
+# 14. DRAWING LAYERS
 
-Background layers are scrollable, animated layers rendered behind everything else.
+Drawing layers let scenery and sprites stack in depth. A fox can walk
+**between** far trees and near trees instead of always sitting on top of
+everything you draw.
+
+Without `set_layer`, everything stays on **layer 0** — same behavior as
+before this feature.
+
+## STACK (back → front)
+
+```text
+FRONT (nearest you)
+  … higher layer numbers …
+  layer 30  →  drawing on 30, then sprites on 30 (by z_index)
+  layer 20  →  drawing on 20, then sprites on 20
+  layer 10  →  drawing on 10, then sprites on 10
+  layer 0   →  drawing on 0,  then sprites on 0     ← default
+  backgrounds (set_background)                      ← always under layer 0
+BACK
+```
+
+Rules:
+
+1. **Layer number = stack position.** Higher is in front. Gaps are fine
+   (`10`, `20`, `100`). Layer must be **≥ 0**.
+2. **On one layer:** all drawing paints first, then that layer’s sprites.
+   Sprites win over drawing on the **same** layer.
+3. **Among sprites on the same layer:** higher `z_index` is in front.
+4. **Sprites remember their layer** from `show_sprite` (or
+   `set_sprite_layer`). Moving them does not change layer unless you say so.
+5. **Burnout stays inside its layer.** Overlay/fade ownership does not
+   cross layers. `reorder_layer` moves that layer’s burnouts with the buffer.
+6. **Layers stack; they do not slide.** To move art on screen, use sprites
+   or scrolling backgrounds — not layer numbers.
+
+## COMMANDS
+
+```text
+set_layer(layer)
+```
+All following drawing goes onto that layer (`plot`, `mplot`, shapes,
+`draw_text`, …). Creates the layer empty the first time you use it.
+`begin_frame` / `begin_frame(true)` reset the current layer back to **0**
+(sprites keep their assignments).
+
+```text
+clear_layer(layer)
+```
+Erase every pixel on that layer (transparent). The layer still exists;
+visibility and sprites on it are unchanged. Clears burnout on that layer.
+Use this to redraw only a HUD or FX band.
+
+```text
+delete_layer(layer)
+```
+Remove the layer buffer. Sprites that were on it are **hidden** (not
+disposed) and stay hidden until you `show_sprite` them again on a living
+layer. If you delete the current drawing layer, current becomes 0.
+
+```text
+hide_layer(layer)
+show_layer(layer)
+```
+Skip or include a layer when compositing. Pixels stay in memory. Sprites
+on a hidden layer are not drawn while it is hidden.
+
+```text
+reorder_layer(from_layer, to_layer)
+```
+Move the buffer, its sprites, and its burnouts to a new layer number
+without redrawing. `from_layer` is vacated. If `to_layer` already exists,
+it is **overwritten** (old pixels/burnouts discarded; old sprites on that
+number hidden).
+
+```text
+set_sprite_layer(name, layer, [instance_id])
+set_sprite_z(name, z_index, [instance_id])
+```
+Change a sprite’s layer or same-layer `z_index` without depending on the
+current `set_layer`. `set_sprite_layer` auto-creates an empty layer if
+needed. Prefer `set_sprite_z` over a bare `move_sprite` when you only want
+order (bare `move_sprite` advances cel).
+
+## SPRITES ON LAYERS
+
+```text
+set_layer(10)
+call draw_forest
+show_sprite(rabbit, 8, 40, 0, 0, 0)    # layer 10, z_index 0
+show_sprite(fox, 22, 42, 0, 1, 0)      # layer 10, z_index 1 → in front of rabbit
+
+set_layer(15)
+show_sprite(deer, 30, 38)              # layer 15 (between 10 and 20)
+
+set_layer(20)
+call draw_near_trees                   # covers deer where they overlap
+
+# later: duck behind the near trees
+set_sprite_layer(deer, 12)
+```
+
+`z_index` only orders sprites **on the same layer**. Depth between bands
+comes from the layer number.
+
+## FRAMES AND RETAINED SCENERY
+
+```text
+begin_frame            # clear every layer’s pixels; current set_layer → 0
+begin_frame(true)      # keep pixels; current set_layer → 0
+end_frame              # composite backgrounds + layers + sprites, present
+
+clear                  # clear all layer pixels; current → 0; hide backgrounds;
+                       # clear burnout; does not dispose sprites or layer slots
+```
+
+Typical pattern: draw static bands once, then preserve and only redraw HUD/FX.
+
+```text
+set_background(sky, 0)
+
+begin_frame
+    set_layer(10)
+    call draw_far_trees
+    set_layer(18)
+    show_sprite(fox, 8, 40, 0, 0, 0)
+    set_layer(25)
+    call draw_near_trees
+end_frame
+
+while true then
+    begin_frame(true)
+        nudge_background(1, 0, 0)
+        move_sprite(fox, v_x, 40)
+        set_layer(40)
+        clear_layer(40)
+        call draw_fireflies
+    end_frame
+endwhile
+```
+
+Draw setup **inside** a frame (or you will present after every shape —
+startup flicker). See `scripts/main/Layer_Walk.pix`.
+
+## BURNOUT WITH LAYERS
+
+- Each burnout remembers the layer that was current when it was created.
+- `clear_layer(n)` clears burnout on layer `n`.
+- `delete_layer` / overwrite via `reorder_layer` ends burnouts on the
+  discarded layer quietly.
+- `reorder_layer(from, to)` moves burnouts with the buffer.
+- Scripts that never call `set_layer` keep today’s layer-0 burnout behavior.
+
+# 15. BACKGROUND LAYERS
+
+Background layers are scrollable, animated planes rendered **behind every
+drawing layer** (always under layer 0).
 
 ## KEY CONCEPTS
-- Render stack: Background Layers → Drawing Buffer → Sprites
-- Multiple layers supported (higher numbers render above lower)
+- Render stack: Backgrounds → Drawing Layers (each: pixels, then sprites) → front
+- Multiple background planes supported (higher background numbers above lower)
 - Backgrounds tile/wrap seamlessly
 - Can be any size (tiles if smaller than 64x64, scrolls if larger)
+- For occlusion between drawn scenery and sprites, use drawing layers
+  (section 14), not background planes
 
 ## COMMANDS
 ```text
@@ -1299,7 +1470,7 @@ set_background_offset(x, y, [layer], [cel_index])
 ## TRANSPARENCY
 - Use transparent color in background sprites for see-through areas
 - Lower layers bleed through higher layers where transparent
-- Backgrounds bleed through to drawing buffer
+- Backgrounds bleed through into drawing layers where those pixels are transparent
 
 ## EXAMPLE
 ```text
@@ -1329,10 +1500,12 @@ endfor v_i
 hide_background
 
 ## CLEANUP BEHAVIOR
-- clear(): Hides backgrounds, clears drawing buffer, sprite templates survive
+- clear(): Hides backgrounds, clears every drawing layer’s pixels, sprite
+  templates survive (layer slots stay allocated)
 - dispose_all_sprites(): Destroys all sprite templates including backgrounds
+- Between playlist scripts the consumer also disposes drawing layers
 
-# 15. PERFORMANCE COMMANDS
+# 16. PERFORMANCE COMMANDS
 
 ## FPS (RECOMMENDED FOR ANIMATION SPEED)
 ```text
@@ -1430,7 +1603,7 @@ Use throttle to:
 - Tune legacy scripts that issue many separate queue commands
 - Slow down for debugging
 
-# 16. DEBUGGING
+# 17. DEBUGGING
 
 ## PRINT
 ```text
@@ -1482,7 +1655,7 @@ Use sync_queue before print when:
 - Writing regression tests
 - Any time the print should reflect what's on screen
 
-# 17. COMMON ERRORS AND TROUBLESHOOTING
+# 18. COMMON ERRORS AND TROUBLESHOOTING
 
 Pixil provides helpful error messages when conditions are invalid. Here are common
 errors and how to fix them:
@@ -1584,7 +1757,7 @@ Error: Cannot compare str with int using '>'
 Cause: Trying to compare incompatible types.
 Fix: Make sure both sides of the comparison are the same type.
 
-# 18. PERFORMANCE TIPS
+# 19. PERFORMANCE TIPS
 
 The Raspberry Pi 4 has limited CPU power. Follow these tips for smooth animations:
 
@@ -1594,7 +1767,7 @@ The Raspberry Pi 4 has limited CPU power. Follow these tips for smooth animation
 3. Use burnout instead of manually clearing pixels
 4. Prefer simpler shapes when possible (circles are more expensive than rectangles)
 5. Use fps() to cap display refresh rate; use throttle() only for legacy queue tuning
-6. For full-grid sims or distance fields, use grid_program / field_program (section 19)
+6. For full-grid sims or distance fields, use grid_program / field_program (section 20)
    instead of per-cell Pixil loops
 
 ## LOOP OPTIMIZATION
@@ -1666,18 +1839,18 @@ distance-field effects (Voronoi, metaballs, ripples), use grid_program and
 ```text
 field_program instead of per-cell Pixil loops. Setup and orchestration stay in
 ```
-Pixil; the producer runs the hot step and render. See section 19.
+Pixil; the producer runs the hot step and render. See section 20.
 
 ## PARTICLE LIBRARY
 For many moving circles, `import particle` and call `particle.integrate` and
 the `particle.collide_*` procedures instead of a per-particle physics loop.
-They mutate numeric arrays and do not draw. See section 20.
+They mutate numeric arrays and do not draw. See section 21.
 
 ## AGENT, INK, CHLADNI, AND POINTS
 `import agent`, `import ink`, `import chladni`, or `import points`, then call
-the procedures in section 21. `grid_step` still diffuses and draws a field.
+the procedures in section 22. `grid_step` still diffuses and draws a field.
 
-# 19. NATIVE GRID AND FIELD PROGRAMS
+# 20. NATIVE GRID AND FIELD PROGRAMS
 
 Native grid and field programs accelerate simulations and distance-field
 effects on the 64x64 matrix. Pixil handles seeding, mode changes, and UI;
@@ -1705,13 +1878,11 @@ Keep plain Pixil loops when logic is not expressible in the expression
 language, or when only a handful of objects are updated per frame.
 
 For many independent circles (balls, rocks, marbles), use the particle
-primitives in section 20 instead of per-body Pixil physics. Those commands
+primitives in section 21 instead of per-body Pixil physics. Those commands
 update arrays; they do not render pixels (unlike grid_step / call chladni.step).
 
 For grid-following trail agents (slime mold, ant highways), use
-```text
-call agent.chemotaxis in section 21 plus grid_step for diffuse/draw.
-```
+call agent.chemotaxis in section 22 plus grid_step for diffuse/draw.
 
 ## OVERVIEW
 1. Create and seed v_ arrays in Pixil (as usual)
@@ -2093,7 +2264,7 @@ tests/pixil/test_fractal_escape.py
 - grid_program / field_program blocks use brace nesting; inner { } in step/draw
   blocks are supported
 
-# 20. PARTICLE LIBRARY
+# 21. PARTICLE LIBRARY
 
 Motion that used to be a builtin `particle_*` command is a procedure in
 `scripts/lib/particle.pix`. The procedures mutate numeric arrays in place and
@@ -2476,17 +2647,17 @@ Example shows:
   scripts/main/Galton_Board.pix
   scripts/main/Hourglass_Marbles.pix
 
-# 21. AGENT, INK, CHLADNI, AND POINTS LIBRARIES
+# 22. AGENT, INK, CHLADNI, AND POINTS LIBRARIES
 
 These used to be builtin commands. Each one is now a Pixil library under
 `scripts/lib/`, loaded with `import` and invoked with `call`. The import rules
-in section 20 apply to all of them.
+in section 21 apply to all of them.
 
 `call agent.chemotaxis(...)` senses a flat grid field, steers, moves, and
 optionally deposits into that field. It mutates arrays and does not draw.
 Pair it with `grid_program` / `grid_step` for diffusion, evaporation, and
-rendering (section 19). Keep food placement, phase timing, and palettes in
-the script. Use the particle library (section 20) when motion is physics
+rendering (section 20). Keep food placement, phase timing, and palettes in
+the script. Use the particle library (section 21) when motion is physics
 forces without a grid field.
 
 ```text
@@ -2552,7 +2723,7 @@ call points.lerp(v_a, v_b, v_out, v_t, v_count)
 call points.project3d(v_x, v_y, v_z, v_sx, v_sy, v_ax, v_ay, v_az, v_scale, v_camera, v_cx, v_cy, v_depth, v_count)
 ```
 
-# 22. SCRIPT EXAMPLES
+# 23. SCRIPT EXAMPLES
 
 ## SIMPLE BOUNCING BALL
 ```text
