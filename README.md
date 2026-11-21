@@ -6,6 +6,8 @@ This is the **native C++** runtime. Same Pixil language (`.pix`), same show libr
 
 **You compile it once on the Pi** (there is no prebuilt binary download). After `make`, you only edit `.pix` scripts—you do not write C++ to run a show. Rebuild when you pull runtime changes.
 
+**Want a new script built by Claude, Grok, ChatGPT, etc?** Give AI [docs/Pixil_Scripting_Guide.md](docs/Pixil_Scripting_Guide.md) and tell AI what you want. It will build the script for you.
+
 <img src="docs/example_images/20250320_123949.jpg" width="400" alt="Pixil LED Matrix Animation Example">
 
 > Looking for the original Python edition? See **[pixil-led-matrix](https://github.com/kklasmeier/pixil-led-matrix)**. Prefer **this** repo for new installs and daily shows.
