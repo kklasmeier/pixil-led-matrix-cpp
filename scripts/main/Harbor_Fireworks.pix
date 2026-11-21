@@ -1,0 +1,474 @@
+# Harbor Fireworks - a fireworks show over a city harbour, built from layers
+#
+# Shells streak up and burst over a night-time city: some far away behind
+# the distant towers, some close, out over the water in front of the near
+# buildings. Peonies, rings, golden willows that droop and linger, palms
+# and crackling glitter bursts. Every burst is mirrored, broken up by
+# ripples, in the harbour below. Office windows flick on and off, red
+# beacons blink on the rooftops, and a little ferry chugs across the water.
+#
+# What it shows off (Pixil drawing layers):
+#   - Sky, both rows of buildings, their windows, the beacons and the water
+#     are each drawn ONCE onto their own layer and kept.
+#   - The fireworks are drawn on two layers that are cleared and redrawn
+#     every frame: one BEHIND the distant skyline (so far bursts are cut
+#     off by the towers) and one between the two rows of buildings.
+#   - Window lights live on two layers; swapping which one is shown makes
+#     windows turn on and off without redrawing anything. The rooftop
+#     beacons blink the same way.
+#   - The ferry is a sprite on a layer above the reflections, so its hull
+#     sits on top of the rippling water.
+#
+# Layers:
+#   0  night sky, stars, moon            10 far fireworks (redrawn)
+#   20 far skyline                       30 near fireworks (redrawn)
+#   40 near skyline                      41 / 42 window lights (swapped)
+#   44 rooftop beacons (blinking)        48 harbour water
+#   50 reflections (redrawn)             55 ferry sprite
+
+fps(60)
+throttle(0)
+
+v_pace = 1.7
+v_k = 1.7 / v_pace
+v_water = 49               # first row of the harbour
+
+# ---------------- The ferry ----------------
+define_sprite(ferry, 14, 6)
+    sprite_cel(0)
+        draw_rectangle(1, 3, 12, 2, dark_gray, 80, true)
+        draw_line(0, 3, 13, 3, gray, 70)
+        draw_rectangle(3, 1, 7, 2, gray, 60, true)
+        plot(4, 2, gold, 100)
+        plot(6, 2, gold, 100)
+        plot(8, 2, gold, 100)
+        draw_line(6, 0, 6, 1, gray, 70)
+        plot(6, 0, red, 100)
+        plot(1, 4, white, 90)
+    sprite_cel(1)
+        draw_rectangle(1, 3, 12, 2, dark_gray, 80, true)
+        draw_line(0, 3, 13, 3, gray, 70)
+        draw_rectangle(3, 1, 7, 2, gray, 60, true)
+        plot(4, 2, gold, 100)
+        plot(6, 2, gold, 90)
+        plot(8, 2, gold, 100)
+        draw_line(6, 0, 6, 1, gray, 70)
+        plot(6, 0, red, 40)
+        plot(1, 4, white, 90)
+endsprite
+
+# ---------------- Scenery (drawn once) ----------------
+create_array(v_farh, 64, numeric)
+create_array(v_nearh, 64, numeric)
+
+def build_skylines {
+    # far towers: tall, narrow, varied
+    v_x = 0
+    while v_x < 64 then
+        v_w = random(3, 7, 0)
+        v_h = random(10, 26, 0)
+        for v_i in (v_x, min(v_x + v_w - 1, 63), 1)
+            v_farh[v_i] = v_water - v_h
+        endfor v_i
+        v_x = v_x + v_w
+    endwhile
+    # near buildings: lower, wider
+    v_x = 0
+    while v_x < 64 then
+        v_w = random(5, 11, 0)
+        v_h = random(5, 15, 0)
+        for v_i in (v_x, min(v_x + v_w - 1, 63), 1)
+            v_nearh[v_i] = v_water - v_h
+        endfor v_i
+        v_x = v_x + v_w
+    endwhile
+}
+
+def draw_sky {
+    set_layer(0)
+    for v_y in (0, v_water - 1, 1)
+        draw_line(0, v_y, 63, v_y, 66, 4 + v_y * 0.32)
+    endfor v_y
+    for v_i in (0, 34, 1)
+        plot(random(0, 63, 0), random(0, 30, 0), white, random(15, 55, 0))
+    endfor v_i
+    draw_circle(52, 7, 3, light_gray, 70, true)
+    draw_circle(53, 6, 3, 66, 5, true)
+}
+
+def draw_far_skyline {
+    set_layer(20)
+    for v_x in (0, 63, 1)
+        draw_line(v_x, v_farh[v_x], v_x, v_water - 1, navy, 4)
+        plot(v_x, v_farh[v_x], 66, 10)
+    endfor v_x
+}
+
+def draw_near_skyline {
+    set_layer(40)
+    for v_x in (0, 63, 1)
+        draw_line(v_x, v_nearh[v_x], v_x, v_water - 1, black, 100)
+        # rooftop edge catching a little light
+        plot(v_x, v_nearh[v_x], dark_gray, 60)
+    endfor v_x
+}
+
+def draw_windows {
+    # two different sets of lit windows on two layers
+    for v_set in (0, 1, 1)
+        set_layer(41 + v_set)
+        for v_x in (1, 62, 2)
+            for v_y in (v_nearh[v_x] + 2, v_water - 2, 2)
+                if random(0, 99, 0) < 22 then
+                    if random(0, 3, 0) == 0 then
+                        plot(v_x, v_y, white, 45)
+                    else
+                        plot(v_x, v_y, gold, 55)
+                    endif
+                endif
+            endfor v_y
+        endfor v_x
+        # a few windows in the far towers too
+        for v_x in (1, 62, 3)
+            for v_y in (v_farh[v_x] + 2, v_nearh[v_x] - 2, 3)
+                if random(0, 99, 0) < 14 then
+                    plot(v_x, v_y, gold, 25)
+                endif
+            endfor v_y
+        endfor v_x
+    endfor v_set
+}
+
+def draw_beacons {
+    set_layer(44)
+    for v_x in (2, 61, 1)
+        # red lights on the tallest tops
+        if v_farh[v_x] < v_water - 21 and v_farh[v_x - 1] > v_farh[v_x] then
+            plot(v_x, v_farh[v_x] - 1, red, 100)
+        endif
+    endfor v_x
+}
+
+def draw_water {
+    set_layer(48)
+    for v_y in (v_water, 63, 1)
+        draw_line(0, v_y, 63, v_y, 64, 6 + (v_y - v_water) * 0.4)
+    endfor v_y
+    # shimmering streaks of city light on the water
+    for v_x in (1, 62, 2)
+        if random(0, 99, 0) < 35 then
+            v_l = random(1, 4, 0)
+            v_y = v_water + random(0, 10, 0)
+            draw_line(v_x, v_y, v_x + v_l, v_y, gold, 18)
+        endif
+    endfor v_x
+}
+
+# ---------------- Fireworks ----------------
+v_maxsh = 8
+create_array(v_shx, v_maxsh, numeric)
+create_array(v_shy, v_maxsh, numeric)
+create_array(v_shvx, v_maxsh, numeric)
+create_array(v_shvy, v_maxsh, numeric)
+create_array(v_shon, v_maxsh, numeric)
+create_array(v_shnear, v_maxsh, numeric)
+v_maxp = 640
+create_array(v_px, v_maxp, numeric)
+create_array(v_py, v_maxp, numeric)
+create_array(v_pvx, v_maxp, numeric)
+create_array(v_pvy, v_maxp, numeric)
+create_array(v_pl, v_maxp, numeric)       # life left
+create_array(v_pml, v_maxp, numeric)      # starting life
+create_array(v_pc, v_maxp, numeric)       # colour (spectral)
+create_array(v_pnear, v_maxp, numeric)
+create_array(v_pkind, v_maxp, numeric)    # 0 normal, 1 willow, 2 glitter
+for v_i in (0, v_maxp - 1, 1)
+    v_pl[v_i] = 0
+endfor v_i
+for v_i in (0, v_maxsh - 1, 1)
+    v_shon[v_i] = 0
+endfor v_i
+v_pnext = 0
+
+create_array(v_hues, 8, numeric)
+v_hues[0] = 0
+v_hues[1] = 8
+v_hues[2] = 14
+v_hues[3] = 33
+v_hues[4] = 50
+v_hues[5] = 62
+v_hues[6] = 76
+v_hues[7] = 86
+
+def launch {
+    for v_i in (0, v_maxsh - 1, 1)
+        if v_shon[v_i] == 0 and v_go == 1 then
+            v_go = 0
+            v_shon[v_i] = 1
+            v_shnear[v_i] = random(0, 1, 0)
+            v_shx[v_i] = random(8, 55, 0)
+            v_shvx[v_i] = random(-15, 15, 0) / 100
+            if v_shnear[v_i] == 1 then
+                v_shy[v_i] = v_water
+                v_shvy[v_i] = 0 - random(70, 95, 0) / 100
+            else
+                v_shy[v_i] = v_water - 12
+                v_shvy[v_i] = 0 - random(45, 62, 0) / 100
+            endif
+        endif
+    endfor v_i
+}
+
+def add_particle {
+    v_q = v_pnext
+    v_pnext = (v_pnext + 1) % v_maxp
+    v_px[v_q] = v_bx
+    v_py[v_q] = v_by
+    v_pvx[v_q] = v_nvx
+    v_pvy[v_q] = v_nvy
+    v_pl[v_q] = v_nl
+    v_pml[v_q] = v_nl
+    v_pc[v_q] = v_nc
+    v_pnear[v_q] = v_bnear
+    v_pkind[v_q] = v_nkind
+}
+
+def burst {
+    # a shell at (v_bx, v_by) explodes; near ones are bigger
+    v_sc = 0.6
+    if v_bnear == 1 then
+        v_sc = 1
+    endif
+    v_kind = random(0, 4, 0)
+    v_c1 = v_hues[random(0, 7, 0)]
+    v_c2 = v_hues[random(0, 7, 0)]
+    v_n = int(56 * v_sc) + 12
+    v_bflash = 6
+    v_bfx = v_bx
+    v_bfy = v_by
+    v_bfnear = v_bnear
+    for v_j in (0, v_n - 1, 1)
+        v_a = v_j / v_n * 6.2832 + random(-10, 10, 0) / 100
+        v_nkind = 0
+        v_nc = v_c1
+        if v_j % 2 == 1 then
+            v_nc = v_c2
+        endif
+        if v_kind == 0 then
+            # peony: a full sphere of stars
+            v_sp = random(40, 100, 0) / 100 * 0.75
+            v_nl = random(45, 70, 0)
+        elseif v_kind == 1 then
+            # ring
+            v_sp = 0.7
+            v_nl = random(40, 55, 0)
+        elseif v_kind == 2 then
+            # willow: gold, droops and lingers
+            v_sp = random(50, 100, 0) / 100 * 0.55
+            v_nl = random(90, 130, 0)
+            v_nc = 13
+            v_nkind = 1
+        elseif v_kind == 3 then
+            # palm: a few fat streaming fronds
+            v_a = int(v_j / (v_n / 7)) * 0.8976 + random(-4, 4, 0) / 100
+            v_sp = random(55, 95, 0) / 100 * 0.8
+            v_nl = random(55, 80, 0)
+        else
+            # glitter: crackles as it fades
+            v_sp = random(30, 100, 0) / 100 * 0.7
+            v_nl = random(50, 75, 0)
+            v_nc = 15
+            v_nkind = 2
+        endif
+        v_nvx = cos(v_a) * v_sp * v_sc
+        v_nvy = sin(v_a) * v_sp * v_sc
+        call add_particle
+    endfor v_j
+}
+
+def update_fireworks {
+    for v_i in (0, v_maxsh - 1, 1)
+        if v_shon[v_i] == 1 then
+            v_shx[v_i] = v_shx[v_i] + v_shvx[v_i] * v_k
+            v_shy[v_i] = v_shy[v_i] + v_shvy[v_i] * v_k
+            v_shvy[v_i] = v_shvy[v_i] + 0.012 * v_k
+            # a faint spark trail behind the shell
+            v_bx = v_shx[v_i]
+            v_by = v_shy[v_i] + 1
+            v_nvx = random(-5, 5, 0) / 100
+            v_nvy = 0.05
+            v_nl = 12
+            v_nc = 12
+            v_bnear = v_shnear[v_i]
+            v_nkind = 0
+            call add_particle
+            if v_shvy[v_i] > -0.08 then
+                v_shon[v_i] = 0
+                v_bx = v_shx[v_i]
+                v_by = v_shy[v_i]
+                v_bnear = v_shnear[v_i]
+                call burst
+            endif
+        endif
+    endfor v_i
+    for v_q in (0, v_maxp - 1, 1)
+        if v_pl[v_q] > 0 then
+            v_pl[v_q] = v_pl[v_q] - v_k
+            v_drag = 0.975
+            v_grav = 0.006
+            if v_pkind[v_q] == 1 then
+                v_drag = 0.965
+                v_grav = 0.009
+            endif
+            if v_pnear[v_q] == 0 then
+                v_grav = v_grav * 0.6
+            endif
+            v_pvx[v_q] = v_pvx[v_q] * v_drag
+            v_pvy[v_q] = v_pvy[v_q] * v_drag + v_grav * v_k
+            v_px[v_q] = v_px[v_q] + v_pvx[v_q] * v_k
+            v_py[v_q] = v_py[v_q] + v_pvy[v_q] * v_k
+        endif
+    endfor v_q
+}
+
+def draw_fireworks {
+    # far bursts behind the distant towers, near ones in front of them
+    for v_lay in (0, 1, 1)
+        if v_lay == 0 then
+            set_layer(10)
+            clear_layer(10)
+        else
+            set_layer(30)
+            clear_layer(30)
+        endif
+        if v_bflash > 0 and v_bfnear == v_lay then
+            draw_circle(v_bfx, v_bfy, 2 + v_bflash, 66, v_bflash * 3, true)
+        endif
+        for v_q in (0, v_maxp - 1, 1)
+            if v_pl[v_q] > 0 and v_pnear[v_q] == v_lay then
+                v_f = v_pl[v_q] / v_pml[v_q]
+                v_in = 100 * v_f
+                if v_lay == 0 then
+                    v_in = v_in * 0.85
+                endif
+                v_cc = v_pc[v_q]
+                if v_f > 0.85 then
+                    v_cc = "white"
+                endif
+                if v_pkind[v_q] == 2 and v_f < 0.5 then
+                    # glitter crackle
+                    if random(0, 2, 0) == 0 then
+                        v_cc = "white"
+                        v_in = 90
+                    else
+                        v_in = 0
+                    endif
+                endif
+                if v_in >= 2 and v_py[v_q] < v_water then
+                    plot(v_px[v_q], v_py[v_q], v_cc, min(v_in, 100))
+                    # a short streak behind each star while it is moving fast
+                    if abs(v_pvx[v_q]) + abs(v_pvy[v_q]) > 0.25 then
+                        plot(v_px[v_q] - v_pvx[v_q] * 2.5, v_py[v_q] - v_pvy[v_q] * 2.5, v_pc[v_q], v_in * 0.45)
+                    endif
+                    if v_pkind[v_q] == 1 and v_f < 0.7 then
+                        # willow streamers trail upward
+                        plot(v_px[v_q], v_py[v_q] - 1, 12, v_in * 0.5)
+                    endif
+                endif
+            endif
+        endfor v_q
+    endfor v_lay
+    v_bflash = max(v_bflash - v_k, 0)
+}
+
+def draw_reflections {
+    set_layer(50)
+    clear_layer(50)
+    for v_q in (0, v_maxp - 1, 2)
+        if v_pl[v_q] > 0 and v_py[v_q] < v_water then
+            v_f = v_pl[v_q] / v_pml[v_q]
+            # mirrored and squashed, wobbling with the ripples
+            v_ry = v_water + (v_water - v_py[v_q]) * 0.32
+            if v_ry < 63 then
+                v_rx = v_px[v_q] + sin(v_ry * 1.7 + v_t * 0.12) * 1.2
+                plot(v_rx, v_ry, v_pc[v_q], 32 * v_f)
+            endif
+        endif
+    endfor v_q
+    # the ferry's lights on the water
+    if v_fx > -14 and v_fx < 64 then
+        plot(v_fx + 5 + sin(v_t * 0.2), v_water + 8, gold, 25)
+    endif
+}
+
+# ---------------- Main ----------------
+v_t = 0
+v_fx = -14
+v_launch_clock = 30
+v_win_clock = 200
+v_win = 0
+v_beacon = 0
+v_bflash = 0
+v_bfnear = 0
+v_bfx = 0
+v_bfy = 0
+call build_skylines
+begin_frame
+    call draw_sky
+    call draw_far_skyline
+    call draw_near_skyline
+    call draw_windows
+    call draw_beacons
+    call draw_water
+    hide_layer(42)
+    set_layer(55)
+    show_sprite(ferry, -14, v_water + 1, 0, 0, 0)
+end_frame
+while true then
+    v_t = v_t + v_k
+    # fire a new shell now and then, sometimes a quick volley
+    v_launch_clock = v_launch_clock - v_k
+    if v_launch_clock <= 0 then
+        v_go = 1
+        call launch
+        if random(0, 99, 0) < 25 then
+            v_launch_clock = random(6, 14, 0)
+        else
+            v_launch_clock = random(30, 80, 0)
+        endif
+    endif
+    call update_fireworks
+    # the ferry crosses, then comes round again
+    v_fx = v_fx + 0.06 * v_k
+    if v_fx > 66 then
+        v_fx = -40
+    endif
+    begin_frame(true)
+        call draw_fireworks
+        call draw_reflections
+        move_sprite(ferry, int(v_fx), v_water + 1, 0, int(v_t * 0.05) % 2)
+        # windows switch over now and then
+        v_win_clock = v_win_clock - v_k
+        if v_win_clock <= 0 then
+            v_win_clock = random(150, 400, 0)
+            if v_win == 0 then
+                hide_layer(41)
+                show_layer(42)
+                v_win = 1
+            else
+                hide_layer(42)
+                show_layer(41)
+                v_win = 0
+            endif
+        endif
+        # rooftop beacons blink
+        if int(v_t / 40) % 2 != v_beacon then
+            v_beacon = int(v_t / 40) % 2
+            if v_beacon == 1 then
+                hide_layer(44)
+            else
+                show_layer(44)
+            endif
+        endif
+    end_frame
+endwhile

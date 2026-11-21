@@ -48,6 +48,11 @@ void MatrixSprite::clear_active() {
     active() = make_cel(width_, height_);
 }
 
+void MatrixSprite::set_back_cel(int cel_index) {
+    ensure_cel(cel_index);
+    back_cel_ = cel_index;
+}
+
 void SpriteInstance::advance_cel() {
     if (!template_ || template_->cel_count() == 0) return;
     current_cel = (current_cel + 1) % template_->cel_count();
@@ -124,7 +129,7 @@ SpriteInstance* SpriteManager::get_instance(const std::string& name, int instanc
     return jt == it->second.end() ? nullptr : &jt->second;
 }
 
-SpriteInstance* SpriteManager::create_instance(const std::string& name, int instance_id, int x, int y,
+SpriteInstance* SpriteManager::create_instance(const std::string& name, int instance_id, float x, float y,
                                                int z_index, int cel_index, uint16_t layer) {
     MatrixSprite* tmpl = get_template(name);
     if (!tmpl) return nullptr;

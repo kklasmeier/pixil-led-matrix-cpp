@@ -212,8 +212,12 @@ void apply_plot_batch(MatrixApi& api, const std::vector<uint8_t>& bytes) {
 
 void apply_sprite_batch(MatrixApi& api, const std::vector<uint8_t>& bytes) {
     constexpr uint8_t OP_SHOW = 1, OP_MOVE = 2, OP_HIDE = 3, OP_MOVE_Z = 4;
+    constexpr uint8_t OP_TRANSFORM = 5, OP_MOVE_SUB = 6, OP_SHOW_SUB = 7;
     size_t off = 0;
     const size_t n = bytes.size();
+    auto cel_opt = [](uint8_t cel_b) -> std::optional<int> {
+        return cel_b == 255 ? std::optional<int>{} : std::optional<int>{int(cel_b)};
+    };
     while (off < n) {
         if (api.abort_requested()) break;
         uint8_t op = bytes[off++];
@@ -228,40 +232,67 @@ void apply_sprite_batch(MatrixApi& api, const std::vector<uint8_t>& bytes) {
             api.hide_sprite(name, instance_id);
             continue;
         }
-        if (op == OP_SHOW) {
-            // OP_SHOW packs z as int16 after cel (same trailer as OP_MOVE_Z).
+        if (op == OP_TRANSFORM) {
+            // instance, sx, sy, angle, tilt_x, tilt_y, flags, reserved — 13 bytes
+            if (off + 13 > n) throw std::runtime_error("truncated sprite_transform record");
+            int instance_id = bytes[off];
+            float scale_x = static_cast<float>(ru16(bytes.data() + off + 1)) / 256.f;
+            float scale_y = static_cast<float>(ru16(bytes.data() + off + 3)) / 256.f;
+            float angle = static_cast<float>(ru16(bytes.data() + off + 5)) / 100.f;
+            float tilt_x = static_cast<float>(ru16(bytes.data() + off + 7)) / 100.f;
+            float tilt_y = static_cast<float>(ru16(bytes.data() + off + 9)) / 100.f;
+            uint8_t flags = bytes[off + 11];
+            off += 13;
+            SpriteTransform t;
+            t.scale_x = scale_x;
+            t.scale_y = scale_y;
+            t.angle_deg = angle;
+            t.tilt_x_deg = tilt_x;
+            t.tilt_y_deg = tilt_y;
+            t.flip_h = (flags & 1) != 0;
+            t.flip_v = (flags & 2) != 0;
+            t.centre_anchor = (flags & 4) != 0;
+            api.set_sprite_transform_state(name, instance_id, t);
+            continue;
+        }
+        if (op == OP_SHOW || op == OP_SHOW_SUB) {
             if (off + 8 > n) throw std::runtime_error("truncated show_sprite record");
-            int x = ri16(bytes.data() + off);
-            int y = ri16(bytes.data() + off + 2);
+            float x = static_cast<float>(ri16(bytes.data() + off));
+            float y = static_cast<float>(ri16(bytes.data() + off + 2));
+            if (op == OP_SHOW_SUB) {
+                x /= 16.f;
+                y /= 16.f;
+            }
             int instance_id = bytes[off + 4];
             uint8_t cel_b = bytes[off + 5];
             int z = ri16(bytes.data() + off + 6);
             off += 8;
-            std::optional<int> cel = cel_b == 255 ? std::optional<int>{} : std::optional<int>{int(cel_b)};
-            api.show_sprite(name, x, y, instance_id, z, cel);
+            api.show_sprite(name, x, y, instance_id, z, cel_opt(cel_b));
             continue;
         }
         if (op == OP_MOVE) {
             if (off + 6 > n) throw std::runtime_error("truncated move_sprite record");
-            int x = ri16(bytes.data() + off);
-            int y = ri16(bytes.data() + off + 2);
+            float x = static_cast<float>(ri16(bytes.data() + off));
+            float y = static_cast<float>(ri16(bytes.data() + off + 2));
             int instance_id = bytes[off + 4];
             uint8_t cel_b = bytes[off + 5];
             off += 6;
-            std::optional<int> cel = cel_b == 255 ? std::optional<int>{} : std::optional<int>{int(cel_b)};
-            api.move_sprite(name, x, y, instance_id, cel, std::nullopt);
+            api.move_sprite(name, x, y, instance_id, cel_opt(cel_b), std::nullopt);
             continue;
         }
-        if (op == OP_MOVE_Z) {
+        if (op == OP_MOVE_Z || op == OP_MOVE_SUB) {
             if (off + 8 > n) throw std::runtime_error("truncated move_sprite+z record");
-            int x = ri16(bytes.data() + off);
-            int y = ri16(bytes.data() + off + 2);
+            float x = static_cast<float>(ri16(bytes.data() + off));
+            float y = static_cast<float>(ri16(bytes.data() + off + 2));
+            if (op == OP_MOVE_SUB) {
+                x /= 16.f;
+                y /= 16.f;
+            }
             int instance_id = bytes[off + 4];
             uint8_t cel_b = bytes[off + 5];
             int z = ri16(bytes.data() + off + 6);
             off += 8;
-            std::optional<int> cel = cel_b == 255 ? std::optional<int>{} : std::optional<int>{int(cel_b)};
-            api.move_sprite(name, x, y, instance_id, cel, z);
+            api.move_sprite(name, x, y, instance_id, cel_opt(cel_b), z);
             continue;
         }
         throw std::runtime_error("unknown sprite_batch op " + std::to_string(op));

@@ -17,6 +17,15 @@ public:
     virtual void blit(const Buffer& src) = 0;  // transparent → black
     virtual void swap() = 0;
     virtual void clear() = 0;
+    // Front buffer readback (headless tests). Hardware returns false.
+    virtual bool get_pixel(int x, int y, uint8_t* r, uint8_t* g, uint8_t* b) const {
+        (void)x;
+        (void)y;
+        (void)r;
+        (void)g;
+        (void)b;
+        return false;
+    }
 };
 
 std::unique_ptr<MatrixSurface> make_headless_matrix(int w = kWidth, int h = kHeight);

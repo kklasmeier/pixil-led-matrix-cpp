@@ -198,6 +198,61 @@ void parse_and_execute(MatrixApi& api, const std::string& command) {
         api.set_sprite_z(args[0], parse_int(args[1]), instance);
         return;
     }
+    if (name == "set_sprite_scale") {
+        if (args.size() < 2) throw std::runtime_error("set_sprite_scale needs name, scale");
+        int instance = args.size() > 2 ? parse_int(args[2]) : 0;
+        std::optional<float> scale_y;
+        if (args.size() > 3) scale_y = float(parse_number(args[3]));
+        api.set_sprite_scale(args[0], float(parse_number(args[1])), instance, scale_y);
+        return;
+    }
+    if (name == "set_sprite_angle") {
+        if (args.size() < 2) throw std::runtime_error("set_sprite_angle needs name, angle");
+        int instance = args.size() > 2 ? parse_int(args[2]) : 0;
+        api.set_sprite_angle(args[0], float(parse_number(args[1])), instance);
+        return;
+    }
+    if (name == "set_sprite_tilt") {
+        if (args.size() < 3) throw std::runtime_error("set_sprite_tilt needs name, tilt_x, tilt_y");
+        int instance = args.size() > 3 ? parse_int(args[3]) : 0;
+        api.set_sprite_tilt(args[0], float(parse_number(args[1])), float(parse_number(args[2])), instance);
+        return;
+    }
+    if (name == "set_sprite_flip") {
+        if (args.size() < 2) throw std::runtime_error("set_sprite_flip needs name, flip");
+        int instance = args.size() > 2 ? parse_int(args[2]) : 0;
+        api.set_sprite_flip(args[0], parse_int(args[1]), instance);
+        return;
+    }
+    if (name == "set_sprite_anchor") {
+        if (args.size() < 2) throw std::runtime_error("set_sprite_anchor needs name, mode");
+        int instance = args.size() > 2 ? parse_int(args[2]) : 0;
+        api.set_sprite_anchor(args[0], parse_int(args[1]), instance);
+        return;
+    }
+    if (name == "set_sprite_transform") {
+        if (args.size() < 3) throw std::runtime_error("set_sprite_transform needs name, scale, angle");
+        int instance = args.size() > 3 ? parse_int(args[3]) : 0;
+        std::optional<float> tx, ty;
+        std::optional<int> flip;
+        if (args.size() > 4) tx = float(parse_number(args[4]));
+        if (args.size() > 5) ty = float(parse_number(args[5]));
+        if (args.size() > 6) flip = parse_int(args[6]);
+        api.set_sprite_transform(args[0], float(parse_number(args[1])), float(parse_number(args[2])), instance, tx,
+                                 ty, flip);
+        return;
+    }
+    if (name == "reset_sprite_transform") {
+        if (args.empty()) throw std::runtime_error("reset_sprite_transform needs name");
+        int instance = args.size() > 1 ? parse_int(args[1]) : 0;
+        api.reset_sprite_transform(args[0], instance);
+        return;
+    }
+    if (name == "sprite_back_cel") {
+        if (args.size() < 2) throw std::runtime_error("sprite_back_cel needs name, cel");
+        api.sprite_back_cel(args[0], parse_int(args[1]));
+        return;
+    }
     if (name == "plot") {
         if (args.size() < 3) throw std::runtime_error("plot needs x,y,color");
         int inten = args.size() > 3 ? parse_int(args[3]) : 100;
@@ -280,7 +335,7 @@ void parse_and_execute(MatrixApi& api, const std::string& command) {
         int instance = args.size() > 3 ? parse_int(args[3]) : 0;
         int z = args.size() > 4 ? parse_int(args[4]) : 0;
         auto cel = parse_optional_int(args, 5);
-        api.show_sprite(args[0], parse_int(args[1]), parse_int(args[2]), instance, z, cel);
+        api.show_sprite(args[0], float(parse_number(args[1])), float(parse_number(args[2])), instance, z, cel);
         return;
     }
     if (name == "hide_sprite") {
@@ -294,7 +349,7 @@ void parse_and_execute(MatrixApi& api, const std::string& command) {
         int instance = args.size() > 3 ? parse_int(args[3]) : 0;
         auto cel = parse_optional_int(args, 4);
         auto z = parse_optional_int(args, 5);
-        api.move_sprite(args[0], parse_int(args[1]), parse_int(args[2]), instance, cel, z);
+        api.move_sprite(args[0], float(parse_number(args[1])), float(parse_number(args[2])), instance, cel, z);
         return;
     }
     if (name == "dispose_sprite") {

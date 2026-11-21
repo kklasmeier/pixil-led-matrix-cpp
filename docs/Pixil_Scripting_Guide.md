@@ -1138,6 +1138,9 @@ clear_text(10, 20)
 # 13. SPRITES
 
 Sprites are reusable graphical objects that can be animated and instanced.
+Each instance can also be **scaled, flipped, spun, or tilted** (see
+[Sprite Transforms](#sprite-transforms) below). With no transform set, a
+sprite draws exactly as it always has — native size, upright, whole pixels.
 
 ## DEFINING SPRITES
 
@@ -1204,6 +1207,16 @@ hide_sprite(name, [instance_id])
 move_sprite(name, x, y, [instance_id], [cel_idx])
 dispose_sprite(name, [instance_id])
 dispose_all_sprites()
+
+# Transforms (per instance — see Sprite Transforms below)
+set_sprite_scale(name, scale, [instance_id], [scale_y])
+set_sprite_angle(name, angle, [instance_id])
+set_sprite_tilt(name, tilt_x, tilt_y, [instance_id])
+set_sprite_flip(name, flip, [instance_id])
+set_sprite_anchor(name, mode, [instance_id])
+set_sprite_transform(name, scale, angle, [instance_id], [tilt_x], [tilt_y], [flip])
+reset_sprite_transform(name, [instance_id])
+sprite_back_cel(name, cel)
 ```
 
 Show Sprite:
@@ -1211,6 +1224,7 @@ Show Sprite:
 show_sprite(ball, 10, 20)                    # Default instance 0
 show_sprite(ball, 10, 20, 1)                 # Instance 1
 show_sprite(ball, 10, 20, 1, 0, 2)           # Instance 1, z_index 0, cel 2
+show_sprite(ball, 10.5, 20.25)               # Float x,y ok (see Positions)
 ```
 
 Hide Sprite:
@@ -1224,6 +1238,7 @@ Move Sprite:
 move_sprite(ball, 30, 40)                    # Auto-advances cel
 move_sprite(ball, 30, 40, 1)                 # Move instance 1
 move_sprite(ball, 30, 40, 0, 2)              # Jump to cel 2 (no auto-advance)
+move_sprite(ball, 30.25, 40.5, 0)            # Sub-pixel move when transformed
 ```
 
 ## CEL ANIMATION BEHAVIOR
@@ -1270,6 +1285,120 @@ move_sprite(enemy, 32, 10, 1)
 move_sprite(enemy, 52, 10, 2)
 ```
 
+Transforms are per instance too — enemy 0 can spin while enemy 1 stays still.
+
+## SPRITE TRANSFORMS
+
+Use these when you want a sprite to grow/shrink, mirror, spin flat on the
+panel, or tip like a card/coin. State sticks on the instance until you change
+it or call `reset_sprite_transform`.
+
+**Prefer the small helpers** (`set_sprite_scale`, `set_sprite_angle`, …) when
+changing one thing. Use `set_sprite_transform` when setting several at once.
+
+### What each command does
+
+| Command | Effect |
+|---|---|
+| `set_sprite_scale(name, scale, [inst], [scale_y])` | Size. `1.0` = native. Clamp **0.1 … 8**. Optional `scale_y` stretches tall/wide (`scale` = horizontal, `scale_y` = vertical). No negative scale — use flip. |
+| `set_sprite_angle(name, angle, [inst])` | Flat spin in **degrees**. **+** = clockwise, **−** = the other way. Any size is fine (`450` = one turn + 90°). |
+| `set_sprite_tilt(name, tilt_x, tilt_y, [inst])` | Tip in degrees (see Spin vs tilt). |
+| `set_sprite_flip(name, flip, [inst])` | `0` none, `1` horizontal, `2` vertical, `3` both. |
+| `set_sprite_anchor(name, mode, [inst])` | Where `x,y` points: `0` top-left (default), `1` centre. Opt-in — scaling/spinning alone does **not** switch the anchor. |
+| `set_sprite_transform(name, scale, angle, [inst], [tilt_x], [tilt_y], [flip])` | Set several fields at once. |
+| `reset_sprite_transform(name, [inst])` | Scale 1, angle 0, no tilt, no flip. **Keeps the anchor.** |
+| `sprite_back_cel(name, cel)` | After `endsprite`: which still cel to show when the reverse faces the viewer (cards, coins). |
+
+**Optional-arg tip:** instance id comes before tilt/flip (same pattern as
+`show_sprite`). If you pass tilt or flip on `set_sprite_transform`, **always
+pass the instance id** so a tilt value is not read as an instance.
+
+### Anchor (where x,y points)
+
+- **Top-left (`0`, default):** `x,y` is the top-left of the *unscaled* sprite,
+  same as classic Pixil. Spin and scale still pivot around the sprite’s
+  centre, and that centre stays where it would at 1× — adding rotation later
+  does not jump the sprite.
+- **Centre (`1`):** call `set_sprite_anchor(name, 1)`. Then `x,y` is the
+  pivot — best for spinning clocks, orbiting objects, projected depth.
+
+### Positions (float x, y)
+
+`show_sprite` / `move_sprite` accept float coordinates.
+
+- **No transform** (plain sprite): position is rounded to a whole pixel —
+  same look as before.
+- **Has a transform:** fractions are kept (~1/16 pixel) so slow drifts do
+  not stutter.
+
+### Spin vs tilt (what you see)
+
+| Control | Looks like | Direction |
+|---|---|---|
+| `angle` | Spins flat, like a clock hand | + clockwise, − other way |
+| `tilt_y` | Turns left/right like a door or coin — narrows, edge-on at ±90°, reverse beyond | + right edge away, − left edge away |
+| `tilt_x` | Tips forward/back like a falling sign — shortens, edge-on at ±90°, reverse beyond | + top edge away, − bottom edge away |
+
+You can combine all three. Past ±90° the reverse faces you:
+
+1. **Default:** keep the front animation, but mirrored.
+2. **With `sprite_back_cel`:** show that one still frame instead (card back,
+   coin tails). Front cels keep animating only while the front faces you.
+
+Edge-on (thinner than one pixel) draws a 1-pixel sliver in the art’s average
+colour so a spinning coin flashes an edge instead of vanishing.
+
+### Quick examples
+
+Scale and spin in place (centre anchor):
+
+```text
+show_sprite(arrow, 32, 32, 0, 0, 0)
+set_sprite_anchor(arrow, 1, 0)
+
+while true then
+    begin_frame
+        set_sprite_scale(arrow, 1.0 + abs(sin(v_t * 0.08)) * 2.0, 0)
+        set_sprite_angle(arrow, v_t * 4, 0)
+        move_sprite(arrow, 32, 32, 0)
+    end_frame
+    v_t = v_t + 1
+endwhile
+```
+
+Card flip with a dedicated back cel:
+
+```text
+define_sprite(card, 10, 14)
+    sprite_cel(0)
+        # front art ...
+    sprite_cel(1)
+        # back art ...
+endsprite
+sprite_back_cel(card, 1)
+
+show_sprite(card, 32, 32)
+set_sprite_anchor(card, 1)
+set_sprite_tilt(card, 0, v_degrees)   # animate v_degrees past 90 to show back
+```
+
+Squash / stretch:
+
+```text
+set_sprite_scale(mark, 1.8, 0, 0.6)   # wide and short
+```
+
+Reset keeps centre anchor:
+
+```text
+set_sprite_anchor(arrow, 1)
+set_sprite_transform(arrow, 2.0, 45, 0, 0, 30, 1)
+reset_sprite_transform(arrow)         # back to 1×, 0°, no tilt/flip
+# anchor is still centre
+```
+
+Live walkthrough on the panel: `scripts/tests/Sprite_Transforms_Demo.pix`.
+
 ## SPRITE NOTES
 - Coordinates inside sprites are relative to top-left (0,0)
 - Sprite names don't use quotes
@@ -1279,6 +1408,9 @@ move_sprite(enemy, 52, 10, 2)
   Drawing layers (section 14) put sprites *between* scenery bands — they are
   no longer always on top of every plot.
 - Background buffer is preserved when sprites move or hide
+- Transforms are per instance and persist until changed or reset
+- `reset_sprite_transform` does **not** change the anchor
+- Scale is clamped to 0.1…8; use flip (or tilt past 90°) to mirror
 
 # 14. DRAWING LAYERS
 

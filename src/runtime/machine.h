@@ -75,6 +75,29 @@ private:
     std::unique_ptr<GridState> grids_;
     double target_fps_ = 0;
     std::chrono::steady_clock::time_point next_frame_at_{};
+
+    // Interpreter-side copy of per-instance transforms (drives OP_MOVE_SUB / OP_TRANSFORM).
+    struct TrackedTransform {
+        float scale_x = 1.f;
+        float scale_y = 1.f;
+        float angle = 0.f;
+        float tilt_x = 0.f;
+        float tilt_y = 0.f;
+        uint8_t flags = 0;  // bit0 flipH, bit1 flipV, bit2 centre-anchor
+        bool needs_subpixel() const {
+            return scale_x != 1.f || scale_y != 1.f || angle != 0.f || tilt_x != 0.f || tilt_y != 0.f ||
+                   (flags & 3u) != 0;
+        }
+        void reset_motion() {
+            scale_x = scale_y = 1.f;
+            angle = tilt_x = tilt_y = 0.f;
+            flags = static_cast<uint8_t>(flags & 4u);  // keep anchor
+        }
+    };
+    std::unordered_map<std::string, TrackedTransform> sprite_xforms_;
+
+    void emit_sprite_transform(const std::string& name, int instance, const TrackedTransform& t);
+    bool sprite_needs_subpixel(const Value& name, int64_t instance) const;
 };
 
 }  // namespace pixil

@@ -13,6 +13,7 @@
 #include "consumer/burnout.h"
 #include "consumer/matrix.h"
 #include "consumer/sprite.h"
+#include "consumer/sprite_transform_cache.h"
 #include "consumer/text.h"
 #include "consumer/types.h"
 
@@ -63,6 +64,20 @@ public:
 
     void set_sprite_layer(const std::string& name, int layer, int instance_id = 0);
     void set_sprite_z(const std::string& name, int z_index, int instance_id = 0);
+    void set_sprite_scale(const std::string& name, float scale, int instance_id = 0,
+                          std::optional<float> scale_y = std::nullopt);
+    void set_sprite_angle(const std::string& name, float angle_deg, int instance_id = 0);
+    void set_sprite_tilt(const std::string& name, float tilt_x_deg, float tilt_y_deg, int instance_id = 0);
+    void set_sprite_flip(const std::string& name, int flip, int instance_id = 0);
+    void set_sprite_anchor(const std::string& name, int mode, int instance_id = 0);
+    void set_sprite_transform(const std::string& name, float scale, float angle_deg, int instance_id = 0,
+                              std::optional<float> tilt_x = std::nullopt,
+                              std::optional<float> tilt_y = std::nullopt,
+                              std::optional<int> flip = std::nullopt);
+    void reset_sprite_transform(const std::string& name, int instance_id = 0);
+    void sprite_back_cel(const std::string& name, int cel_index);
+    // Full wire transform apply (batch OP_TRANSFORM).
+    void set_sprite_transform_state(const std::string& name, int instance_id, const SpriteTransform& t);
 
     void plot(int x, int y, const ColorArg& color, int intensity,
               std::optional<int> burnout_ms = std::nullopt, BurnoutMode burnout_mode = BurnoutMode::Instant);
@@ -103,10 +118,10 @@ public:
     void endsprite();
     void sprite_cel(std::optional<int> cel_index);
     void sprite_draw(const std::string& name, const std::string& cmd, const std::vector<std::string>& args);
-    void show_sprite(const std::string& name, int x, int y, int instance_id = 0, int z_index = 0,
+    void show_sprite(const std::string& name, float x, float y, int instance_id = 0, int z_index = 0,
                      std::optional<int> cel_idx = std::nullopt);
     void hide_sprite(const std::string& name, int instance_id = 0);
-    void move_sprite(const std::string& name, int x, int y, int instance_id = 0,
+    void move_sprite(const std::string& name, float x, float y, int instance_id = 0,
                      std::optional<int> cel_idx = std::nullopt, std::optional<int> z_index = std::nullopt);
     void dispose_sprite(const std::string& name, int instance_id = 0);
     void dispose_all_sprites();
@@ -124,7 +139,11 @@ public:
     void clear_text(int x, int y);
 
     std::string fingerprint() const;
+    // Read a pixel from the presented (front) surface — headless tests.
+    bool surface_pixel(int x, int y, uint8_t* r, uint8_t* g, uint8_t* b) const;
     bool frame_mode() const { return frame_mode_; }
+    SpriteTransformCache& sprite_transform_cache() { return xform_cache_; }
+    const SpriteTransformCache& sprite_transform_cache() const { return xform_cache_; }
     // Monotonic count of end_frame + immediate maybe_swap presents (not fade pumps).
     // Atomic: control-plane Q sampler may read from another thread.
     uint32_t present_count() const { return present_count_.load(std::memory_order_relaxed); }
@@ -151,6 +170,8 @@ private:
     void blit_for_display();
     void blit_sprites_onto_surface();
     void blit_sprites_for_layer(uint16_t layer);
+    void blit_one_sprite(const SpriteInstance& inst);
+    void blit_cached_transform(const SpriteTransformCacheEntry& entry, float dest_cx, float dest_cy);
     void compose_layers_onto(Buffer& dst) const;
     void refresh_display();  // immediate-mode full composite
     void present_sprite_update();
@@ -178,6 +199,7 @@ private:
     BackgroundManager backgrounds_;
     TextRenderer text_;
     BurnoutManager burnout_;
+    SpriteTransformCache xform_cache_;
 };
 
 }  // namespace pixil::consumer

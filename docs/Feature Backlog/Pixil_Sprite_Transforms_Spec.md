@@ -1,96 +1,114 @@
 # Pixil Spec: Sprite Transforms (Scale, Rotation, Tilt, Flip)
 
-**Status:** Proposal, ready for implementation after Layers Phase 1
-**Repo:** kklasmeier/pixil-led-matrix-cpp
-**Depends on:** `Pixil_Layers_Spec.md` Phase 1 (drawing layers; sprites attach to a layer, `z_index` orders within that layer)
-**Areas touched:** interpreter (`src/runtime/machine.cpp` command table), `src/emit/sprite_batch.*`, consumer (`sprite.h/.cpp`, `api.cpp` sprite blit, `batch_decode.cpp`, `parse.cpp`), docs, tests
+**Status:** S1–S3 implemented (transforms + cache). S4 authored cels optional polish.  
+**Repo:** kklasmeier/pixil-led-matrix-cpp  
+**Depends on:** Drawing layers (`Pixil_Layers_Spec.md`) — sprites already live on a layer; `z_index` only orders sprites on the same layer  
+**Code areas:** interpreter command types, sprite batch emit/decode, sprite blit, docs, tests
 
 ---
 
-## 1. Summary
+## 1. What this is for
 
-Sprites today draw 1:1 at integer positions, always at native size and orientation. This spec adds a per-instance **transform**:
+Today every sprite draws at its native size, upright, on whole-pixel positions. This feature lets each sprite instance:
 
-- **Scale:** uniform from 0.1× to 8×, with an optional separate vertical scale for stretch effects.
-- **Rotation:** in-plane spin around the z axis, any angle in degrees. Positive is clockwise and negative is counter-clockwise.
-- **Tilt:** around the x axis (tipping forward/back) and the y axis (turning left/right), any angle, either direction. The sprite foreshortens like a card turning in 3D, goes edge-on at 90°, and shows its back face past 90°.
-- **Flip:** horizontal and/or vertical.
+- **Scale** — grow or shrink (0.1× to 8×), or stretch tall/wide
+- **Rotate** — spin flat on the panel, any amount, either way (degrees)
+- **Tilt** — tip like a card or coin in 3D (narrows, goes edge-on, shows the reverse)
+- **Flip** — mirror left/right and/or up/down
 
-All of these are applied in one inverse-mapping pass, with a quality strategy suited to a 64×64 panel and a cache so animated transforms stay cheap on the Pi.
-
-Combined with layers, this lets a script build pseudo-3D scenes from pixel art: objects that approach and grow, sit at the right depth, and turn to face any heading.
+Together with layers, scripts can build simple depth scenes: things that approach and grow, sit between background bands, and turn to face a heading.
 
 ### Goals
-- One transform model covers scale, rotation and flip.
-- Pixel art stays legible when shrunk or rotated (§5).
-- Existing scripts are unchanged. The default transform is the identity, which uses the current 1:1 blit path.
-- An animated transform, such as a sprite spinning every frame, costs close to a plain blit once it is cached.
 
-### Non-goals
-- True perspective on tilts, where the near edge draws larger than the far edge (a trapezoid). Tilt here is orthographic foreshortening, which at 10–20 px sprite sizes differs from true perspective by a pixel or two. §10 lists perspective as optional phase S5.
-- Skew, or transforming background planes.
-- Blending or alpha between sprite and scene. Sprites keep the opaque-or-transparent pixel model.
+- One model covers scale, spin, tilt, and flip
+- Small pixel art still looks readable when shrunk or turned (see §5)
+- Existing scripts look identical (no transform = today’s draw path)
+- A sprite that spins every frame stays cheap on the Pi once results are cached
+
+### Not in scope
+
+- True perspective (near edge bigger than far edge) — optional later phase S5
+- Skew, or transforming scrolling backgrounds
+- Soft blending into the scene — sprites stay opaque-or-transparent pixels
 
 ---
 
-## 2. Current state
+## 2. How it works today (before this feature)
 
 | Piece | Today |
 |---|---|
-| `SpriteInstance` | `x`, `y` (int, top-left), `z_index`, `current_cel`, `visible` |
-| Blit | `MatrixApi::blit_sprites_onto_surface`: a 1:1 copy of `cel.pixels`, skipping transparent pixels, scaled by per-pixel intensity, clipped to the panel |
-| Wire | `sprite_batch` records: `OP_SHOW`/`OP_MOVE` (x, y int16; instance, cel uint8), `OP_MOVE_Z` (+ z), `OP_HIDE`. In a frame they are batched; outside a frame they are sent as text commands. |
-| Script | `show_sprite(name, x, y, [inst], [z], [cel])`, `move_sprite(name, x, y, [inst], [cel])`, `move_sprites(...)`, `hide_sprite`, `dispose_sprite`. Arguments are typed `Int`. |
+| Instance | Whole-pixel `x,y` (top-left), layer, `z_index`, which frame (cel), visible |
+| Drawing | Copy pixels 1:1, skip clear pixels, apply each pixel’s brightness, clip to the panel |
+| Messages | Show / move / hide batch records (or text commands outside a frame) |
+| Script | `show_sprite` / `move_sprite` take **integer** `x,y` |
 
 ---
 
-## 3. Script API
+## 3. Script commands
 
-### 3.1 New commands
+Transform state is per **instance** (rock 0 and rock 1 can spin differently). Prefer the small helpers when changing one thing; use the full transform when setting several at once.
 
-| Command | Meaning |
+### 3.1 Commands
+
+| Command | What it does |
 |---|---|
-| `set_sprite_transform(name, scale, angle, [inst], [tilt_x], [tilt_y], [flip])` | Set the instance's full transform. It persists until changed. `scale` is a float (1.0 = native). `angle` is the in-plane rotation in degrees: **positive = clockwise, negative = counter-clockwise**, any magnitude (normalised mod 360). `tilt_x` / `tilt_y` are degrees, either sign (§3.5). `flip` is 0 = none, 1 = horizontal, 2 = vertical, 3 = both. |
-| `set_sprite_scale(name, scale, [inst], [scale_y])` | Change only the scale. If `scale_y` is given, `scale` applies horizontally and `scale_y` vertically, for squash-and-stretch. |
-| `set_sprite_angle(name, angle, [inst])` | Change only the in-plane rotation (clockwise positive, counter-clockwise negative). |
-| `set_sprite_tilt(name, tilt_x, tilt_y, [inst])` | Change only the tilts (§3.5). |
-| `sprite_back_cel(name, cel)` | Template-level, declared after `endsprite`: the cel to show when a tilt turns the sprite's back toward the viewer. Without it, the back face is the mirror image of the front (§3.5). |
-| `set_sprite_flip(name, flip, [inst])` | Change only the flip. |
-| `set_sprite_anchor(name, mode, [inst])` | `0` = top-left (default, today's behaviour), `1` = centre. Centre anchoring is what 3D and rotating scripts want: x, y become the point the sprite rotates and scales around. |
-| `reset_sprite_transform(name, [inst])` | Back to the identity: scale 1, angle 0, no flip, top-left anchor. |
+| `set_sprite_scale(name, scale, [inst], [scale_y])` | Size. `1.0` = native. Optional `scale_y` for squash/stretch (horizontal = `scale`, vertical = `scale_y`). |
+| `set_sprite_angle(name, angle, [inst])` | Flat spin in **degrees**. Positive = clockwise, negative = the other way. Any size is fine (`450` = one full turn + 90°). |
+| `set_sprite_tilt(name, tilt_x, tilt_y, [inst])` | Tip in degrees (§3.5). |
+| `set_sprite_flip(name, flip, [inst])` | `0` none, `1` horizontal, `2` vertical, `3` both. |
+| `set_sprite_anchor(name, mode, [inst])` | `0` = top-left (default), `1` = centre. Centre is opt-in — nothing switches just because you scaled or spun. |
+| `set_sprite_transform(name, scale, angle, [inst], [tilt_x], [tilt_y], [flip])` | Set several fields at once. Persists until changed. |
+| `reset_sprite_transform(name, [inst])` | Back to scale 1, angle 0, no tilt, no flip. **Does not change the anchor.** |
+| `sprite_back_cel(name, cel)` | Optional. After `endsprite`: which still frame to show when the reverse faces the viewer (cards, coins). |
 
-Transform state belongs to the **instance**, not the template, so instances 0..n of `asteroid` can each spin at their own rate.
+**Argument types (match existing Pixil style):**
 
-### 3.2 Anchor rules
+- Scale, angle, tilt, and sprite `x,y` → **Float**
+- Instance id, cel, z, flip, anchor mode → **Int**
+- There is no separate `Num` type
 
-- **Top-left anchor (default):** x, y is the top-left of the untransformed sprite. Scale and rotation pivot around the sprite's **centre** and the result is drawn so that centre stays where it would be at 1:1. An existing script that later adds rotation doesn't jump.
-- **Centre anchor:** x, y is the centre pivot directly. This is the recommended mode for 3D projection (`move_sprite(enemy, v_sx, v_sy)` with `v_sx, v_sy` the projected point).
+**Scale limits:** clamp to **0.1 … 8**. Negative scale is not allowed — use flip or tilt to mirror.
 
-### 3.3 Sub-pixel positions
+**Optional-arg tip:** instance id comes before tilt/flip (same pattern as `show_sprite`). If you use tilt or flip on `set_sprite_transform`, **always pass the instance id** so a tilt value is not mistaken for an instance. For everyday use, prefer `set_sprite_tilt` / `set_sprite_angle` / etc.
 
-When an instance's transform is not the identity, `move_sprite`/`show_sprite` x and y are accepted as **floats** and kept at 1/16-pixel precision. Slow-moving scaled sprites otherwise step visibly a pixel at a time. Identity-transform sprites keep integer behaviour for compatibility.
+### 3.2 Anchor (where x,y points)
 
-Implementation: the command table types for x and y change from `Int` to `Num`. The emitter rounds to the nearest integer unless the instance has a non-identity transform, in which case it sends fixed-point (§6).
+- **Top-left (default):** `x,y` is the top-left of the unscaled sprite, like today. Spin and scale still pivot around the sprite’s centre, and that centre stays where it would at 1:1 — so adding rotation later doesn’t jump the sprite.
+- **Centre (opt-in):** call `set_sprite_anchor(name, 1)`. Then `x,y` is the pivot — best for spinning clocks, projected 3D positions, etc.
 
-### 3.4 Rotation and tilt: what each does
+### 3.3 Positions with fractions
 
-| Control | Axis | Viewer sees | Direction |
-|---|---|---|---|
-| `angle` | z (out of the screen) | Sprite spins flat, like a clock hand or steering wheel | + clockwise, − counter-clockwise |
-| `tilt_y` | y (vertical) | Sprite turns left/right like a door or a coin: it narrows, goes edge-on at ±90°, shows its back face beyond | + turns its right edge away from the viewer, − its left edge |
-| `tilt_x` | x (horizontal) | Sprite tips forward/back like a falling sign: it gets shorter, goes edge-on at ±90°, shows its back face beyond | + tips its top edge away from the viewer, − its bottom edge |
+`show_sprite` / `move_sprite` / `move_sprites` accept float `x,y`.
 
-All three can be combined, and each can be animated continuously in either direction (for example `v_tilt = v_tilt - 4` every frame spins a coin the other way).
+- **No transform** (plain sprite): round to a whole pixel — same look as today
+- **Has a transform:** keep fractions (about 1/16 pixel) so slow motion doesn’t stutter
 
-### 3.5 Tilt rules
+### 3.4 Spin vs tilt (what you see)
 
-- **Foreshortening:** the effective scales are `sx = scale · cos(tilt_y)` and `sy = scale_y · cos(tilt_x)`. These are **signed**, so when a cosine goes negative the sprite is automatically mirrored on that axis, which is exactly how the back of a flat card looks.
-- **Back face:** the sprite is showing its back when `cos(tilt_x) · cos(tilt_y) < 0`. If the template has a `sprite_back_cel`, that cel is drawn instead, using `|sx|` and `|sy|` (it is authored as seen from behind, so it is not mirrored again). Otherwise the mirrored front is drawn.
-- **Edge-on:** when `|sx|` or `|sy|` × the sprite's size is under 1 px, the sprite is drawn as a 1-px **sliver** along its long axis in the cel's average opaque colour, so a spinning coin flashes a thin edge rather than vanishing (§5).
-- **Order of operations:** flip → scale and tilt → in-plane rotation → position. So a sprite tilted with `tilt_y` and then spun with `angle` turns around its own axes, and its tilt axis spins with it.
-- **Perspective:** none in S1–S4 (orthographic). Optional `set_sprite_perspective(name, amount, [inst])` in S5 would make the near edge larger.
+| Control | What it looks like | Direction |
+|---|---|---|
+| `angle` | Spins flat, like a clock hand | + clockwise, − the other way |
+| `tilt_y` | Turns left/right like a door or coin — narrows, edge-on at ±90°, reverse beyond | + right edge away, − left edge away |
+| `tilt_x` | Tips forward/back like a falling sign — shortens, edge-on at ±90°, reverse beyond | + top edge away, − bottom edge away |
 
-### 3.6 Example
+You can combine all three. Angles wrap every 360° (`450` looks like `90`). Animating past 360 keeps spinning forever.
+
+### 3.5 Tilt details
+
+**Shrinking as it tips:** width and height shrink by the cosine of the tilt (tip toward edge-on → thinner). Past 90°, that math goes negative — that means “show the reverse” (mirrored).
+
+**What you see on the reverse:**
+
+1. **Default:** keep playing the front animation, but **flipped** (mirrored). Animation does not pause.
+2. **Optional `sprite_back_cel`:** when the reverse faces the viewer, show that **one still frame** instead (e.g. card back, coin tails). Front animation is only for the front. The back cel is not an animated strip in v1.
+
+**Edge-on:** when the sprite would be thinner than one pixel, draw a 1-pixel sliver in the art’s average colour so a spinning coin flashes an edge instead of vanishing.
+
+**Order applied:** flip → scale & tilt → flat spin → position. So a tilted sprite that you also spin turns around its own axes.
+
+**Perspective:** none until optional S5 (near edge larger). Early phases keep simple foreshortening only.
+
+### 3.6 Example: rocks in depth
 
 ```pixil
 define_sprite(rock, 16, 16)
@@ -106,7 +124,6 @@ while true then
     begin_frame
         for v_i in (0, 5, 1)
             v_z[v_i] = v_z[v_i] - 0.3
-            # project to screen, scale by distance, tumble
             v_s = 40 / v_z[v_i]
             set_sprite_transform(rock, v_s * 0.25, v_t * 3 + v_i * 60, v_i)
             set_sprite_layer(rock, int(255 - v_z[v_i] * 4), v_i)
@@ -116,15 +133,15 @@ while true then
 endwhile
 ```
 
-### 3.7 Example: card flip and coin spin with tilt
+### 3.7 Example: card flip and coin spin
 
 ```pixil
-# card: cel 0 = front face, cel 1 = back pattern
+# cel 0 = front, cel 1 = back pattern (optional reverse art)
 define_sprite(card, 12, 16)
     sprite_cel(0)
-        # ... front face art ...
+        # ... front ...
     sprite_cel(1)
-        # ... back pattern ...
+        # ... back ...
 endsprite
 sprite_back_cel(card, 1)
 
@@ -136,12 +153,9 @@ set_sprite_anchor(coin, 1, 0)
 while true then
     v_t = v_t + 1 / v_pace
     begin_frame
-        # card flips over one way, pauses, flips back the other way
         v_flip = min(max(sin(v_t * 0.03) * 1.6, -1), 1) * 90 + 90
         set_sprite_tilt(card, 0, v_flip, 0)
-        # coin spins on y (negative = the other direction) while wobbling on x
         set_sprite_tilt(coin, sin(v_t * 0.05) * 20, 0 - v_t * 6, 0)
-        # and rocks clockwise then counter-clockwise in-plane
         set_sprite_angle(coin, sin(v_t * 0.02) * 45, 0)
     end_frame
 endwhile
@@ -149,161 +163,184 @@ endwhile
 
 ---
 
-## 4. Rendering: inverse mapping
+## 4. How drawing works (implementer notes)
 
-For each instance with a non-identity transform:
+For a sprite with any transform (not the plain 1:1 case):
 
-1. Build the forward 2D matrix **M** = translate(anchor) · rotate(angle) · scale(sx, sy) · flip · translate(−cel_centre), where `sx = scale · cos(tilt_y)` and `sy = scale_y · cos(tilt_x)` are signed (§3.5). Pick the front cel or the back cel. Compute the inverse **M⁻¹**. If |sx| or |sy| is too small to invert reliably, use the edge-on sliver rule instead (§5).
-2. Transform the cel's four corners with **M** to get the destination bounding box, then clip it to the panel.
-3. For each destination pixel (dx, dy) in the box, sample the cel at the source point(s) given by **M⁻¹**, using the quality rules in §5.
-4. Transparent results are skipped. Intensity is applied exactly as in the current blit.
+1. Work out width/height after scale and tilt. If tilt would mirror, fold that into the flip switches (sizes sent on the wire stay **positive** — see §6).
+2. Pick the front frame, or the optional still back frame when the reverse faces us.
+3. Figure out where the four corners land on the panel; clip to 64×64.
+4. For each LED in that box, look up the matching source pixel(s) using the quality rules in §5.
+5. Skip clear results. **Brightness:** darken each sample by its intensity first, then average those colours (same idea GPUs use when filtering).
 
-Use `float` maths. The box is at most 64×64, so cost per sprite is bounded at 4,096 destination pixels × samples per pixel, and is usually far smaller.
+Plain flip with no scale/spin can stay a fast exact mirror of today’s loop.
 
-Flip-only, scale = 1, angle = 0 is an **exact fast path**: mirror the index math in the existing 1:1 loop, with no sampling.
+Math is ordinary floating point. A sprite can’t cover more than the whole panel, so work per sprite is bounded.
 
 ---
 
-## 5. Quality rules (the important part on 64×64)
+## 5. Quality on a 64×64 panel
 
-A naive nearest-pixel lookup makes shrunk sprites lose features and rotated sprites shimmer from frame to frame. The rules:
+Cheap “nearest pixel” looks bad when shrinking (features vanish) or spinning (shimmer). Use these rules:
 
-| Case | Method |
+| Situation | What to do |
 |---|---|
-| Identity | Existing 1:1 blit (byte-identical output) |
-| Flip only | Exact mirrored copy |
-| Rotation of exactly 90° / 180° / 270°, scale 1 | Exact index permutation (no resampling) |
-| Upscale (s ≥ 1), any angle | **4-sample supersampling** at the 4 sub-pixel points (¼, ¾) of each destination pixel. Each sample takes the nearest source pixel. Result: the **majority opaque colour**. If ≥ 3 of 4 samples are transparent, the pixel is transparent. Keeps pixel-art edges crisp while smoothing rotation stair-steps. |
-| Downscale (\|sx\| or \|sy\| < 1, from scale or tilt), any angle | **Area sampling**: sample a grid of ceil(1/\|sx\|) × ceil(1/\|sy\|) points covering the destination pixel's footprint in source space (capped at 16 samples). Colour is the **average of opaque samples**. The pixel is opaque if at least 40% of samples are opaque. The averaging keeps detail visible as blended colour, and the threshold keeps thin features from vanishing. |
-| Edge-on (one axis < 1 px, the other ≥ 2 px, e.g. a tilt near ±90°) | Draw a 1-px sliver along the long axis (rotated with `angle`) in the cel's average opaque colour. |
-| Tiny result (destination box < 2×2) | Draw one pixel with the cel's average opaque colour if ≥ 25% of the cel is opaque. Small distant objects become a dot instead of disappearing. |
+| No transform | Today’s 1:1 copy (identical bytes) |
+| Flip only | Exact mirror copy |
+| Exactly 90° / 180° / 270°, scale 1 | Exact pixel rearrange (no blending) |
+| Grow (scale ≥ 1), any angle | Sample 4 points inside each LED; pick the majority opaque colour. If ≥ 3 of 4 are clear → clear. Keeps edges crisp. |
+| Shrink (from scale or tilt), any angle | Sample a small grid over the LED’s footprint (cap 16). Average opaque samples’ colours (intensity already baked in). Light the LED if ≥ ~40% of samples were opaque. |
+| Edge-on (one side &lt; 1 px, other still visible) | 1-pixel sliver in the art’s average colour, rotated with `angle` |
+| Tiny (result smaller than ~2×2) | One pixel in the average colour if enough of the art was opaque (~25%). Distant dots don’t disappear. |
 
-The thresholds (40%, 25%) are constants in one place so they can be tuned on the real panel.
+Tune the 40% / 25% knobs on the real panel; keep them in one place.
 
-### 5.1 Hand-drawn angle and size cels (optional, recommended for hero sprites)
+### 5.1 Hand-drawn headings and small versions (phase S4 — polish)
 
-Arbitrary rotation of a 10-pixel sprite never looks as good as hand-drawn frames. Two opt-in hooks let authors supply their own frames:
+Engine rotation of a tiny sprite is never as nice as art drawn at each heading. Later optional hooks:
 
-- `sprite_angle_cels(name, first_cel, count)`: cels `first_cel .. first_cel+count-1` are hand-drawn headings evenly spaced around 360°. When set, the engine picks the cel nearest the requested angle and rotates **only by the remainder**. With 8 or 16 cels that remainder is ≤ 22.5° or ≤ 11.25°, so artefacts stay small. With `count` = 16 or more, the engine skips residual rotation entirely, which is the classic arcade look.
-- `sprite_size_cel(name, cel, below_scale)`: use this hand-drawn small version whenever scale < `below_scale`, like a mipmap.
+- `sprite_angle_cels` — several hand-drawn directions around 360°; engine picks the nearest
+- `sprite_size_cel` — a hand-drawn tiny version below a given scale
 
-These are declared once, after `endsprite`. They interact with animation cels as follows: angle cels define a heading set, and `move_sprite`'s auto-advance is disabled for instances using them.
+Not required for S1–S3.
 
 ---
 
-## 6. Wire format
+## 6. Messages between interpreter and display
 
-New sprite-batch record, also accepted as a text command outside frames:
+New batch record (also allowed as text outside a frame):
 
-| Op | Payload | Notes |
+| Op | Carries | Notes |
 |---|---|---|
-| `OP_TRANSFORM = 5` | name, instance(uint8), scale_x(uint16, 8.8 fixed → 0.0–255.99), scale_y(uint16, 8.8), angle(uint16), tilt_x(uint16), tilt_y(uint16), flags(uint8: bit0 flipH, bit1 flipV, bit2 centre-anchor), reserved(uint8) | Angles travel in 1/100° after normalising to 0–359.99 (so −30° is sent as 330.00). Sent only when a transform changes; the emitter tracks the last-sent transform per instance. The reserved byte leaves room for S5 perspective. |
-| `OP_MOVE_SUB = 6` | like `OP_MOVE` but x, y are int16 in **1/16 px** (±2048 px range) | Used only for instances with non-identity transforms (§3.3). |
+| `OP_TRANSFORM = 5` | name, instance, scale_x, scale_y (positive fixed-point), angle, tilt_x, tilt_y, flags (flip H/V, centre-anchor), reserved | **Sizes are always positive.** When tilt (or the author) needs a mirror, set the flip flags. Angles in hundredths of a degree, wrapped to 0–360. Send only when something changed. Reserved byte for optional S5. |
+| `OP_MOVE_SUB = 6` | like move, but `x,y` in 1/16 pixel | Only for instances that have a transform |
 
-`sprite_back_cel` is a template definition command sent as text, like `define_sprite`. Update `shared/sprite_batch_protocol.py`, `emit/sprite_batch.*` and `consumer/batch_decode.cpp`, and add golden records.
+`sprite_back_cel` is a one-shot definition command (like `define_sprite`), not a per-frame transform.
 
-The `set_sprite_*` helper commands are interpreter-side conveniences. They update the interpreter's copy of the instance transform and emit one `OP_TRANSFORM`.
+The small `set_sprite_*` helpers update the interpreter’s copy of the transform and emit one `OP_TRANSFORM`.
 
----
-
-## 7. Transform cache
-
-Spinning or approaching sprites change their transform every frame, so cache rendered results:
-
-- **Key:** (template, cel, quantised effective sx, quantised effective sy, quantised angle, flags). The effective scales already include tilt, so tilt needs no separate key field. Scales are quantised to 1/32 steps in log space (sign kept), angle to **2°** steps.
-- **Value:** a small `Buffer` (the rendered bounding box) plus its offset from the anchor.
-- **Policy:** LRU, capped at **2 MB** total (thousands of small entries). Invalidate entries for a template when it is redefined.
-- **Effect:** after the first rotation through 360°, a spinning 16×16 sprite costs only a cached blit per frame.
-
-Positions stay exact even with the cache: sub-pixel x and y are applied when the cached box is blitted, and only scale and angle are quantised. The 2° angle step is invisible at this resolution, and a constant can tighten it.
+Update the shared protocol, emitter, decoder, and golden tests.
 
 ---
 
-## 8. Interaction with layers
+## 7. Cache (so spinning stays cheap)
 
-- A transformed sprite composites on its layer like an untransformed one (drawing on that layer first, then sprites by `z_index`).
-- `set_sprite_layer` / layer choice from distance, plus transforms, is the billboard recipe: which band from distance, scale from distance, `z_index` only for ties on the same band.
-- A raycaster can put each wall column on its own layer number from distance so billboards sit on intervening layers and stay hidden behind nearer walls.
+Spinning every frame would redo the same work. Cache painted results:
+
+- **Key:** template, which cel, rough scale, rough angle, flip/anchor flags (tilt is already folded into effective scale + flip)
+- **Rough steps:** scale in fine steps; angle about **2°** (fine enough at this resolution; tunable)
+- **Value:** small pixel buffer + offset from the anchor
+- **Limit:** about **2 MB**, drop least-recent; clear a template’s entries when it is redefined
+
+Position is applied when placing the cached picture, so motion stays smooth even though scale/angle are rounded for the cache key.
+
+After one full spin, a looping rotate is basically a normal blit.
 
 ---
 
-## 9. Backward compatibility
+## 8. Working with layers
 
-| Rule | Guarantee |
+No conflict — transforms and layers complement each other.
+
+- A transformed sprite still draws on its layer (layer drawing first, then that layer’s sprites by `z_index`)
+- Typical depth recipe: pick layer from distance, scale from distance, use `z_index` only for ties on the same layer
+- Hide / delete / reorder layer behave as today; transform settings stay on the instance (`reorder_layer` moves the instance with the layer)
+
+---
+
+## 9. Compatibility
+
+| Rule | Promise |
 |---|---|
-| No `set_sprite_*` calls → identity transform | Uses the existing blit code path, so output is byte-identical |
-| `move_sprite` with integer arguments | Same wire records as today (`OP_MOVE`) |
-| `show_sprite` z, cel semantics | Unchanged |
-| `dispose_sprite` / `dispose_all_sprites` | Also drop the instance's transform and its cache entries when the template is disposed |
+| Never call transform commands | Same pixels as today (same draw path) |
+| Whole-number moves on plain sprites | Same messages as today |
+| `show_sprite` z / cel meaning | Unchanged |
+| Dispose sprite / dispose all | Drop that instance’s transform; drop cache entries when the template goes away |
+| `reset_sprite_transform` | Clears scale, angle, tilt, flip — **anchor unchanged** |
 
-Gate: the same per-frame hash suite as the Layers spec, run across all scripts in `scripts/main`.
+Regression gate: same per-frame hash pass as layers, across `scripts/main`.
 
 ---
 
-## 10. Phase plan
+## 10. Build in phases
 
-| Phase | Scope |
+| Phase | Deliver |
 |---|---|
-| **S1. Scale, stretch + flip** | Transform state per instance, full `OP_TRANSFORM` record (rotation and tilt fields carried but rendered in S2), `set_sprite_scale` incl. `scale_y`, `set_sprite_flip`, `set_sprite_anchor`, `reset_sprite_transform`, flip fast path, upscale and downscale quality rules, sub-pixel moves |
-| **S2. Rotation + tilt** | In-plane rotation in both directions, exact 90° multiples, supersampled rotation, `tilt_x`/`tilt_y` foreshortening with signed mirroring, back-face detection, `sprite_back_cel`, edge-on sliver, `set_sprite_angle`, `set_sprite_tilt`, full `set_sprite_transform` |
-| **S3. Cache** | Transform cache and benchmarks on the Pi 4 |
-| **S4. Authored cels** | `sprite_angle_cels`, `sprite_size_cel` |
-| **S5. Perspective (optional)** | `set_sprite_perspective`: keystone a tilted sprite so its near edge is larger. Needs a projective inverse map; only worth doing if S2 tilts look flat on the panel. |
+| **S1. Scale, stretch, flip** | Per-instance transform state; full transform message (spin/tilt fields present but unused until S2); scale (+ stretch), flip, anchor, reset; flip fast path; grow/shrink quality; fractional moves |
+| **S2. Rotation + tilt** | Flat spin both ways; exact 90° steps; tilted foreshortening + reverse side; optional still back cel; edge-on sliver; angle/tilt/full transform commands |
+| **S3. Cache** | Cache + Pi 4 timings |
+| **S4. Hand-drawn cels (polish)** | Angle headings + small-size art hooks |
+| **S5. Perspective (optional)** | Near edge larger when tilted — only if S2 looks too flat on the panel |
 
 ---
 
-## 11. Test plan
+## 11. Tests
 
 ### Unit
-- Identity equals the existing blit, byte for byte.
-- Flip H, V and HV against hand-computed expected buffers.
-- 90°, 180° and 270° rotations are exact permutations.
-- Scale 2.0 of a 4×4 checker gives exact 2×2 blocks.
-- Scale 0.5 of a 1-pixel-wide line stays visible (the area-sampling threshold).
-- Tiny-result rule: a 16×16 sprite at scale 0.05 produces one pixel in its average colour.
-- Centre anchor: rotating about the pivot keeps the pivot pixel fixed.
-- Angle sign: −90° equals 270°, and +90° followed by −90° returns the identity buffer.
-- Tilt: `tilt_y` 60° halves the width; `tilt_y` 180° equals flip H; `tilt_x` 180° equals flip V; both at 180° equals a 180° rotation.
-- Back face: with `sprite_back_cel` set, `tilt_y` 120° draws the back cel unmirrored at half width; without it, the mirrored front.
-- Edge-on: `tilt_y` 90° gives a 1-px vertical sliver in the average colour; adding `angle` 90° makes it horizontal.
-- Clipping: a partly off-panel rotated sprite is clipped without crashes, including negative coordinates.
-- The cache returns identical pixels to an uncached render, and entries are evicted at the cap.
-- Wire round-trip for `OP_TRANSFORM` and `OP_MOVE_SUB`, plus goldens.
 
-### Visual
-`scripts/test/sprite_transform_*.pix`: a scale ramp from 0.1 to 4, a full 360° spin at several sizes, flips, and a grid of instances with mixed transforms. Review on the panel to tune the §5 thresholds.
+- Plain sprite matches today’s blit byte-for-byte
+- Flip H / V / both match hand-checked buffers
+- 90° / 180° / 270° are exact
+- Scale 2 on a checkerboard → clean 2×2 blocks
+- Scale 0.5 on a 1-pixel line still visible
+- Very small scale → single average-colour pixel when appropriate
+- Centre anchor: pivot pixel stays put while spinning
+- `−90°` equals `270°`; +90 then −90 returns to start
+- Tilt 60° ≈ half width; 180° matches a flip; both axes 180° matches a 180° spin
+- With back cel: reverse shows that still art; without: flipped front (animation continues)
+- Edge-on → 1-pixel sliver; spin turns its direction
+- Partly off-panel spin clips safely
+- Cache matches live render; eviction at the size cap
+- Transform and sub-pixel move messages round-trip (goldens)
 
-### Performance (Pi 4, fps 60)
-40 instances of a 16×16 sprite, each spinning and scaling every frame. Target: consumer sprite work < 3 ms per frame with the cache warm.
+### On the panel
 
----
+Test scripts: scale ramp, full spin at several sizes, flips, mixed grid. Tune quality thresholds by eye.
 
-## 12. Script ideas this unlocks
+### Performance (Pi 4, 60 fps)
 
-| Script | Uses | Idea |
-|---|---|---|
-| **Asteroid Field** | rotation, scale, depth | A ship turns to any heading and fires at tumbling rocks of several sizes. Rocks split into smaller spinning fragments when hit. |
-| **Top-Down Rally** | rotation, angle cels | Cars with 16 hand-drawn headings race a winding track, drifting through corners. Dust puffs scale up and fade. |
-| **Nova_Runner v2** | scale, depth, rotation | Pixel-art enemy ships grow from the horizon and roll as they weave. Alien trees and pillars are scaled sprites that pass behind each other. |
-| **Doom_Tour with inhabitants** | scale, centre anchor, layers | Billboard creatures, barrels and lamps scaled by distance and hidden behind wall edges. |
-| **Windmill Farm** | rotation, scale | Rolling hills with windmills at different distances, blades spinning at different speeds, clouds drifting over. |
-| **Analog Clock Face** | rotation, centre anchor | Hour, minute and second hands as rotating sprites over a retained dial layer. Very little drawing per frame. |
-| **Coin Shower** | tilt, scale, back cel | Gold coins tumble on both tilt axes, flashing their edges, with heads on the front and tails on a back cel. They bounce toward the viewer and scale up. |
-| **Card Magic** | tilt, back cel, rotation | A deck fans out, cards flip face-up one by one with `tilt_y`, spin into a pile clockwise and counter-clockwise, then flip back. |
-| **Falling Leaves** | both tilts, rotation, depth | Autumn leaves flutter down, tipping and turning on both axes while spinning, at several depths between tree layers. |
-| **Departure Board** | tilt_x, back cel | Split-flap display: each tile tips forward on `tilt_x` to reveal the next letter on its back cel. |
-| **Aquarium with depth** | scale, flip, layers | Fish flip to face their swim direction and scale with depth as they swim toward and away from the glass. |
-| **Radar Station** | rotation | A rotating sweep sprite over a retained radar layer. Contacts light up as the sweep passes. |
-| **Space Dogfight** | rotation, scale | Two ships circle and chase in a top-down arena, with scaled explosions and rotating debris. |
+40× 16×16 sprites, each spinning and scaling every frame. Target: under ~3 ms sprite work per frame with a warm cache.
 
 ---
 
-## 13. Open decisions
+## 12. Shows this unlocks
 
-1. **Angle units:** degrees (proposed; friendlier for scripts) or radians to match `sin()`/`cos()`. Scripts already convert in other places, so degrees is fine; add `deg(r)` / `rad(d)` helpers if they don't exist.
-2. **Default anchor:** keep top-left for compatibility (proposed), or make centre the default for transformed sprites only. The latter is convenient but surprising.
-3. **Cache angle step:** 2° (proposed) vs 1°. Tune on the panel.
-4. **Downscale threshold:** 40% (proposed). Tune with the visual test scripts.
-5. **Back face default:** mirrored front (proposed; physically correct for a flat card), or hide the sprite when no back cel is set (like back-face culling).
-6. **Tilt sign convention:** as in §3.4 (+ moves the right or top edge away). Confirm on the panel that it reads naturally.
-7. **Perspective (S5):** decide after seeing S2 tilts on the real matrix.
+| Idea | Uses |
+|---|---|
+| Asteroid field — tumble, split, ship heading | spin, scale, layers |
+| Top-down rally — cars (hand-drawn headings in S4) | spin, scale |
+| Nova Runner v2 — ships grow from the horizon | scale, spin, layers |
+| Doom Tour props — barrels/lamps by distance | scale, centre anchor, layers |
+| Windmill farm — blades and depth | spin, scale |
+| Analog clock — hands on a retained dial | spin, centre anchor |
+| Coin shower — tumble, edge flash, heads/tails | tilt, scale, back cel |
+| Card magic — flip, fan, spin | tilt, back cel, spin |
+| Falling leaves between tree layers | both tilts, spin, layers |
+| Split-flap departure board | tilt_x, back cel |
+| Aquarium — face swim direction, size by depth | scale, flip, layers |
+| Radar sweep | spin |
+| Space dogfight — chase, debris | spin, scale |
+
+---
+
+## 13. Decisions (locked) and leftover knobs
+
+### Locked in review
+
+1. **Degrees** for angle and tilt (`450` = full turn + 90°)
+2. **Default anchor = top-left**; centre only via `set_sprite_anchor(..., 1)`
+3. **Wire sizes always positive**; mirroring via flip flags (including tilt-induced reverse)
+4. **`x,y` are Float**; round when untransformed, keep fractions when transformed; same for `move_sprites`
+5. **Intensity:** apply to colour, then average samples
+6. **Scale** clamped to 0.1…8; no negative scale
+7. **Instance id** stays before optional tilt/flip; always pass it when using those; prefer small helpers
+8. **Reset** clears scale/angle/tilt/flip, not anchor
+9. **Back cel** optional still frame on reverse only; default reverse = flipped front animation
+10. **Hand-drawn angle/size cels** deferred to S4
+
+### Tune on the panel later
+
+- Cache angle step (start at 2°)
+- Downscale opacity threshold (start at 40%) and tiny-sprite threshold (25%)
+- Whether tilt directions feel natural (+ right/top edge away)
+- Whether S5 perspective is worth it after seeing S2

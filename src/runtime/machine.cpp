@@ -58,8 +58,8 @@ const std::unordered_map<std::string, std::vector<Arg>> kArgTypes = {
      {Arg::Int, Arg::Int, Arg::Text, Arg::Font, Arg::Int, Arg::Color, Arg::Intensity, Arg::Str, Arg::Str}},
     {"clear_text", {Arg::Int, Arg::Int}},
     {"define_sprite", {Arg::Str, Arg::Int, Arg::Int}},
-    {"show_sprite", {Arg::Str, Arg::Int, Arg::Int, Arg::Int, Arg::Int, Arg::Int}},
-    {"move_sprite", {Arg::Str, Arg::Int, Arg::Int, Arg::Int, Arg::Int, Arg::Int}},
+    {"show_sprite", {Arg::Str, Arg::Float, Arg::Float, Arg::Int, Arg::Int, Arg::Int}},
+    {"move_sprite", {Arg::Str, Arg::Float, Arg::Float, Arg::Int, Arg::Int, Arg::Int}},
     {"hide_sprite", {Arg::Str, Arg::Int}},
     {"dispose_sprite", {Arg::Str, Arg::Int}},
     {"set_layer", {Arg::Int}},
@@ -70,6 +70,14 @@ const std::unordered_map<std::string, std::vector<Arg>> kArgTypes = {
     {"reorder_layer", {Arg::Int, Arg::Int}},
     {"set_sprite_layer", {Arg::Str, Arg::Int, Arg::Int}},
     {"set_sprite_z", {Arg::Str, Arg::Int, Arg::Int}},
+    {"set_sprite_scale", {Arg::Str, Arg::Float, Arg::Int, Arg::Float}},
+    {"set_sprite_angle", {Arg::Str, Arg::Float, Arg::Int}},
+    {"set_sprite_tilt", {Arg::Str, Arg::Float, Arg::Float, Arg::Int}},
+    {"set_sprite_flip", {Arg::Str, Arg::Int, Arg::Int}},
+    {"set_sprite_anchor", {Arg::Str, Arg::Int, Arg::Int}},
+    {"set_sprite_transform", {Arg::Str, Arg::Float, Arg::Float, Arg::Int, Arg::Float, Arg::Float, Arg::Int}},
+    {"reset_sprite_transform", {Arg::Str, Arg::Int}},
+    {"sprite_back_cel", {Arg::Str, Arg::Int}},
 };
 
 // format_numeric_for_display: a whole-number float shows as an int.
@@ -274,10 +282,24 @@ void expand_draw_lines(const std::vector<Value>& args, bool in_frame, DrawBatch&
     }
 }
 
+std::string sprite_xform_key(const Value& name_v, int64_t instance) {
+    std::string name = py_str(name_v);
+    if (name.size() >= 2 && name.front() == '"' && name.back() == '"') name = name.substr(1, name.size() - 2);
+    return name + "#" + std::to_string(instance);
+}
+
+float clamp_scale_arg(double s) {
+    if (s < 0.0) s = -s;
+    if (s < 0.1) return 0.1f;
+    if (s > 8.0) return 8.f;
+    return static_cast<float>(s);
+}
+
 // move_sprites packs instance ids 0..n-1. A following array is cel, then z.
-// A number in either slot is the count. Coords are rounded by the sprite batch.
+// A number in either slot is the count. Subpixel moves used when that instance has a transform.
 void expand_move_sprites(const std::vector<Value>& args, bool in_frame, SpriteBatch& sprites,
-                         const std::function<void(std::string)>& emit_text) {
+                         const std::function<void(std::string)>& emit_text,
+                         const std::function<bool(const Value&, int64_t)>& needs_sub) {
     if (args.size() < 3) throw PixilError(ErrorKind::Value, "move_sprites needs a name, x, and y");
     const PixArray& x = numeric_array(args[1], "move_sprites x");
     const PixArray& y = numeric_array(args[2], "move_sprites y");
@@ -315,7 +337,8 @@ void expand_move_sprites(const std::vector<Value>& args, bool in_frame, SpriteBa
         one.push_back(args[0]);
         Value px = x.data[static_cast<size_t>(i)];
         Value py = y.data[static_cast<size_t>(i)];
-        if (!in_frame) {
+        bool sub = needs_sub && needs_sub(args[0], i);
+        if (!in_frame && !sub) {
             px = py_int(px);
             py = py_int(py);
         }
@@ -326,7 +349,7 @@ void expand_move_sprites(const std::vector<Value>& args, bool in_frame, SpriteBa
             one.push_back(cel != nullptr ? py_int(cel->data[static_cast<size_t>(i)]) : Value::integer(255));
         }
         if (z != nullptr) one.push_back(py_int(z->data[static_cast<size_t>(i)]));
-        if (in_frame) sprites.append("move_sprite", one);
+        if (in_frame) sprites.append(sub ? "move_sprite_sub" : "move_sprite", one);
         else emit_text(format_command("move_sprite", one));
     }
 }
@@ -416,6 +439,42 @@ void Machine::flush_frame_batches() {
     if (!sprites_.empty()) {
         frame_stream_.push_back(sprites_.command());
         sprites_.clear();
+    }
+}
+
+bool Machine::sprite_needs_subpixel(const Value& name, int64_t instance) const {
+    auto it = sprite_xforms_.find(sprite_xform_key(name, instance));
+    return it != sprite_xforms_.end() && it->second.needs_subpixel();
+}
+
+void Machine::emit_sprite_transform(const std::string& name, int instance, const TrackedTransform& t) {
+    std::vector<Value> args = {
+        Value::str(name),
+        Value::integer(instance),
+        Value::real(t.scale_x),
+        Value::real(t.scale_y),
+        Value::real(t.angle),
+        Value::real(t.tilt_x),
+        Value::real(t.tilt_y),
+        Value::integer(t.flags),
+    };
+    if (in_frame_) {
+        sprites_.append("sprite_transform", args);
+        return;
+    }
+    // Outside a frame: high-level text the consumer parse understands.
+    int flip = (t.flags & 1) | (t.flags & 2);
+    emit(format_command("set_sprite_transform",
+                        {Value::str(name), Value::real(t.scale_x), Value::real(t.angle), Value::integer(instance),
+                         Value::real(t.tilt_x), Value::real(t.tilt_y), Value::integer(flip)}));
+    // Anchor is not part of set_sprite_transform; send separately.
+    emit(format_command("set_sprite_anchor",
+                        {Value::str(name), Value::integer((t.flags & 4) ? 1 : 0), Value::integer(instance)}));
+    // Stretch: if scale_x != scale_y, follow up with scale.
+    if (t.scale_x != t.scale_y) {
+        emit(format_command("set_sprite_scale",
+                            {Value::str(name), Value::real(t.scale_x), Value::integer(instance),
+                             Value::real(t.scale_y)}));
     }
 }
 
@@ -833,8 +892,101 @@ void Machine::run_command(const Stmt& stmt) {
             } else emit(std::move(text));
         };
         if (stmt.name == "draw_lines") expand_draw_lines(args, in_frame_, batch_, sink);
-        else expand_move_sprites(args, in_frame_, sprites_, sink);
+        else {
+            expand_move_sprites(args, in_frame_, sprites_, sink,
+                                [this](const Value& n, int64_t id) { return sprite_needs_subpixel(n, id); });
+        }
         return;
+    }
+    if (stmt.name == "sprite_back_cel") {
+        if (args.size() < 2) {
+            throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) +
+                                                   ": sprite_back_cel requires name, cel");
+        }
+        if (in_frame_) {
+            flush_frame_batches();
+            frame_stream_.push_back(format_command(stmt.name, args));
+        } else {
+            emit(format_command(stmt.name, args));
+        }
+        return;
+    }
+    if (stmt.name == "set_sprite_scale" || stmt.name == "set_sprite_angle" || stmt.name == "set_sprite_tilt" ||
+        stmt.name == "set_sprite_flip" || stmt.name == "set_sprite_anchor" || stmt.name == "set_sprite_transform" ||
+        stmt.name == "reset_sprite_transform") {
+        if (args.empty()) {
+            throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                   " requires a sprite name");
+        }
+        std::string name = py_str(args[0]);
+        if (name.size() >= 2 && name.front() == '"' && name.back() == '"') name = name.substr(1, name.size() - 2);
+        int instance = 0;
+        if (stmt.name == "reset_sprite_transform") {
+            instance = args.size() > 1 ? static_cast<int>(rounded_int(args[1])) : 0;
+        } else if (stmt.name == "set_sprite_tilt") {
+            // name, tilt_x, tilt_y, [inst]
+            if (args.size() < 3) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) +
+                                                       ": set_sprite_tilt requires name, tilt_x, tilt_y");
+            }
+            instance = args.size() > 3 ? static_cast<int>(rounded_int(args[3])) : 0;
+        } else if (stmt.name == "set_sprite_transform") {
+            // name, scale, angle, [inst], [tilt_x], [tilt_y], [flip]
+            if (args.size() < 3) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) +
+                                                       ": set_sprite_transform requires name, scale, angle");
+            }
+            instance = args.size() > 3 ? static_cast<int>(rounded_int(args[3])) : 0;
+        } else {
+            if (args.size() < 2) {
+                throw PixilError(ErrorKind::Value, "line " + std::to_string(stmt.line) + ": " + stmt.name +
+                                                       " requires more arguments");
+            }
+            instance = args.size() > 2 ? static_cast<int>(rounded_int(args[2])) : 0;
+        }
+        const std::string key = name + "#" + std::to_string(instance);
+        TrackedTransform& t = sprite_xforms_[key];
+        if (stmt.name == "set_sprite_scale") {
+            float sx = clamp_scale_arg(args[1].to_double());
+            float sy = args.size() > 3 ? clamp_scale_arg(args[3].to_double()) : sx;
+            t.scale_x = sx;
+            t.scale_y = sy;
+        } else if (stmt.name == "set_sprite_angle") {
+            t.angle = static_cast<float>(args[1].to_double());
+        } else if (stmt.name == "set_sprite_tilt") {
+            t.tilt_x = static_cast<float>(args[1].to_double());
+            t.tilt_y = static_cast<float>(args[2].to_double());
+        } else if (stmt.name == "set_sprite_flip") {
+            int flip = static_cast<int>(std::clamp<int64_t>(rounded_int(args[1]), 0, 3));
+            t.flags = static_cast<uint8_t>((t.flags & ~3u) | static_cast<uint8_t>(flip));
+        } else if (stmt.name == "set_sprite_anchor") {
+            if (rounded_int(args[1]) == 1) t.flags = static_cast<uint8_t>(t.flags | 4u);
+            else t.flags = static_cast<uint8_t>(t.flags & ~4u);
+        } else if (stmt.name == "set_sprite_transform") {
+            float s = clamp_scale_arg(args[1].to_double());
+            t.scale_x = t.scale_y = s;
+            t.angle = static_cast<float>(args[2].to_double());
+            if (args.size() > 4) t.tilt_x = static_cast<float>(args[4].to_double());
+            if (args.size() > 5) t.tilt_y = static_cast<float>(args[5].to_double());
+            if (args.size() > 6) {
+                int flip = static_cast<int>(std::clamp<int64_t>(rounded_int(args[6]), 0, 3));
+                t.flags = static_cast<uint8_t>((t.flags & ~3u) | static_cast<uint8_t>(flip));
+            }
+        } else {
+            t.reset_motion();
+        }
+        if (in_frame_) emit_sprite_transform(name, instance, t);
+        else emit(format_command(stmt.name, args));
+        return;
+    }
+    if (stmt.name == "dispose_sprite") {
+        if (!args.empty()) {
+            int instance = args.size() > 1 ? static_cast<int>(rounded_int(args[1])) : 0;
+            sprite_xforms_.erase(sprite_xform_key(args[0], instance));
+        }
+    }
+    if (stmt.name == "dispose_all_sprites") {
+        sprite_xforms_.clear();
     }
     if (in_frame_ && kDrawCommands.count(stmt.name)) {
         // Display plot/mplot drops a point outside the 64x64 panel. A negative
@@ -867,7 +1019,19 @@ void Machine::run_command(const Stmt& stmt) {
         return;
     }
     if (kSpriteOps.count(stmt.name)) {
-        if (in_frame_) {
+        if (stmt.name == "show_sprite" || stmt.name == "move_sprite") {
+            int64_t inst = args.size() > 3 ? rounded_int(args[3]) : 0;
+            bool sub = !args.empty() && sprite_needs_subpixel(args[0], inst);
+            if (!sub && args.size() >= 3) {
+                // Identity sprites keep whole-pixel text/batch coords (compat).
+                args[1] = Value::integer(rounded_int(args[1]));
+                args[2] = Value::integer(rounded_int(args[2]));
+            }
+            if (in_frame_) {
+                sprites_.append(sub ? (stmt.name + "_sub") : stmt.name, args);
+                return;
+            }
+        } else if (in_frame_) {
             sprites_.append(stmt.name, args);
             return;
         }

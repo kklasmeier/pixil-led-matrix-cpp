@@ -48,6 +48,15 @@ public:
         fill(0, 0, 0);
     }
 
+    bool get_pixel(int x, int y, uint8_t* r, uint8_t* g, uint8_t* b) const override {
+        if (x < 0 || y < 0 || x >= w_ || y >= h_ || !r || !g || !b) return false;
+        Rgb c = front_[static_cast<size_t>(y) * w_ + static_cast<size_t>(x)];
+        *r = c.r;
+        *g = c.g;
+        *b = c.b;
+        return true;
+    }
+
 private:
     int w_;
     int h_;

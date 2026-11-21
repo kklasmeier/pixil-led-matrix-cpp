@@ -12,8 +12,8 @@
 #
 # What it shows off (Pixil drawing layers):
 #   - All the scenery is drawn ONCE, onto its own layer, then kept. Each
-#     frame only the bubbles layer is cleared and redrawn and the sprites
-#     move.
+#     frame only the sunbeams (while the lights are on) and the bubbles are
+#     cleared and redrawn, and the sprites move.
 #   - Sprites live on layers, so they pass behind and in front of the
 #     scenery: back kelp 10 < school 15 < arch 20 < striped fish 25 <
 #     front plants 30 < big fish (when in front) 35.
@@ -23,7 +23,7 @@
 #
 # Layers:
 #   0  water (day)          1  water (night)
-#   5  sunbeams (day only)  7  jellyfish sprite
+#   5  sunbeams (day only, redrawn each frame)  7  jellyfish sprite
 #   10 kelp (day)           11 kelp (night)
 #   15 school sprites
 #   20 arch (day)           21 arch (night)
@@ -184,6 +184,8 @@ define_sprite(jelly, 7, 9)
         draw_line(4, 4, 5, 8, lavender, 40)
 endsprite
 
+v_t = 0
+
 # ---------------- Scenery (drawn once per version) ----------------
 v_ph1 = random(0, 628, 0) / 100
 create_array(v_kx, 7, numeric)
@@ -206,12 +208,20 @@ def draw_water {
 }
 
 def draw_sunbeams {
+    # shafts of light that sway with the surface ripples, swell and fade
+    # one by one, with brighter bands sliding down them
     for v_b in (0, 3, 1)
-        v_bx = 6 + v_b * 16
+        v_str = 0.55 + 0.45 * sin(v_t * 0.011 + v_b * 1.9)
+        v_bx = 6 + v_b * 16 + sin(v_t * 0.009 + v_b * 2.3) * 3
+        v_bw = 2 + sin(v_t * 0.017 + v_b) * 0.8
         for v_y in (0, 50, 1)
-            v_xx = v_bx + v_y * 0.35
-            # same colour as the water there, just brighter
-            draw_line(v_xx, v_y, v_xx + 2 + v_y * 0.04, v_y, 54 + int(v_y * 0.12), 34 - v_y * 0.33 + 14 - v_y * 0.2)
+            v_xx = v_bx + v_y * (0.35 + sin(v_t * 0.007 + v_b) * 0.05)
+            v_band = 0.75 + 0.25 * sin(v_y * 0.45 - v_t * 0.08 + v_b * 1.3)
+            v_boost = (14 - v_y * 0.2) * v_str * v_band
+            if v_boost > 1 then
+                # same colour as the water there, just brighter
+                draw_line(v_xx, v_y, v_xx + v_bw + v_y * 0.04, v_y, 54 + int(v_y * 0.12), 34 - v_y * 0.33 + v_boost)
+            endif
         endfor v_y
     endfor v_b
 }
@@ -238,7 +248,7 @@ def draw_arch {
     draw_rectangle(18, 32, 7, v_sandy - 32 + 1, gray, 45 * v_lum + 4, true)
     draw_rectangle(41, 34, 7, v_sandy - 34 + 1, gray, 45 * v_lum + 4, true)
     for v_r in (0, 5, 1)
-        draw_arc(18, 33 - v_r * 0.4, 47, 35 - v_r * 0.4, 9 + v_r, gray, (45 - v_r * 2) * v_lum + 4)
+        draw_arc(18, 33 - v_r * 0.4, 47, 35 - v_r * 0.4, 0 - 9 - v_r, gray, (45 - v_r * 2) * v_lum + 4)
     endfor v_r
     # shading and moss
     draw_line(18, 33, 18, v_sandy, light_gray, 30 * v_lum + 3)
@@ -499,7 +509,6 @@ def draw_bubbles {
 }
 
 # ---------------- Main loop ----------------
-v_t = 0
 v_lights = 1
 v_lt = 0
 begin_frame
@@ -518,6 +527,12 @@ while true then
             call lights_on
             v_lights = 1
             v_lt = 0
+        endif
+        if v_lights == 1 then
+            # the one scenery layer that moves: redraw the sunbeams
+            set_layer(5)
+            clear_layer(5)
+            call draw_sunbeams
         endif
         call move_creatures
         call draw_bubbles

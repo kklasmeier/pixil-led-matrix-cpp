@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <stdexcept>
 #include <thread>
@@ -12,6 +13,7 @@
 #include "consumer/parse.h"
 #include "consumer/sha256.h"
 #include "consumer/shapes.h"
+#include "consumer/sprite_transform_cache.h"
 
 namespace pixil::consumer {
 namespace {
@@ -19,6 +21,42 @@ namespace {
 double now_sec() {
     using Clock = std::chrono::steady_clock;
     return std::chrono::duration<double>(Clock::now().time_since_epoch()).count();
+}
+
+Rgb apply_intensity(Rgb c, uint8_t inten) {
+    if (inten == 100) return c;
+    c.r = static_cast<uint8_t>(static_cast<uint16_t>(c.r) * inten / 100);
+    c.g = static_cast<uint8_t>(static_cast<uint16_t>(c.g) * inten / 100);
+    c.b = static_cast<uint8_t>(static_cast<uint16_t>(c.b) * inten / 100);
+    return c;
+}
+
+void put_sprite_pixel(MatrixSurface& surface, int dx, int dy, Rgb c) {
+    if (dx < 0 || dy < 0 || dx >= kWidth || dy >= kHeight) return;
+    if (is_transparent(c)) return;
+    surface.set_pixel(dx, dy, c.r, c.g, c.b);
+}
+
+// Sample cel at integer source coords; returns false if out of bounds or transparent.
+bool sample_cel(const SpriteCel& cel, int sw, int sh, int sx, int sy, Rgb* out) {
+    if (sx < 0 || sy < 0 || sx >= sw || sy >= sh) return false;
+    size_t i = static_cast<size_t>(sy) * static_cast<size_t>(sw) + static_cast<size_t>(sx);
+    Rgb c = cel.pixels[i];
+    if (is_transparent(c)) return false;
+    *out = apply_intensity(c, cel.intensity[i]);
+    return true;
+}
+
+Rgb average_rgb(const Rgb* samples, int n) {
+    uint32_t r = 0, g = 0, b = 0;
+    for (int i = 0; i < n; ++i) {
+        r += samples[i].r;
+        g += samples[i].g;
+        b += samples[i].b;
+    }
+    return {static_cast<uint8_t>(r / static_cast<uint32_t>(n)),
+            static_cast<uint8_t>(g / static_cast<uint32_t>(n)),
+            static_cast<uint8_t>(b / static_cast<uint32_t>(n))};
 }
 
 }  // namespace
@@ -151,6 +189,93 @@ void MatrixApi::set_sprite_z(const std::string& name, int z_index, int instance_
     present_sprite_update();
 }
 
+void MatrixApi::set_sprite_scale(const std::string& name, float scale, int instance_id,
+                                 std::optional<float> scale_y) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    float sx = clamp_sprite_scale(std::fabs(scale));
+    float sy = scale_y.has_value() ? clamp_sprite_scale(std::fabs(*scale_y)) : sx;
+    instance->transform.scale_x = sx;
+    instance->transform.scale_y = sy;
+    present_sprite_update();
+}
+
+void MatrixApi::set_sprite_angle(const std::string& name, float angle_deg, int instance_id) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->transform.angle_deg = angle_deg;
+    present_sprite_update();
+}
+
+void MatrixApi::set_sprite_tilt(const std::string& name, float tilt_x_deg, float tilt_y_deg, int instance_id) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->transform.tilt_x_deg = tilt_x_deg;
+    instance->transform.tilt_y_deg = tilt_y_deg;
+    present_sprite_update();
+}
+
+void MatrixApi::set_sprite_flip(const std::string& name, int flip, int instance_id) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    flip = std::clamp(flip, 0, 3);
+    instance->transform.flip_h = (flip & 1) != 0;
+    instance->transform.flip_v = (flip & 2) != 0;
+    present_sprite_update();
+}
+
+void MatrixApi::set_sprite_anchor(const std::string& name, int mode, int instance_id) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->transform.centre_anchor = (mode == 1);
+    present_sprite_update();
+}
+
+void MatrixApi::set_sprite_transform(const std::string& name, float scale, float angle_deg, int instance_id,
+                                     std::optional<float> tilt_x, std::optional<float> tilt_y,
+                                     std::optional<int> flip) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    float s = clamp_sprite_scale(std::fabs(scale));
+    instance->transform.scale_x = s;
+    instance->transform.scale_y = s;
+    instance->transform.angle_deg = angle_deg;
+    if (tilt_x.has_value()) instance->transform.tilt_x_deg = *tilt_x;
+    if (tilt_y.has_value()) instance->transform.tilt_y_deg = *tilt_y;
+    if (flip.has_value()) {
+        int f = std::clamp(*flip, 0, 3);
+        instance->transform.flip_h = (f & 1) != 0;
+        instance->transform.flip_v = (f & 2) != 0;
+    }
+    present_sprite_update();
+}
+
+void MatrixApi::reset_sprite_transform(const std::string& name, int instance_id) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->transform.reset_motion();
+    present_sprite_update();
+}
+
+void MatrixApi::sprite_back_cel(const std::string& name, int cel_index) {
+    MatrixSprite* tmpl = sprites_.get_template(name);
+    if (!tmpl) throw std::runtime_error("sprite_back_cel: unknown sprite " + name);
+    if (cel_index < 0 || cel_index >= tmpl->cel_count()) {
+        throw std::runtime_error("sprite_back_cel: cel out of range");
+    }
+    tmpl->set_back_cel(cel_index);
+    xform_cache_.invalidate_template(name);
+}
+
+void MatrixApi::set_sprite_transform_state(const std::string& name, int instance_id, const SpriteTransform& t) {
+    SpriteInstance* instance = sprites_.get_instance(name, instance_id);
+    if (!instance) return;
+    instance->transform = t;
+    instance->transform.scale_x = clamp_sprite_scale(std::fabs(instance->transform.scale_x));
+    instance->transform.scale_y = clamp_sprite_scale(std::fabs(instance->transform.scale_y));
+    present_sprite_update();
+}
+
 Rgb MatrixApi::peek_drawing(int x, int y) const { return peek_layer(current_layer_, x, y); }
 
 Rgb MatrixApi::peek_layer(uint16_t layer, int x, int y) const {
@@ -255,29 +380,348 @@ void MatrixApi::blit_for_display() {
     surface_->blit(work);
 }
 
+void MatrixApi::blit_one_sprite(const SpriteInstance& inst) {
+    const int sw = inst.width();
+    const int sh = inst.height();
+    if (sw <= 0 || sh <= 0 || !inst.template_) return;
+    const SpriteTransform& tr = inst.transform;
+
+    // Destination centre: centre-anchor uses x,y directly; top-left keeps unscaled centre fixed.
+    const float dest_cx = tr.centre_anchor ? inst.x : inst.x + 0.5f * static_cast<float>(sw);
+    const float dest_cy = tr.centre_anchor ? inst.y : inst.y + 0.5f * static_cast<float>(sh);
+
+    constexpr float kPi = 3.14159265358979323846f;
+    constexpr float kDeg = kPi / 180.f;
+    const float cos_tx = std::cos(tr.tilt_x_deg * kDeg);
+    const float cos_ty = std::cos(tr.tilt_y_deg * kDeg);
+    // Signed foreshortening: negative ⇒ reverse side (mirror).
+    float sx_signed = tr.scale_x * cos_ty;
+    float sy_signed = tr.scale_y * cos_tx;
+    const bool showing_back = (cos_tx * cos_ty) < 0.f;
+
+    // Optional still back cel when reverse faces us; else flipped front animation.
+    const bool use_back_art =
+        showing_back && inst.template_->back_cel().has_value();
+    const SpriteCel& cel =
+        use_back_art ? inst.template_->cel(*inst.template_->back_cel()) : inst.current();
+
+    // Fold tilt sign into flip (back art is authored from behind — no extra mirror).
+    bool flip_h = tr.flip_h;
+    bool flip_v = tr.flip_v;
+    float sx = std::fabs(sx_signed);
+    float sy = std::fabs(sy_signed);
+    if (!use_back_art) {
+        if (sx_signed < 0.f) flip_h = !flip_h;
+        if (sy_signed < 0.f) flip_v = !flip_v;
+    }
+    // Avoid divide-by-zero in inverse map; tiny values handled by edge-on / tiny rules.
+    if (sx < 1e-4f) sx = 1e-4f;
+    if (sy < 1e-4f) sy = 1e-4f;
+
+    auto cel_average = [&](Rgb* out) -> bool {
+        uint32_t r = 0, g = 0, b = 0;
+        int opaque = 0;
+        for (int row = 0; row < sh; ++row) {
+            for (int col = 0; col < sw; ++col) {
+                Rgb c;
+                if (!sample_cel(cel, sw, sh, col, row, &c)) continue;
+                r += c.r;
+                g += c.g;
+                b += c.b;
+                ++opaque;
+            }
+        }
+        if (opaque == 0) return false;
+        *out = {static_cast<uint8_t>(r / static_cast<uint32_t>(opaque)),
+                static_cast<uint8_t>(g / static_cast<uint32_t>(opaque)),
+                static_cast<uint8_t>(b / static_cast<uint32_t>(opaque))};
+        return true;
+    };
+
+    // Wrap angle to [0, 360) for exact-quadrant checks.
+    float angle = std::fmod(tr.angle_deg, 360.f);
+    if (angle < 0.f) angle += 360.f;
+    const bool no_tilt = tr.tilt_x_deg == 0.f && tr.tilt_y_deg == 0.f;
+    const bool scale_one = tr.scale_x == 1.f && tr.scale_y == 1.f;
+
+    // --- Identity ---
+    if (tr.is_draw_identity()) {
+        const int x0 = static_cast<int>(std::lround(dest_cx - 0.5f * static_cast<float>(sw)));
+        const int y0 = static_cast<int>(std::lround(dest_cy - 0.5f * static_cast<float>(sh)));
+        for (int row = 0; row < sh; ++row) {
+            for (int col = 0; col < sw; ++col) {
+                size_t i = static_cast<size_t>(row) * static_cast<size_t>(sw) + static_cast<size_t>(col);
+                Rgb c = cel.pixels[i];
+                if (is_transparent(c)) continue;
+                put_sprite_pixel(*surface_, x0 + col, y0 + row, apply_intensity(c, cel.intensity[i]));
+            }
+        }
+        return;
+    }
+
+    // --- Flip-only (scale 1, no spin/tilt) ---
+    if (scale_one && no_tilt && angle == 0.f) {
+        const int x0 = static_cast<int>(std::lround(dest_cx - 0.5f * static_cast<float>(sw)));
+        const int y0 = static_cast<int>(std::lround(dest_cy - 0.5f * static_cast<float>(sh)));
+        for (int row = 0; row < sh; ++row) {
+            for (int col = 0; col < sw; ++col) {
+                int src_x = flip_h ? (sw - 1 - col) : col;
+                int src_y = flip_v ? (sh - 1 - row) : row;
+                Rgb c;
+                if (!sample_cel(cel, sw, sh, src_x, src_y, &c)) continue;
+                put_sprite_pixel(*surface_, x0 + col, y0 + row, c);
+            }
+        }
+        return;
+    }
+
+    // Edge-on / tiny stay uncached (cheap special cases).
+    const float rad_exact = tr.angle_deg * kDeg;
+    const float ca_e = std::cos(rad_exact);
+    const float sa_e = std::sin(rad_exact);
+    const float pix_w = std::fabs(sx_signed) * static_cast<float>(sw);
+    const float pix_h = std::fabs(sy_signed) * static_cast<float>(sh);
+    if ((pix_w < 1.f && pix_h >= 2.f) || (pix_h < 1.f && pix_w >= 2.f)) {
+        Rgb avg{};
+        if (!cel_average(&avg)) return;
+        const float len = std::max(pix_w, pix_h);
+        const int steps = std::max(1, static_cast<int>(std::ceil(len)));
+        float dir_x = pix_w >= pix_h ? ca_e : -sa_e;
+        float dir_y = pix_w >= pix_h ? sa_e : ca_e;
+        for (int i = 0; i <= steps; ++i) {
+            float t = (static_cast<float>(i) / static_cast<float>(steps)) - 0.5f;
+            put_sprite_pixel(*surface_, static_cast<int>(std::lround(dest_cx + dir_x * t * len)),
+                             static_cast<int>(std::lround(dest_cy + dir_y * t * len)), avg);
+        }
+        return;
+    }
+
+    // --- Cached path: exact 90° steps and general inverse mapping ---
+    const int cel_index = use_back_art ? *inst.template_->back_cel() : inst.current_cel;
+    uint8_t flag_bits = 0;
+    if (flip_h) flag_bits |= 1;
+    if (flip_v) flag_bits |= 2;
+
+    // Quantise scale/angle for the cache key; render with those buckets so hits match.
+    const int16_t sx_q = quantise_scale_log(sx);
+    const int16_t sy_q = quantise_scale_log(sy);
+    const int16_t ang_q = quantise_angle(angle);
+    float sx_use = dequantise_scale_log(sx_q);
+    float sy_use = dequantise_scale_log(sy_q);
+    float angle_use = dequantise_angle(ang_q);
+    if (sx_use < 1e-4f) sx_use = 1e-4f;
+    if (sy_use < 1e-4f) sy_use = 1e-4f;
+
+    SpriteTransformCacheKey key;
+    key.template_name = inst.template_->name();
+    key.cel = cel_index;
+    key.sx_q = sx_q;
+    key.sy_q = sy_q;
+    key.angle_q = ang_q;
+    key.flags = flag_bits;
+
+    if (const SpriteTransformCacheEntry* hit = xform_cache_.find(key)) {
+        blit_cached_transform(*hit, dest_cx, dest_cy);
+        return;
+    }
+
+    const float rad = angle_use * kDeg;
+    const float ca = std::cos(rad);
+    const float sa = std::sin(rad);
+    const float hw = 0.5f * static_cast<float>(sw);
+    const float hh = 0.5f * static_cast<float>(sh);
+
+    // Exact quadrant with quantised angle still on a multiple of 90 when input was exact.
+    const bool exact_quad = scale_one && no_tilt &&
+                            (angle_use == 90.f || angle_use == 180.f || angle_use == 270.f);
+
+    SpriteTransformCacheEntry entry;
+    if (exact_quad) {
+        const int box_w = (angle_use == 90.f || angle_use == 270.f) ? sh : sw;
+        const int box_h = (angle_use == 90.f || angle_use == 270.f) ? sw : sh;
+        entry.width = box_w;
+        entry.height = box_h;
+        entry.origin_x = -box_w / 2;
+        entry.origin_y = -box_h / 2;
+        entry.pixels.assign(static_cast<size_t>(box_w * box_h),
+                            Rgb{kTransparentR, kTransparentG, kTransparentB});
+        for (int src_y = 0; src_y < sh; ++src_y) {
+            for (int src_x = 0; src_x < sw; ++src_x) {
+                int fx = flip_h ? (sw - 1 - src_x) : src_x;
+                int fy = flip_v ? (sh - 1 - src_y) : src_y;
+                int out_x = 0, out_y = 0;
+                if (angle_use == 90.f) {
+                    out_x = sh - 1 - fy;
+                    out_y = fx;
+                } else if (angle_use == 180.f) {
+                    out_x = sw - 1 - fx;
+                    out_y = sh - 1 - fy;
+                } else {
+                    out_x = fy;
+                    out_y = sw - 1 - fx;
+                }
+                Rgb c;
+                if (!sample_cel(cel, sw, sh, src_x, src_y, &c)) continue;
+                entry.pixels[static_cast<size_t>(out_y) * static_cast<size_t>(box_w) +
+                             static_cast<size_t>(out_x)] = c;
+            }
+        }
+    } else {
+        // Bounding box relative to centre (0,0).
+        auto map_corner = [&](float lx, float ly, float* ox, float* oy) {
+            if (flip_h) lx = -lx;
+            if (flip_v) ly = -ly;
+            lx *= sx_use;
+            ly *= sy_use;
+            *ox = lx * ca - ly * sa;
+            *oy = lx * sa + ly * ca;
+        };
+        float cxs[4], cys[4];
+        map_corner(-hw, -hh, &cxs[0], &cys[0]);
+        map_corner(hw, -hh, &cxs[1], &cys[1]);
+        map_corner(hw, hh, &cxs[2], &cys[2]);
+        map_corner(-hw, hh, &cxs[3], &cys[3]);
+        float min_xf = cxs[0], max_xf = cxs[0], min_yf = cys[0], max_yf = cys[0];
+        for (int i = 1; i < 4; ++i) {
+            min_xf = std::min(min_xf, cxs[i]);
+            max_xf = std::max(max_xf, cxs[i]);
+            min_yf = std::min(min_yf, cys[i]);
+            max_yf = std::max(max_yf, cys[i]);
+        }
+        int min_x = static_cast<int>(std::floor(min_xf));
+        int max_x = static_cast<int>(std::ceil(max_xf));
+        int min_y = static_cast<int>(std::floor(min_yf));
+        int max_y = static_cast<int>(std::ceil(max_yf));
+        // Cap extreme boxes (scale ≤ 8, sprite usually small).
+        constexpr int kMaxBox = 128;
+        if (max_x - min_x > kMaxBox) {
+            int mid = (min_x + max_x) / 2;
+            min_x = mid - kMaxBox / 2;
+            max_x = min_x + kMaxBox;
+        }
+        if (max_y - min_y > kMaxBox) {
+            int mid = (min_y + max_y) / 2;
+            min_y = mid - kMaxBox / 2;
+            max_y = min_y + kMaxBox;
+        }
+
+        entry.origin_x = min_x;
+        entry.origin_y = min_y;
+        entry.width = std::max(1, max_x - min_x);
+        entry.height = std::max(1, max_y - min_y);
+        entry.pixels.assign(static_cast<size_t>(entry.width * entry.height),
+                            Rgb{kTransparentR, kTransparentG, kTransparentB});
+
+        if (entry.width < 2 && entry.height < 2) {
+            Rgb avg{};
+            int opaque = 0;
+            const int total = sw * sh;
+            uint32_t r = 0, g = 0, b = 0;
+            for (int row = 0; row < sh; ++row) {
+                for (int col = 0; col < sw; ++col) {
+                    Rgb c;
+                    if (!sample_cel(cel, sw, sh, col, row, &c)) continue;
+                    r += c.r;
+                    g += c.g;
+                    b += c.b;
+                    ++opaque;
+                }
+            }
+            if (opaque > 0 && opaque * 4 >= total) {
+                avg = {static_cast<uint8_t>(r / static_cast<uint32_t>(opaque)),
+                       static_cast<uint8_t>(g / static_cast<uint32_t>(opaque)),
+                       static_cast<uint8_t>(b / static_cast<uint32_t>(opaque))};
+                entry.pixels[0] = avg;
+                entry.width = entry.height = 1;
+                entry.origin_x = entry.origin_y = 0;
+            }
+        } else {
+            const bool downscale = sx_use < 1.f || sy_use < 1.f;
+            const int grid_x =
+                downscale ? std::min(16, std::max(1, static_cast<int>(std::ceil(1.f / sx_use)))) : 2;
+            const int grid_y =
+                downscale ? std::min(16, std::max(1, static_cast<int>(std::ceil(1.f / sy_use)))) : 2;
+            const int max_samples = grid_x * grid_y;
+
+            for (int iy = 0; iy < entry.height; ++iy) {
+                for (int ix = 0; ix < entry.width; ++ix) {
+                    int dx = min_x + ix;
+                    int dy = min_y + iy;
+                    Rgb hits[16];
+                    int hit_n = 0;
+                    int probed = 0;
+                    for (int gy = 0; gy < grid_y; ++gy) {
+                        for (int gx = 0; gx < grid_x; ++gx) {
+                            float u = downscale ? (static_cast<float>(gx) + 0.5f) / static_cast<float>(grid_x)
+                                                : (gx == 0 ? 0.25f : 0.75f);
+                            float v = downscale ? (static_cast<float>(gy) + 0.5f) / static_cast<float>(grid_y)
+                                                : (gy == 0 ? 0.25f : 0.75f);
+                            float dest_x = static_cast<float>(dx) + u;
+                            float dest_y = static_cast<float>(dy) + v;
+                            float lx = dest_x * ca + dest_y * sa;
+                            float ly = -dest_x * sa + dest_y * ca;
+                            lx /= sx_use;
+                            ly /= sy_use;
+                            if (flip_h) lx = -lx;
+                            if (flip_v) ly = -ly;
+                            int src_x = static_cast<int>(std::floor(lx + hw));
+                            int src_y = static_cast<int>(std::floor(ly + hh));
+                            ++probed;
+                            Rgb c;
+                            if (sample_cel(cel, sw, sh, src_x, src_y, &c) && hit_n < 16) hits[hit_n++] = c;
+                        }
+                    }
+                    if (hit_n == 0) continue;
+                    Rgb out{};
+                    if (downscale) {
+                        if (hit_n * 5 < probed * 2) continue;
+                        out = average_rgb(hits, hit_n);
+                    } else {
+                        if (hit_n <= max_samples - 3) continue;
+                        out = hits[0];
+                        int best_count = 1;
+                        for (int i = 0; i < hit_n; ++i) {
+                            int count = 0;
+                            for (int j = 0; j < hit_n; ++j) {
+                                if (hits[j].r == hits[i].r && hits[j].g == hits[i].g &&
+                                    hits[j].b == hits[i].b)
+                                    ++count;
+                            }
+                            if (count > best_count) {
+                                best_count = count;
+                                out = hits[i];
+                            }
+                        }
+                    }
+                    entry.pixels[static_cast<size_t>(iy) * static_cast<size_t>(entry.width) +
+                                 static_cast<size_t>(ix)] = out;
+                }
+            }
+        }
+    }
+
+    blit_cached_transform(entry, dest_cx, dest_cy);
+    xform_cache_.insert(std::move(key), std::move(entry));
+}
+
+void MatrixApi::blit_cached_transform(const SpriteTransformCacheEntry& entry, float dest_cx, float dest_cy) {
+    for (int iy = 0; iy < entry.height; ++iy) {
+        for (int ix = 0; ix < entry.width; ++ix) {
+            Rgb c = entry.pixels[static_cast<size_t>(iy) * static_cast<size_t>(entry.width) +
+                                 static_cast<size_t>(ix)];
+            if (is_transparent(c)) continue;
+            int dx = static_cast<int>(std::lround(dest_cx + static_cast<float>(entry.origin_x + ix)));
+            int dy = static_cast<int>(std::lround(dest_cy + static_cast<float>(entry.origin_y + iy)));
+            put_sprite_pixel(*surface_, dx, dy, c);
+        }
+    }
+}
+
 void MatrixApi::blit_sprites_for_layer(uint16_t layer) {
     for (const auto& [name, id] : sprites_.iter_draw_order_for_layer(layer)) {
         SpriteInstance* inst = sprites_.get_instance(name, id);
         if (!inst || !inst->visible || !inst->template_) continue;
-        const SpriteCel& cel = inst->current();
-        int x0 = inst->x, y0 = inst->y;
-        int sw = inst->width(), sh = inst->height();
-        for (int sy = 0; sy < sh; ++sy) {
-            for (int sx = 0; sx < sw; ++sx) {
-                size_t i = static_cast<size_t>(sy) * static_cast<size_t>(sw) + static_cast<size_t>(sx);
-                Rgb c = cel.pixels[i];
-                if (is_transparent(c)) continue;
-                uint8_t inten = cel.intensity[i];
-                if (inten != 100) {
-                    c.r = static_cast<uint8_t>(static_cast<uint16_t>(c.r) * inten / 100);
-                    c.g = static_cast<uint8_t>(static_cast<uint16_t>(c.g) * inten / 100);
-                    c.b = static_cast<uint8_t>(static_cast<uint16_t>(c.b) * inten / 100);
-                }
-                int dx = x0 + sx, dy = y0 + sy;
-                if (dx < 0 || dy < 0 || dx >= kWidth || dy >= kHeight) continue;
-                surface_->set_pixel(dx, dy, c.r, c.g, c.b);
-            }
-        }
+        blit_one_sprite(*inst);
     }
 }
 
@@ -710,7 +1154,7 @@ void MatrixApi::sprite_draw(const std::string& name, const std::string& cmd, con
     backgrounds_.invalidate_cache();
 }
 
-void MatrixApi::show_sprite(const std::string& name, int x, int y, int instance_id, int z_index,
+void MatrixApi::show_sprite(const std::string& name, float x, float y, int instance_id, int z_index,
                             std::optional<int> cel_idx) {
     ensure_layer(current_layer_);
     SpriteInstance* instance = sprites_.get_instance(name, instance_id);
@@ -739,8 +1183,8 @@ void MatrixApi::hide_sprite(const std::string& name, int instance_id) {
     }
 }
 
-void MatrixApi::move_sprite(const std::string& name, int x, int y, int instance_id, std::optional<int> cel_idx,
-                            std::optional<int> z_index) {
+void MatrixApi::move_sprite(const std::string& name, float x, float y, int instance_id,
+                            std::optional<int> cel_idx, std::optional<int> z_index) {
     SpriteInstance* instance = sprites_.get_instance(name, instance_id);
     if (!instance || !instance->visible) return;
     instance->x = x;
@@ -759,6 +1203,7 @@ void MatrixApi::dispose_sprite(const std::string& name, int instance_id) {
 void MatrixApi::dispose_all_sprites() {
     backgrounds_.destroy_all();
     sprites_.dispose_all();
+    xform_cache_.clear();
     if (!frame_mode_) present_sprite_update();
 }
 
@@ -789,6 +1234,10 @@ void MatrixApi::draw_text(int x, int y, const std::string& text, const std::stri
 }
 
 void MatrixApi::clear_text(int x, int y) { text_.clear_text(x, y); }
+
+bool MatrixApi::surface_pixel(int x, int y, uint8_t* r, uint8_t* g, uint8_t* b) const {
+    return surface_ && surface_->get_pixel(x, y, r, g, b);
+}
 
 std::string MatrixApi::fingerprint() const {
     // Composite all visible layer pixels (no sprites/backgrounds) so layer-0-only
