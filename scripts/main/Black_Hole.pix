@@ -1,0 +1,185 @@
+# Black Hole - a lensed accretion disk, rendered per pixel
+#
+# A black hole hangs in front of a slowly drifting star field. A disk of
+# superheated gas spins around it:
+#   - The near half of the disk crosses in front of the black "shadow".
+#   - Light from the far half of the disk is bent over the top of the hole
+#     (and, thinner, under the bottom), so the disk looks like it wraps
+#     around the shadow - the "Interstellar" look.
+#   - The side of the disk moving toward you is brighter (Doppler beaming).
+#   - Gas is hottest (yellow) at the inner edge and cools to deep red outside.
+#   - A thin photon ring glows right at the edge of the shadow.
+#   - A hot clump orbits in the disk, and ripples spiral inward.
+#   - Stars behind the hole are lensed: they slide around it, stretch into
+#     arcs near the Einstein ring and show a faint second image on the
+#     opposite side.
+#   - The camera slowly rocks: the view tilts and the disk opens and closes.
+#
+# How it is built:
+#   - The disk, lensed arcs and photon ring are one field_program (formula
+#     mode). The value block computes a "heat" for every pixel natively; the
+#     colour (red -> yellow) and brightness both come from that heat.
+#   - Stars are mplot points. Their lensed positions use the point-lens
+#     formula r' = (r +/- sqrt(r*r + 4*Re*Re)) / 2.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_rs = 9.5             # shadow radius (pixels)
+v_rin = 12.5            # inner edge of the disk
+v_rout = 31            # outer edge of the disk
+v_beam = 0.5           # Doppler beaming strength (0 = none)
+v_spin = 1.0           # disk swirl speed
+v_t_side = 1.6         # lensed arc thickness at the sides
+v_t_top = 10           # extra lensed arc thickness over the top
+v_t_bot = 2.2          # extra lensed arc thickness underneath
+v_einstein = 12        # Einstein radius for star lensing
+v_star_count = 140
+v_star_drift = 0.05    # how fast the star field slides behind the hole
+
+# ---------------- State ----------------
+v_t = 0
+v_frame = 0
+v_k = 0.2              # disk squash = sin(viewing angle above the disk)
+v_cr = 1               # cos / sin of camera roll
+v_sr = 0
+v_hs_ang = 0           # orbiting hot spot
+v_hs_r = 14
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program black_hole {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        v_dx = grid_x - 31.5
+        v_dy = grid_y - 31.5
+        v_rx = v_dx * v_cr + v_dy * v_sr
+        v_ry = v_dy * v_cr - v_dx * v_sr
+        v_rr = sqrt(v_rx * v_rx + v_ry * v_ry)
+        v_th = atan2(v_ry, v_rx)
+        v_w = v_ry / v_k
+        v_rd = max(sqrt(v_rx * v_rx + v_w * v_w), 0.5)
+        v_ph = atan2(v_w, v_rx)
+        v_front = where(v_ry > 0, 1, 0)
+        v_flat_on = where(v_rd > v_rin, where(v_rd < v_rout, 1, 0), 0)
+        v_flat_vis = v_flat_on * where(v_rr < v_rs, v_front, 1)
+        v_prof_f = pow(v_rin / v_rd, 1.5) * clamp((v_rout - v_rd) / 5, 0, 1) * clamp((v_rd - v_rin) / 1.5 + 0.35, 0, 1)
+        v_tex_f = 0.6 + 0.22 * sin(v_ph * 3 + v_rd * 0.55 - v_t * 1.6 * v_spin) + 0.15 * sin(v_ph * 7 - v_rd * 1.1 - v_t * 2.4 * v_spin) + 0.13 * sin(v_rd * 1.3 + v_t * 2.2)
+        v_hot_f = pow(max(cos(v_ph - v_hs_ang), 0), 24) / (1 + (v_rd - v_hs_r) * (v_rd - v_hs_r) * 0.3)
+        v_dop_f = 1 - v_beam * cos(v_ph)
+        v_heat_f = (v_prof_f * v_tex_f + v_hot_f * 0.9) * v_dop_f * v_flat_vis
+        v_up = 0 - v_ry / max(v_rr, 0.5)
+        v_band = v_t_side + v_t_top * max(v_up, 0) + v_t_bot * max(0 - v_up, 0)
+        v_lr = v_rr - v_rs
+        v_lens_on = where(v_lr > 0, where(v_lr < v_band, 1, 0), 0)
+        v_rv = v_rin + v_lr / v_band * (v_rout - v_rin)
+        v_pl = where(v_ry < 0, v_th, 0 - v_th)
+        v_prof_l = pow(v_rin / v_rv, 1.5) * clamp((v_rout - v_rv) / 5, 0, 1)
+        v_tex_l = 0.6 + 0.22 * sin(v_pl * 3 + v_rv * 0.55 - v_t * 1.6 * v_spin) + 0.15 * sin(v_pl * 7 - v_rv * 1.1 - v_t * 2.4 * v_spin) + 0.13 * sin(v_rv * 1.3 + v_t * 2.2)
+        v_hot_l = pow(max(cos(v_pl - v_hs_ang), 0), 24) / (1 + (v_rv - v_hs_r) * (v_rv - v_hs_r) * 0.3)
+        v_heat_l = (v_prof_l * v_tex_l + v_hot_l * 0.9) * (1 - v_beam * cos(v_pl)) * v_lens_on * 1.15
+        v_ring = 1.2 / (1 + 9 * (v_lr - 0.35) * (v_lr - 0.35)) * where(v_lr > -0.6, 1, 0)
+        v_back = max(v_heat_l, v_heat_f) + v_ring
+        v_heat = where(v_front * v_flat_vis > 0, v_heat_f, v_back)
+    }
+    plot_if v_sum > 0.05
+    color clamp(v_sum * 11 - 1.5, 0, 15)
+    opacity clamp(v_sum * 95 + 4, 1, 100)
+}
+
+# ---------------- Star field ----------------
+# Sky coordinates run 0..128 wide (wraps) so the field can drift forever.
+create_array(v_star_x, v_star_count, numeric)
+create_array(v_star_y, v_star_count, numeric)
+create_array(v_star_b, v_star_count, numeric)
+create_array(v_star_c, v_star_count, string)
+
+for v_i in (0, v_star_count - 1, 1)
+    v_star_x[v_i] = random(0, 128, 2)
+    v_star_y[v_i] = random(-8, 71, 2)
+    v_star_b[v_i] = random(8, 45, 0)
+    v_pick = random(0, 9, 0)
+    if v_pick < 6 then
+        v_star_c[v_i] = "white"
+    elseif v_pick < 8 then
+        v_star_c[v_i] = "azure"
+    else
+        v_star_c[v_i] = "peach"
+    endif
+endfor v_i
+
+v_re2x4 = 4 * v_einstein * v_einstein
+v_sky_off = 0
+v_shadow2 = (v_rs + 1) * (v_rs + 1)
+
+def draw_stars {
+    for v_i in (0, v_star_count - 1, 1)
+        v_px = v_star_x[v_i] - v_sky_off
+        v_px = v_px - floor(v_px / 128) * 128 - 32
+        v_py = v_star_y[v_i] - 31.5
+        if abs(v_px) < 60 then
+            v_r = sqrt(v_px * v_px + v_py * v_py)
+            if v_r < 0.3 then
+                v_r = 0.3
+            endif
+            v_root = sqrt(v_r * v_r + v_re2x4)
+            v_u2 = v_r * v_r / (v_einstein * v_einstein)
+            v_mu = (v_u2 + 2) / (2 * sqrt(v_u2) * sqrt(v_u2 + 4)) + 0.5
+            v_col = v_star_c[v_i]
+            v_nx = v_px / v_r
+            v_ny = v_py / v_r
+            # primary image (outside the Einstein ring)
+            v_f = (v_r + v_root) / 2
+            v_ix = 31.5 + v_nx * v_f
+            v_iy = 31.5 + v_ny * v_f
+            v_bri = min(v_star_b[v_i] * v_mu, 100)
+            mplot(v_ix, v_iy, v_col, v_bri)
+            # magnified stars stretch into short tangential arcs
+            if v_mu > 1.6 then
+                v_len = min(floor(v_mu), 4)
+                for v_j in (1, v_len, 1)
+                    v_fade = v_bri * (1 - v_j / (v_len + 1))
+                    mplot(v_ix - v_ny * v_j, v_iy + v_nx * v_j, v_col, v_fade)
+                    mplot(v_ix + v_ny * v_j, v_iy - v_nx * v_j, v_col, v_fade)
+                endfor v_j
+            endif
+            # faint secondary image on the opposite side
+            v_f2 = (v_root - v_r) / 2
+            if v_f2 * v_f2 > v_shadow2 then
+                v_b2 = min(v_star_b[v_i] * (v_mu - 1), 60)
+                if v_b2 >= 2 then
+                    mplot(31.5 - v_nx * v_f2, 31.5 - v_ny * v_f2, v_col, v_b2)
+                endif
+            endif
+        endif
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+while true then
+    # camera: slow roll and a disk that opens and closes
+    v_roll = sin(v_t * 0.11) * 0.22
+    v_cr = cos(v_roll)
+    v_sr = sin(v_roll)
+    v_k = 0.2 + 0.08 * sin(v_t * 0.07 + 1)
+
+    # hot spot: faster when close in, drifts in and out
+    v_hs_r = 15 + 4 * sin(v_t * 0.05)
+    v_hs_ang = v_hs_ang + 9 / pow(v_hs_r, 1.5) * 0.35
+
+    v_sky_off = v_sky_off + v_star_drift
+
+    begin_frame
+        call draw_stars
+        field_render(black_hole)
+    end_frame
+
+    v_t = v_t + 0.033
+    v_frame = v_frame + 1
+endwhile

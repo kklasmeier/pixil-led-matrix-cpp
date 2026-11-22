@@ -1,0 +1,7313 @@
+# Famous Chess Games - classic games replayed move by move
+#
+# Sixteen of the most famous games ever played, replayed on a full-screen board:
+#   Legall's Mate (Paris 1750)             Anderssen's Immortal Game (1851)
+#   Anderssen's Evergreen Game (1852)      Morphy's Opera Game (Paris 1858)
+#   Rotlewi vs Rubinstein (1907)           Reti vs Tartakower miniature (1910)
+#   Ed. Lasker vs Thomas king hunt (1912)  Levitsky vs Marshall "gold coins" (1912)
+#   Adams vs Torre queen dance (1920)      Glucksberg vs Najdorf "Polish Immortal" (1929)
+#   Canal's "Peruvian Immortal" (1934)     Byrne vs Fischer "Game of the Century" (1956)
+#   Fischer vs Spassky, game 6 (1972)      Short's king walk vs Timman (1991)
+#   Deep Blue vs Kasparov, game 6 (1997)   Kasparov vs Topalov "Kasparov's Immortal" (1999)
+#
+# Each game opens with a title card. Pieces lift as they glide to their new
+# square, the last move stays highlighted, a king in check glows red, and
+# captured pieces are flicked off the board spinning. The move is spelled
+# out underneath in standard notation. Checkmate gets a burst of sparks and
+# the mated king topples over; a resignation tips the king too.
+#
+# Games play in random order; every game plays before any repeats. Every move
+# was checked for legality when the script was generated.
+
+fps(30)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_move_frames = 14     # frames for a piece to glide to its square
+v_pause = 26           # frames to wait between moves (more after checks/captures)
+v_title_secs = 4       # how long the title card shows
+v_end_frames = 160     # how long the final position stays up
+
+# ---------------- Pieces (generated) ----------------
+define_sprite(pc, 7, 7)
+    sprite_cel(0)
+        plot(1, 2, black, 100)
+        plot(1, 3, black, 100)
+        plot(1, 4, black, 100)
+        plot(1, 5, black, 100)
+        plot(1, 6, black, 100)
+        plot(2, 1, black, 100)
+        plot(2, 2, black, 100)
+        plot(2, 4, black, 100)
+        plot(2, 6, black, 100)
+        plot(3, 1, black, 100)
+        plot(3, 6, black, 100)
+        plot(4, 1, black, 100)
+        plot(4, 2, black, 100)
+        plot(4, 4, black, 100)
+        plot(4, 6, black, 100)
+        plot(5, 2, black, 100)
+        plot(5, 3, black, 100)
+        plot(5, 4, black, 100)
+        plot(5, 5, black, 100)
+        plot(5, 6, black, 100)
+        plot(2, 3, white, 100)
+        plot(2, 5, white, 100)
+        plot(3, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(3, 4, white, 100)
+        plot(3, 5, white, 100)
+        plot(4, 3, white, 100)
+        plot(4, 5, white, 100)
+    sprite_cel(1)
+        plot(1, 2, silver, 70)
+        plot(1, 3, silver, 70)
+        plot(1, 4, silver, 70)
+        plot(1, 5, silver, 70)
+        plot(1, 6, silver, 70)
+        plot(2, 1, silver, 70)
+        plot(2, 2, silver, 70)
+        plot(2, 4, silver, 70)
+        plot(2, 6, silver, 70)
+        plot(3, 1, silver, 70)
+        plot(3, 6, silver, 70)
+        plot(4, 1, silver, 70)
+        plot(4, 2, silver, 70)
+        plot(4, 4, silver, 70)
+        plot(4, 6, silver, 70)
+        plot(5, 2, silver, 70)
+        plot(5, 3, silver, 70)
+        plot(5, 4, silver, 70)
+        plot(5, 5, silver, 70)
+        plot(5, 6, silver, 70)
+        plot(2, 3, black, 100)
+        plot(2, 5, black, 100)
+        plot(3, 2, black, 100)
+        plot(3, 3, black, 100)
+        plot(3, 4, black, 100)
+        plot(3, 5, black, 100)
+        plot(4, 3, black, 100)
+        plot(4, 5, black, 100)
+        plot(3, 2, gray, 60)
+    sprite_cel(2)
+        plot(0, 1, black, 100)
+        plot(0, 2, black, 100)
+        plot(0, 3, black, 100)
+        plot(0, 4, black, 100)
+        plot(0, 5, black, 100)
+        plot(0, 6, black, 100)
+        plot(1, 0, black, 100)
+        plot(1, 1, black, 100)
+        plot(1, 4, black, 100)
+        plot(1, 6, black, 100)
+        plot(2, 0, black, 100)
+        plot(2, 3, black, 100)
+        plot(2, 6, black, 100)
+        plot(3, 0, black, 100)
+        plot(3, 6, black, 100)
+        plot(4, 0, black, 100)
+        plot(4, 1, black, 100)
+        plot(4, 6, black, 100)
+        plot(5, 1, black, 100)
+        plot(5, 2, black, 100)
+        plot(5, 3, black, 100)
+        plot(5, 4, black, 100)
+        plot(5, 6, black, 100)
+        plot(6, 4, black, 100)
+        plot(6, 5, black, 100)
+        plot(6, 6, black, 100)
+        plot(1, 2, white, 100)
+        plot(1, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(2, 4, white, 100)
+        plot(2, 5, white, 100)
+        plot(3, 1, white, 100)
+        plot(3, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(3, 4, white, 100)
+        plot(3, 5, white, 100)
+        plot(4, 2, white, 100)
+        plot(4, 3, white, 100)
+        plot(4, 4, white, 100)
+        plot(4, 5, white, 100)
+        plot(5, 5, white, 100)
+    sprite_cel(3)
+        plot(0, 1, silver, 70)
+        plot(0, 2, silver, 70)
+        plot(0, 3, silver, 70)
+        plot(0, 4, silver, 70)
+        plot(0, 5, silver, 70)
+        plot(0, 6, silver, 70)
+        plot(1, 0, silver, 70)
+        plot(1, 1, silver, 70)
+        plot(1, 4, silver, 70)
+        plot(1, 6, silver, 70)
+        plot(2, 0, silver, 70)
+        plot(2, 3, silver, 70)
+        plot(2, 6, silver, 70)
+        plot(3, 0, silver, 70)
+        plot(3, 6, silver, 70)
+        plot(4, 0, silver, 70)
+        plot(4, 1, silver, 70)
+        plot(4, 6, silver, 70)
+        plot(5, 1, silver, 70)
+        plot(5, 2, silver, 70)
+        plot(5, 3, silver, 70)
+        plot(5, 4, silver, 70)
+        plot(5, 6, silver, 70)
+        plot(6, 4, silver, 70)
+        plot(6, 5, silver, 70)
+        plot(6, 6, silver, 70)
+        plot(1, 2, black, 100)
+        plot(1, 3, black, 100)
+        plot(1, 5, black, 100)
+        plot(2, 1, black, 100)
+        plot(2, 2, black, 100)
+        plot(2, 4, black, 100)
+        plot(2, 5, black, 100)
+        plot(3, 1, black, 100)
+        plot(3, 2, black, 100)
+        plot(3, 3, black, 100)
+        plot(3, 4, black, 100)
+        plot(3, 5, black, 100)
+        plot(4, 2, black, 100)
+        plot(4, 3, black, 100)
+        plot(4, 4, black, 100)
+        plot(4, 5, black, 100)
+        plot(5, 5, black, 100)
+        plot(2, 1, gray, 60)
+    sprite_cel(4)
+        plot(0, 4, black, 100)
+        plot(0, 5, black, 100)
+        plot(0, 6, black, 100)
+        plot(1, 1, black, 100)
+        plot(1, 2, black, 100)
+        plot(1, 3, black, 100)
+        plot(1, 4, black, 100)
+        plot(1, 6, black, 100)
+        plot(2, 0, black, 100)
+        plot(2, 1, black, 100)
+        plot(2, 6, black, 100)
+        plot(3, 0, black, 100)
+        plot(3, 2, black, 100)
+        plot(3, 6, black, 100)
+        plot(4, 0, black, 100)
+        plot(4, 1, black, 100)
+        plot(4, 3, black, 100)
+        plot(4, 6, black, 100)
+        plot(5, 1, black, 100)
+        plot(5, 2, black, 100)
+        plot(5, 3, black, 100)
+        plot(5, 4, black, 100)
+        plot(5, 6, black, 100)
+        plot(6, 4, black, 100)
+        plot(6, 5, black, 100)
+        plot(6, 6, black, 100)
+        plot(1, 5, white, 100)
+        plot(2, 2, white, 100)
+        plot(2, 3, white, 100)
+        plot(2, 4, white, 100)
+        plot(2, 5, white, 100)
+        plot(3, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(3, 4, white, 100)
+        plot(3, 5, white, 100)
+        plot(4, 2, white, 100)
+        plot(4, 4, white, 100)
+        plot(4, 5, white, 100)
+        plot(5, 5, white, 100)
+    sprite_cel(5)
+        plot(0, 4, silver, 70)
+        plot(0, 5, silver, 70)
+        plot(0, 6, silver, 70)
+        plot(1, 1, silver, 70)
+        plot(1, 2, silver, 70)
+        plot(1, 3, silver, 70)
+        plot(1, 4, silver, 70)
+        plot(1, 6, silver, 70)
+        plot(2, 0, silver, 70)
+        plot(2, 1, silver, 70)
+        plot(2, 6, silver, 70)
+        plot(3, 0, silver, 70)
+        plot(3, 2, silver, 70)
+        plot(3, 6, silver, 70)
+        plot(4, 0, silver, 70)
+        plot(4, 1, silver, 70)
+        plot(4, 3, silver, 70)
+        plot(4, 6, silver, 70)
+        plot(5, 1, silver, 70)
+        plot(5, 2, silver, 70)
+        plot(5, 3, silver, 70)
+        plot(5, 4, silver, 70)
+        plot(5, 6, silver, 70)
+        plot(6, 4, silver, 70)
+        plot(6, 5, silver, 70)
+        plot(6, 6, silver, 70)
+        plot(1, 5, black, 100)
+        plot(2, 2, black, 100)
+        plot(2, 3, black, 100)
+        plot(2, 4, black, 100)
+        plot(2, 5, black, 100)
+        plot(3, 1, black, 100)
+        plot(3, 3, black, 100)
+        plot(3, 4, black, 100)
+        plot(3, 5, black, 100)
+        plot(4, 2, black, 100)
+        plot(4, 4, black, 100)
+        plot(4, 5, black, 100)
+        plot(5, 5, black, 100)
+        plot(3, 1, gray, 60)
+    sprite_cel(6)
+        plot(0, 0, black, 100)
+        plot(0, 1, black, 100)
+        plot(0, 2, black, 100)
+        plot(0, 3, black, 100)
+        plot(0, 4, black, 100)
+        plot(0, 5, black, 100)
+        plot(0, 6, black, 100)
+        plot(1, 0, black, 100)
+        plot(1, 3, black, 100)
+        plot(1, 4, black, 100)
+        plot(1, 6, black, 100)
+        plot(2, 0, black, 100)
+        plot(2, 1, black, 100)
+        plot(2, 6, black, 100)
+        plot(3, 0, black, 100)
+        plot(3, 6, black, 100)
+        plot(4, 0, black, 100)
+        plot(4, 1, black, 100)
+        plot(4, 6, black, 100)
+        plot(5, 0, black, 100)
+        plot(5, 3, black, 100)
+        plot(5, 4, black, 100)
+        plot(5, 6, black, 100)
+        plot(6, 0, black, 100)
+        plot(6, 1, black, 100)
+        plot(6, 2, black, 100)
+        plot(6, 3, black, 100)
+        plot(6, 4, black, 100)
+        plot(6, 5, black, 100)
+        plot(6, 6, black, 100)
+        plot(1, 1, white, 100)
+        plot(1, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 2, white, 100)
+        plot(2, 3, white, 100)
+        plot(2, 4, white, 100)
+        plot(2, 5, white, 100)
+        plot(3, 1, white, 100)
+        plot(3, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(3, 4, white, 100)
+        plot(3, 5, white, 100)
+        plot(4, 2, white, 100)
+        plot(4, 3, white, 100)
+        plot(4, 4, white, 100)
+        plot(4, 5, white, 100)
+        plot(5, 1, white, 100)
+        plot(5, 2, white, 100)
+        plot(5, 5, white, 100)
+    sprite_cel(7)
+        plot(0, 0, silver, 70)
+        plot(0, 1, silver, 70)
+        plot(0, 2, silver, 70)
+        plot(0, 3, silver, 70)
+        plot(0, 4, silver, 70)
+        plot(0, 5, silver, 70)
+        plot(0, 6, silver, 70)
+        plot(1, 0, silver, 70)
+        plot(1, 3, silver, 70)
+        plot(1, 4, silver, 70)
+        plot(1, 6, silver, 70)
+        plot(2, 0, silver, 70)
+        plot(2, 1, silver, 70)
+        plot(2, 6, silver, 70)
+        plot(3, 0, silver, 70)
+        plot(3, 6, silver, 70)
+        plot(4, 0, silver, 70)
+        plot(4, 1, silver, 70)
+        plot(4, 6, silver, 70)
+        plot(5, 0, silver, 70)
+        plot(5, 3, silver, 70)
+        plot(5, 4, silver, 70)
+        plot(5, 6, silver, 70)
+        plot(6, 0, silver, 70)
+        plot(6, 1, silver, 70)
+        plot(6, 2, silver, 70)
+        plot(6, 3, silver, 70)
+        plot(6, 4, silver, 70)
+        plot(6, 5, silver, 70)
+        plot(6, 6, silver, 70)
+        plot(1, 1, black, 100)
+        plot(1, 2, black, 100)
+        plot(1, 5, black, 100)
+        plot(2, 2, black, 100)
+        plot(2, 3, black, 100)
+        plot(2, 4, black, 100)
+        plot(2, 5, black, 100)
+        plot(3, 1, black, 100)
+        plot(3, 2, black, 100)
+        plot(3, 3, black, 100)
+        plot(3, 4, black, 100)
+        plot(3, 5, black, 100)
+        plot(4, 2, black, 100)
+        plot(4, 3, black, 100)
+        plot(4, 4, black, 100)
+        plot(4, 5, black, 100)
+        plot(5, 1, black, 100)
+        plot(5, 2, black, 100)
+        plot(5, 5, black, 100)
+        plot(1, 1, gray, 60)
+    sprite_cel(8)
+        plot(0, 0, black, 100)
+        plot(0, 1, black, 100)
+        plot(0, 2, black, 100)
+        plot(0, 4, black, 100)
+        plot(0, 5, black, 100)
+        plot(0, 6, black, 100)
+        plot(1, 0, black, 100)
+        plot(1, 2, black, 100)
+        plot(1, 3, black, 100)
+        plot(1, 4, black, 100)
+        plot(1, 6, black, 100)
+        plot(2, 0, black, 100)
+        plot(2, 1, black, 100)
+        plot(2, 4, black, 100)
+        plot(2, 6, black, 100)
+        plot(3, 0, black, 100)
+        plot(3, 2, black, 100)
+        plot(3, 6, black, 100)
+        plot(4, 0, black, 100)
+        plot(4, 1, black, 100)
+        plot(4, 4, black, 100)
+        plot(4, 6, black, 100)
+        plot(5, 0, black, 100)
+        plot(5, 2, black, 100)
+        plot(5, 3, black, 100)
+        plot(5, 4, black, 100)
+        plot(5, 6, black, 100)
+        plot(6, 0, black, 100)
+        plot(6, 1, black, 100)
+        plot(6, 2, black, 100)
+        plot(6, 4, black, 100)
+        plot(6, 5, black, 100)
+        plot(6, 6, black, 100)
+        plot(1, 1, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 2, white, 100)
+        plot(2, 3, white, 100)
+        plot(2, 5, white, 100)
+        plot(3, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(3, 4, white, 100)
+        plot(3, 5, white, 100)
+        plot(4, 2, white, 100)
+        plot(4, 3, white, 100)
+        plot(4, 5, white, 100)
+        plot(5, 1, white, 100)
+        plot(5, 5, white, 100)
+    sprite_cel(9)
+        plot(0, 0, silver, 70)
+        plot(0, 1, silver, 70)
+        plot(0, 2, silver, 70)
+        plot(0, 4, silver, 70)
+        plot(0, 5, silver, 70)
+        plot(0, 6, silver, 70)
+        plot(1, 0, silver, 70)
+        plot(1, 2, silver, 70)
+        plot(1, 3, silver, 70)
+        plot(1, 4, silver, 70)
+        plot(1, 6, silver, 70)
+        plot(2, 0, silver, 70)
+        plot(2, 1, silver, 70)
+        plot(2, 4, silver, 70)
+        plot(2, 6, silver, 70)
+        plot(3, 0, silver, 70)
+        plot(3, 2, silver, 70)
+        plot(3, 6, silver, 70)
+        plot(4, 0, silver, 70)
+        plot(4, 1, silver, 70)
+        plot(4, 4, silver, 70)
+        plot(4, 6, silver, 70)
+        plot(5, 0, silver, 70)
+        plot(5, 2, silver, 70)
+        plot(5, 3, silver, 70)
+        plot(5, 4, silver, 70)
+        plot(5, 6, silver, 70)
+        plot(6, 0, silver, 70)
+        plot(6, 1, silver, 70)
+        plot(6, 2, silver, 70)
+        plot(6, 4, silver, 70)
+        plot(6, 5, silver, 70)
+        plot(6, 6, silver, 70)
+        plot(1, 1, black, 100)
+        plot(1, 5, black, 100)
+        plot(2, 2, black, 100)
+        plot(2, 3, black, 100)
+        plot(2, 5, black, 100)
+        plot(3, 1, black, 100)
+        plot(3, 3, black, 100)
+        plot(3, 4, black, 100)
+        plot(3, 5, black, 100)
+        plot(4, 2, black, 100)
+        plot(4, 3, black, 100)
+        plot(4, 5, black, 100)
+        plot(5, 1, black, 100)
+        plot(5, 5, black, 100)
+        plot(1, 1, gray, 60)
+    sprite_cel(10)
+        plot(0, 4, black, 100)
+        plot(0, 5, black, 100)
+        plot(0, 6, black, 100)
+        plot(1, 1, black, 100)
+        plot(1, 2, black, 100)
+        plot(1, 3, black, 100)
+        plot(1, 4, black, 100)
+        plot(1, 6, black, 100)
+        plot(2, 0, black, 100)
+        plot(2, 1, black, 100)
+        plot(2, 3, black, 100)
+        plot(2, 6, black, 100)
+        plot(3, 0, black, 100)
+        plot(3, 6, black, 100)
+        plot(4, 0, black, 100)
+        plot(4, 1, black, 100)
+        plot(4, 3, black, 100)
+        plot(4, 6, black, 100)
+        plot(5, 1, black, 100)
+        plot(5, 2, black, 100)
+        plot(5, 3, black, 100)
+        plot(5, 4, black, 100)
+        plot(5, 6, black, 100)
+        plot(6, 4, black, 100)
+        plot(6, 5, black, 100)
+        plot(6, 6, black, 100)
+        plot(1, 5, white, 100)
+        plot(2, 2, white, 100)
+        plot(2, 4, white, 100)
+        plot(2, 5, white, 100)
+        plot(3, 1, white, 100)
+        plot(3, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(3, 4, white, 100)
+        plot(3, 5, white, 100)
+        plot(4, 2, white, 100)
+        plot(4, 4, white, 100)
+        plot(4, 5, white, 100)
+        plot(5, 5, white, 100)
+    sprite_cel(11)
+        plot(0, 4, silver, 70)
+        plot(0, 5, silver, 70)
+        plot(0, 6, silver, 70)
+        plot(1, 1, silver, 70)
+        plot(1, 2, silver, 70)
+        plot(1, 3, silver, 70)
+        plot(1, 4, silver, 70)
+        plot(1, 6, silver, 70)
+        plot(2, 0, silver, 70)
+        plot(2, 1, silver, 70)
+        plot(2, 3, silver, 70)
+        plot(2, 6, silver, 70)
+        plot(3, 0, silver, 70)
+        plot(3, 6, silver, 70)
+        plot(4, 0, silver, 70)
+        plot(4, 1, silver, 70)
+        plot(4, 3, silver, 70)
+        plot(4, 6, silver, 70)
+        plot(5, 1, silver, 70)
+        plot(5, 2, silver, 70)
+        plot(5, 3, silver, 70)
+        plot(5, 4, silver, 70)
+        plot(5, 6, silver, 70)
+        plot(6, 4, silver, 70)
+        plot(6, 5, silver, 70)
+        plot(6, 6, silver, 70)
+        plot(1, 5, black, 100)
+        plot(2, 2, black, 100)
+        plot(2, 4, black, 100)
+        plot(2, 5, black, 100)
+        plot(3, 1, black, 100)
+        plot(3, 2, black, 100)
+        plot(3, 3, black, 100)
+        plot(3, 4, black, 100)
+        plot(3, 5, black, 100)
+        plot(4, 2, black, 100)
+        plot(4, 4, black, 100)
+        plot(4, 5, black, 100)
+        plot(5, 5, black, 100)
+        plot(3, 1, gray, 60)
+endsprite
+# 16 games, 760 half-moves (generated, legality checked with python-chess)
+v_games = 16
+create_array(v_g_start, 16, numeric)
+create_array(v_g_len, 16, numeric)
+create_array(v_g_name, 16, string)
+create_array(v_g_white, 16, string)
+create_array(v_g_black, 16, string)
+create_array(v_g_place, 16, string)
+create_array(v_g_t1, 16, string)
+create_array(v_g_t2, 16, string)
+v_g_start[0] = 0
+v_g_len[0] = 33
+v_g_name[0] = "OPERA GAME"
+v_g_white[0] = "MORPHY"
+v_g_black[0] = "DUKE KARL"
+v_g_place[0] = "PARIS 1858"
+v_g_t1[0] = "OPERA GAME"
+v_g_t2[0] = ""
+v_g_start[1] = 33
+v_g_len[1] = 45
+v_g_name[1] = "IMMORTAL GAME"
+v_g_white[1] = "ANDERSSEN"
+v_g_black[1] = "KIESERITZKY"
+v_g_place[1] = "LONDON 1851"
+v_g_t1[1] = "IMMORTAL GAME"
+v_g_t2[1] = ""
+v_g_start[2] = 78
+v_g_len[2] = 47
+v_g_name[2] = "EVERGREEN GAME"
+v_g_white[2] = "ANDERSSEN"
+v_g_black[2] = "DUFRESNE"
+v_g_place[2] = "BERLIN 1852"
+v_g_t1[2] = "EVERGREEN GAME"
+v_g_t2[2] = ""
+v_g_start[3] = 125
+v_g_len[3] = 82
+v_g_name[3] = "GAME OF THE CENTURY"
+v_g_white[3] = "D. BYRNE"
+v_g_black[3] = "FISCHER"
+v_g_place[3] = "NEW YORK 1956"
+v_g_t1[3] = "GAME OF THE"
+v_g_t2[3] = "CENTURY"
+v_g_start[4] = 207
+v_g_len[4] = 21
+v_g_name[4] = "RETI'S MINIATURE"
+v_g_white[4] = "RETI"
+v_g_black[4] = "TARTAKOWER"
+v_g_place[4] = "VIENNA 1910"
+v_g_t1[4] = "RETI'S"
+v_g_t2[4] = "MINIATURE"
+v_g_start[5] = 228
+v_g_len[5] = 87
+v_g_name[5] = "KASPAROV'S IMMORTAL"
+v_g_white[5] = "KASPAROV"
+v_g_black[5] = "TOPALOV"
+v_g_place[5] = "WIJK 1999"
+v_g_t1[5] = "KASPAROV'S"
+v_g_t2[5] = "IMMORTAL"
+v_g_start[6] = 315
+v_g_len[6] = 13
+v_g_name[6] = "LEGAL'S MATE"
+v_g_white[6] = "LEGALL"
+v_g_black[6] = "SAINT BRIE"
+v_g_place[6] = "PARIS 1750"
+v_g_t1[6] = "LEGAL'S MATE"
+v_g_t2[6] = ""
+v_g_start[7] = 328
+v_g_len[7] = 35
+v_g_name[7] = "THE KING HUNT"
+v_g_white[7] = "ED. LASKER"
+v_g_black[7] = "THOMAS"
+v_g_place[7] = "LONDON 1912"
+v_g_t1[7] = "THE KING HUNT"
+v_g_t2[7] = ""
+v_g_start[8] = 363
+v_g_len[8] = 44
+v_g_name[8] = "POLISH IMMORTAL"
+v_g_white[8] = "GLUCKSBERG"
+v_g_black[8] = "NAJDORF"
+v_g_place[8] = "WARSAW 1929"
+v_g_t1[8] = "POLISH"
+v_g_t2[8] = "IMMORTAL"
+v_g_start[9] = 407
+v_g_len[9] = 50
+v_g_name[9] = "RUBINSTEIN'S IMMORTAL"
+v_g_white[9] = "ROTLEWI"
+v_g_black[9] = "RUBINSTEIN"
+v_g_place[9] = "LODZ 1907"
+v_g_t1[9] = "RUBINSTEIN'S"
+v_g_t2[9] = "IMMORTAL"
+v_g_start[10] = 457
+v_g_len[10] = 37
+v_g_name[10] = "MAN VS MACHINE"
+v_g_white[10] = "DEEP BLUE"
+v_g_black[10] = "KASPAROV"
+v_g_place[10] = "NEW YORK 1997"
+v_g_t1[10] = "MAN VS MACHINE"
+v_g_t2[10] = ""
+v_g_start[11] = 494
+v_g_len[11] = 67
+v_g_name[11] = "SHORT'S KING WALK"
+v_g_white[11] = "SHORT"
+v_g_black[11] = "TIMMAN"
+v_g_place[11] = "TILBURG 1991"
+v_g_t1[11] = "SHORT'S KING"
+v_g_t2[11] = "WALK"
+v_g_start[12] = 561
+v_g_len[12] = 81
+v_g_name[12] = "MATCH OF THE CENTURY"
+v_g_white[12] = "FISCHER"
+v_g_black[12] = "SPASSKY"
+v_g_place[12] = "REYKJAVIK 1972"
+v_g_t1[12] = "MATCH OF THE"
+v_g_t2[12] = "CENTURY"
+v_g_start[13] = 642
+v_g_len[13] = 45
+v_g_name[13] = "THE QUEEN DANCE"
+v_g_white[13] = "ADAMS"
+v_g_black[13] = "TORRE"
+v_g_place[13] = "N.ORLEANS 1920"
+v_g_t1[13] = "THE QUEEN"
+v_g_t2[13] = "DANCE"
+v_g_start[14] = 687
+v_g_len[14] = 46
+v_g_name[14] = "THE GOLD COINS GAME"
+v_g_white[14] = "LEVITSKY"
+v_g_black[14] = "MARSHALL"
+v_g_place[14] = "BRESLAU 1912"
+v_g_t1[14] = "THE GOLD COINS"
+v_g_t2[14] = "GAME"
+v_g_start[15] = 733
+v_g_len[15] = 27
+v_g_name[15] = "PERUVIAN IMMORTAL"
+v_g_white[15] = "CANAL"
+v_g_black[15] = "AMATEUR"
+v_g_place[15] = "BUDAPEST 1934"
+v_g_t1[15] = "PERUVIAN"
+v_g_t2[15] = "IMMORTAL"
+create_array(v_m_from, 760, numeric)
+create_array(v_m_to, 760, numeric)
+create_array(v_m_cap, 760, numeric)
+create_array(v_m_rf, 760, numeric)
+create_array(v_m_rt, 760, numeric)
+create_array(v_m_promo, 760, numeric)
+create_array(v_m_chk, 760, numeric)
+create_array(v_m_mate, 760, numeric)
+create_array(v_m_ksq, 760, numeric)
+create_array(v_m_san, 760, string)
+v_m_from[0] = 12
+v_m_to[0] = 28
+v_m_cap[0] = -1
+v_m_rf[0] = -1
+v_m_rt[0] = -1
+v_m_promo[0] = -1
+v_m_ksq[0] = -1
+v_m_san[0] = "1.e4"
+v_m_from[1] = 52
+v_m_to[1] = 36
+v_m_cap[1] = -1
+v_m_rf[1] = -1
+v_m_rt[1] = -1
+v_m_promo[1] = -1
+v_m_ksq[1] = -1
+v_m_san[1] = "1...e5"
+v_m_from[2] = 6
+v_m_to[2] = 21
+v_m_cap[2] = -1
+v_m_rf[2] = -1
+v_m_rt[2] = -1
+v_m_promo[2] = -1
+v_m_ksq[2] = -1
+v_m_san[2] = "2.Nf3"
+v_m_from[3] = 51
+v_m_to[3] = 43
+v_m_cap[3] = -1
+v_m_rf[3] = -1
+v_m_rt[3] = -1
+v_m_promo[3] = -1
+v_m_ksq[3] = -1
+v_m_san[3] = "2...d6"
+v_m_from[4] = 11
+v_m_to[4] = 27
+v_m_cap[4] = -1
+v_m_rf[4] = -1
+v_m_rt[4] = -1
+v_m_promo[4] = -1
+v_m_ksq[4] = -1
+v_m_san[4] = "3.d4"
+v_m_from[5] = 58
+v_m_to[5] = 30
+v_m_cap[5] = -1
+v_m_rf[5] = -1
+v_m_rt[5] = -1
+v_m_promo[5] = -1
+v_m_ksq[5] = -1
+v_m_san[5] = "3...Bg4"
+v_m_from[6] = 27
+v_m_to[6] = 36
+v_m_cap[6] = 36
+v_m_rf[6] = -1
+v_m_rt[6] = -1
+v_m_promo[6] = -1
+v_m_ksq[6] = -1
+v_m_san[6] = "4.dxe5"
+v_m_from[7] = 30
+v_m_to[7] = 21
+v_m_cap[7] = 21
+v_m_rf[7] = -1
+v_m_rt[7] = -1
+v_m_promo[7] = -1
+v_m_ksq[7] = -1
+v_m_san[7] = "4...Bxf3"
+v_m_from[8] = 3
+v_m_to[8] = 21
+v_m_cap[8] = 21
+v_m_rf[8] = -1
+v_m_rt[8] = -1
+v_m_promo[8] = -1
+v_m_ksq[8] = -1
+v_m_san[8] = "5.Qxf3"
+v_m_from[9] = 43
+v_m_to[9] = 36
+v_m_cap[9] = 36
+v_m_rf[9] = -1
+v_m_rt[9] = -1
+v_m_promo[9] = -1
+v_m_ksq[9] = -1
+v_m_san[9] = "5...dxe5"
+v_m_from[10] = 5
+v_m_to[10] = 26
+v_m_cap[10] = -1
+v_m_rf[10] = -1
+v_m_rt[10] = -1
+v_m_promo[10] = -1
+v_m_ksq[10] = -1
+v_m_san[10] = "6.Bc4"
+v_m_from[11] = 62
+v_m_to[11] = 45
+v_m_cap[11] = -1
+v_m_rf[11] = -1
+v_m_rt[11] = -1
+v_m_promo[11] = -1
+v_m_ksq[11] = -1
+v_m_san[11] = "6...Nf6"
+v_m_from[12] = 21
+v_m_to[12] = 17
+v_m_cap[12] = -1
+v_m_rf[12] = -1
+v_m_rt[12] = -1
+v_m_promo[12] = -1
+v_m_ksq[12] = -1
+v_m_san[12] = "7.Qb3"
+v_m_from[13] = 59
+v_m_to[13] = 52
+v_m_cap[13] = -1
+v_m_rf[13] = -1
+v_m_rt[13] = -1
+v_m_promo[13] = -1
+v_m_ksq[13] = -1
+v_m_san[13] = "7...Qe7"
+v_m_from[14] = 1
+v_m_to[14] = 18
+v_m_cap[14] = -1
+v_m_rf[14] = -1
+v_m_rt[14] = -1
+v_m_promo[14] = -1
+v_m_ksq[14] = -1
+v_m_san[14] = "8.Nc3"
+v_m_from[15] = 50
+v_m_to[15] = 42
+v_m_cap[15] = -1
+v_m_rf[15] = -1
+v_m_rt[15] = -1
+v_m_promo[15] = -1
+v_m_ksq[15] = -1
+v_m_san[15] = "8...c6"
+v_m_from[16] = 2
+v_m_to[16] = 38
+v_m_cap[16] = -1
+v_m_rf[16] = -1
+v_m_rt[16] = -1
+v_m_promo[16] = -1
+v_m_ksq[16] = -1
+v_m_san[16] = "9.Bg5"
+v_m_from[17] = 49
+v_m_to[17] = 33
+v_m_cap[17] = -1
+v_m_rf[17] = -1
+v_m_rt[17] = -1
+v_m_promo[17] = -1
+v_m_ksq[17] = -1
+v_m_san[17] = "9...b5"
+v_m_from[18] = 18
+v_m_to[18] = 33
+v_m_cap[18] = 33
+v_m_rf[18] = -1
+v_m_rt[18] = -1
+v_m_promo[18] = -1
+v_m_ksq[18] = -1
+v_m_san[18] = "10.Nxb5"
+v_m_from[19] = 42
+v_m_to[19] = 33
+v_m_cap[19] = 33
+v_m_rf[19] = -1
+v_m_rt[19] = -1
+v_m_promo[19] = -1
+v_m_ksq[19] = -1
+v_m_san[19] = "10...cxb5"
+v_m_from[20] = 26
+v_m_to[20] = 33
+v_m_cap[20] = 33
+v_m_rf[20] = -1
+v_m_rt[20] = -1
+v_m_promo[20] = -1
+v_m_chk[20] = 1
+v_m_ksq[20] = 60
+v_m_san[20] = "11.Bxb5+"
+v_m_from[21] = 57
+v_m_to[21] = 51
+v_m_cap[21] = -1
+v_m_rf[21] = -1
+v_m_rt[21] = -1
+v_m_promo[21] = -1
+v_m_ksq[21] = -1
+v_m_san[21] = "11...Nbd7"
+v_m_from[22] = 4
+v_m_to[22] = 2
+v_m_cap[22] = -1
+v_m_rt[22] = 3
+v_m_promo[22] = -1
+v_m_ksq[22] = -1
+v_m_san[22] = "12.O-O-O"
+v_m_from[23] = 56
+v_m_to[23] = 59
+v_m_cap[23] = -1
+v_m_rf[23] = -1
+v_m_rt[23] = -1
+v_m_promo[23] = -1
+v_m_ksq[23] = -1
+v_m_san[23] = "12...Rd8"
+v_m_from[24] = 3
+v_m_to[24] = 51
+v_m_cap[24] = 51
+v_m_rf[24] = -1
+v_m_rt[24] = -1
+v_m_promo[24] = -1
+v_m_ksq[24] = -1
+v_m_san[24] = "13.Rxd7"
+v_m_from[25] = 59
+v_m_to[25] = 51
+v_m_cap[25] = 51
+v_m_rf[25] = -1
+v_m_rt[25] = -1
+v_m_promo[25] = -1
+v_m_ksq[25] = -1
+v_m_san[25] = "13...Rxd7"
+v_m_from[26] = 7
+v_m_to[26] = 3
+v_m_cap[26] = -1
+v_m_rf[26] = -1
+v_m_rt[26] = -1
+v_m_promo[26] = -1
+v_m_ksq[26] = -1
+v_m_san[26] = "14.Rd1"
+v_m_from[27] = 52
+v_m_to[27] = 44
+v_m_cap[27] = -1
+v_m_rf[27] = -1
+v_m_rt[27] = -1
+v_m_promo[27] = -1
+v_m_ksq[27] = -1
+v_m_san[27] = "14...Qe6"
+v_m_from[28] = 33
+v_m_to[28] = 51
+v_m_cap[28] = 51
+v_m_rf[28] = -1
+v_m_rt[28] = -1
+v_m_promo[28] = -1
+v_m_chk[28] = 1
+v_m_ksq[28] = 60
+v_m_san[28] = "15.Bxd7+"
+v_m_from[29] = 45
+v_m_to[29] = 51
+v_m_cap[29] = 51
+v_m_rf[29] = -1
+v_m_rt[29] = -1
+v_m_promo[29] = -1
+v_m_ksq[29] = -1
+v_m_san[29] = "15...Nxd7"
+v_m_from[30] = 17
+v_m_to[30] = 57
+v_m_cap[30] = -1
+v_m_rf[30] = -1
+v_m_rt[30] = -1
+v_m_promo[30] = -1
+v_m_chk[30] = 1
+v_m_ksq[30] = 60
+v_m_san[30] = "16.Qb8+"
+v_m_from[31] = 51
+v_m_to[31] = 57
+v_m_cap[31] = 57
+v_m_rf[31] = -1
+v_m_rt[31] = -1
+v_m_promo[31] = -1
+v_m_ksq[31] = -1
+v_m_san[31] = "16...Nxb8"
+v_m_from[32] = 3
+v_m_to[32] = 59
+v_m_cap[32] = -1
+v_m_rf[32] = -1
+v_m_rt[32] = -1
+v_m_promo[32] = -1
+v_m_chk[32] = 1
+v_m_mate[32] = 1
+v_m_ksq[32] = 60
+v_m_san[32] = "17.Rd8#"
+v_m_from[33] = 12
+v_m_to[33] = 28
+v_m_cap[33] = -1
+v_m_rf[33] = -1
+v_m_rt[33] = -1
+v_m_promo[33] = -1
+v_m_ksq[33] = -1
+v_m_san[33] = "1.e4"
+v_m_from[34] = 52
+v_m_to[34] = 36
+v_m_cap[34] = -1
+v_m_rf[34] = -1
+v_m_rt[34] = -1
+v_m_promo[34] = -1
+v_m_ksq[34] = -1
+v_m_san[34] = "1...e5"
+v_m_from[35] = 13
+v_m_to[35] = 29
+v_m_cap[35] = -1
+v_m_rf[35] = -1
+v_m_rt[35] = -1
+v_m_promo[35] = -1
+v_m_ksq[35] = -1
+v_m_san[35] = "2.f4"
+v_m_from[36] = 36
+v_m_to[36] = 29
+v_m_cap[36] = 29
+v_m_rf[36] = -1
+v_m_rt[36] = -1
+v_m_promo[36] = -1
+v_m_ksq[36] = -1
+v_m_san[36] = "2...exf4"
+v_m_from[37] = 5
+v_m_to[37] = 26
+v_m_cap[37] = -1
+v_m_rf[37] = -1
+v_m_rt[37] = -1
+v_m_promo[37] = -1
+v_m_ksq[37] = -1
+v_m_san[37] = "3.Bc4"
+v_m_from[38] = 59
+v_m_to[38] = 31
+v_m_cap[38] = -1
+v_m_rf[38] = -1
+v_m_rt[38] = -1
+v_m_promo[38] = -1
+v_m_chk[38] = 1
+v_m_ksq[38] = 4
+v_m_san[38] = "3...Qh4+"
+v_m_from[39] = 4
+v_m_to[39] = 5
+v_m_cap[39] = -1
+v_m_rf[39] = -1
+v_m_rt[39] = -1
+v_m_promo[39] = -1
+v_m_ksq[39] = -1
+v_m_san[39] = "4.Kf1"
+v_m_from[40] = 49
+v_m_to[40] = 33
+v_m_cap[40] = -1
+v_m_rf[40] = -1
+v_m_rt[40] = -1
+v_m_promo[40] = -1
+v_m_ksq[40] = -1
+v_m_san[40] = "4...b5"
+v_m_from[41] = 26
+v_m_to[41] = 33
+v_m_cap[41] = 33
+v_m_rf[41] = -1
+v_m_rt[41] = -1
+v_m_promo[41] = -1
+v_m_ksq[41] = -1
+v_m_san[41] = "5.Bxb5"
+v_m_from[42] = 62
+v_m_to[42] = 45
+v_m_cap[42] = -1
+v_m_rf[42] = -1
+v_m_rt[42] = -1
+v_m_promo[42] = -1
+v_m_ksq[42] = -1
+v_m_san[42] = "5...Nf6"
+v_m_from[43] = 6
+v_m_to[43] = 21
+v_m_cap[43] = -1
+v_m_rf[43] = -1
+v_m_rt[43] = -1
+v_m_promo[43] = -1
+v_m_ksq[43] = -1
+v_m_san[43] = "6.Nf3"
+v_m_from[44] = 31
+v_m_to[44] = 47
+v_m_cap[44] = -1
+v_m_rf[44] = -1
+v_m_rt[44] = -1
+v_m_promo[44] = -1
+v_m_ksq[44] = -1
+v_m_san[44] = "6...Qh6"
+v_m_from[45] = 11
+v_m_to[45] = 19
+v_m_cap[45] = -1
+v_m_rf[45] = -1
+v_m_rt[45] = -1
+v_m_promo[45] = -1
+v_m_ksq[45] = -1
+v_m_san[45] = "7.d3"
+v_m_from[46] = 45
+v_m_to[46] = 39
+v_m_cap[46] = -1
+v_m_rf[46] = -1
+v_m_rt[46] = -1
+v_m_promo[46] = -1
+v_m_ksq[46] = -1
+v_m_san[46] = "7...Nh5"
+v_m_from[47] = 21
+v_m_to[47] = 31
+v_m_cap[47] = -1
+v_m_rf[47] = -1
+v_m_rt[47] = -1
+v_m_promo[47] = -1
+v_m_ksq[47] = -1
+v_m_san[47] = "8.Nh4"
+v_m_from[48] = 47
+v_m_to[48] = 38
+v_m_cap[48] = -1
+v_m_rf[48] = -1
+v_m_rt[48] = -1
+v_m_promo[48] = -1
+v_m_ksq[48] = -1
+v_m_san[48] = "8...Qg5"
+v_m_from[49] = 31
+v_m_to[49] = 37
+v_m_cap[49] = -1
+v_m_rf[49] = -1
+v_m_rt[49] = -1
+v_m_promo[49] = -1
+v_m_ksq[49] = -1
+v_m_san[49] = "9.Nf5"
+v_m_from[50] = 50
+v_m_to[50] = 42
+v_m_cap[50] = -1
+v_m_rf[50] = -1
+v_m_rt[50] = -1
+v_m_promo[50] = -1
+v_m_ksq[50] = -1
+v_m_san[50] = "9...c6"
+v_m_from[51] = 14
+v_m_to[51] = 30
+v_m_cap[51] = -1
+v_m_rf[51] = -1
+v_m_rt[51] = -1
+v_m_promo[51] = -1
+v_m_ksq[51] = -1
+v_m_san[51] = "10.g4"
+v_m_from[52] = 39
+v_m_to[52] = 45
+v_m_cap[52] = -1
+v_m_rf[52] = -1
+v_m_rt[52] = -1
+v_m_promo[52] = -1
+v_m_ksq[52] = -1
+v_m_san[52] = "10...Nf6"
+v_m_from[53] = 7
+v_m_to[53] = 6
+v_m_cap[53] = -1
+v_m_rf[53] = -1
+v_m_rt[53] = -1
+v_m_promo[53] = -1
+v_m_ksq[53] = -1
+v_m_san[53] = "11.Rg1"
+v_m_from[54] = 42
+v_m_to[54] = 33
+v_m_cap[54] = 33
+v_m_rf[54] = -1
+v_m_rt[54] = -1
+v_m_promo[54] = -1
+v_m_ksq[54] = -1
+v_m_san[54] = "11...cxb5"
+v_m_from[55] = 15
+v_m_to[55] = 31
+v_m_cap[55] = -1
+v_m_rf[55] = -1
+v_m_rt[55] = -1
+v_m_promo[55] = -1
+v_m_ksq[55] = -1
+v_m_san[55] = "12.h4"
+v_m_from[56] = 38
+v_m_to[56] = 46
+v_m_cap[56] = -1
+v_m_rf[56] = -1
+v_m_rt[56] = -1
+v_m_promo[56] = -1
+v_m_ksq[56] = -1
+v_m_san[56] = "12...Qg6"
+v_m_from[57] = 31
+v_m_to[57] = 39
+v_m_cap[57] = -1
+v_m_rf[57] = -1
+v_m_rt[57] = -1
+v_m_promo[57] = -1
+v_m_ksq[57] = -1
+v_m_san[57] = "13.h5"
+v_m_from[58] = 46
+v_m_to[58] = 38
+v_m_cap[58] = -1
+v_m_rf[58] = -1
+v_m_rt[58] = -1
+v_m_promo[58] = -1
+v_m_ksq[58] = -1
+v_m_san[58] = "13...Qg5"
+v_m_from[59] = 3
+v_m_to[59] = 21
+v_m_cap[59] = -1
+v_m_rf[59] = -1
+v_m_rt[59] = -1
+v_m_promo[59] = -1
+v_m_ksq[59] = -1
+v_m_san[59] = "14.Qf3"
+v_m_from[60] = 45
+v_m_to[60] = 62
+v_m_cap[60] = -1
+v_m_rf[60] = -1
+v_m_rt[60] = -1
+v_m_promo[60] = -1
+v_m_ksq[60] = -1
+v_m_san[60] = "14...Ng8"
+v_m_from[61] = 2
+v_m_to[61] = 29
+v_m_cap[61] = 29
+v_m_rf[61] = -1
+v_m_rt[61] = -1
+v_m_promo[61] = -1
+v_m_ksq[61] = -1
+v_m_san[61] = "15.Bxf4"
+v_m_from[62] = 38
+v_m_to[62] = 45
+v_m_cap[62] = -1
+v_m_rf[62] = -1
+v_m_rt[62] = -1
+v_m_promo[62] = -1
+v_m_ksq[62] = -1
+v_m_san[62] = "15...Qf6"
+v_m_from[63] = 1
+v_m_to[63] = 18
+v_m_cap[63] = -1
+v_m_rf[63] = -1
+v_m_rt[63] = -1
+v_m_promo[63] = -1
+v_m_ksq[63] = -1
+v_m_san[63] = "16.Nc3"
+v_m_from[64] = 61
+v_m_to[64] = 34
+v_m_cap[64] = -1
+v_m_rf[64] = -1
+v_m_rt[64] = -1
+v_m_promo[64] = -1
+v_m_ksq[64] = -1
+v_m_san[64] = "16...Bc5"
+v_m_from[65] = 18
+v_m_to[65] = 35
+v_m_cap[65] = -1
+v_m_rf[65] = -1
+v_m_rt[65] = -1
+v_m_promo[65] = -1
+v_m_ksq[65] = -1
+v_m_san[65] = "17.Nd5"
+v_m_from[66] = 45
+v_m_to[66] = 9
+v_m_cap[66] = 9
+v_m_rf[66] = -1
+v_m_rt[66] = -1
+v_m_promo[66] = -1
+v_m_ksq[66] = -1
+v_m_san[66] = "17...Qxb2"
+v_m_from[67] = 29
+v_m_to[67] = 43
+v_m_cap[67] = -1
+v_m_rf[67] = -1
+v_m_rt[67] = -1
+v_m_promo[67] = -1
+v_m_ksq[67] = -1
+v_m_san[67] = "18.Bd6"
+v_m_from[68] = 34
+v_m_to[68] = 6
+v_m_cap[68] = 6
+v_m_rf[68] = -1
+v_m_rt[68] = -1
+v_m_promo[68] = -1
+v_m_ksq[68] = -1
+v_m_san[68] = "18...Bxg1"
+v_m_from[69] = 28
+v_m_to[69] = 36
+v_m_cap[69] = -1
+v_m_rf[69] = -1
+v_m_rt[69] = -1
+v_m_promo[69] = -1
+v_m_ksq[69] = -1
+v_m_san[69] = "19.e5"
+v_m_from[70] = 9
+v_m_to[70] = 0
+v_m_rf[70] = -1
+v_m_rt[70] = -1
+v_m_promo[70] = -1
+v_m_chk[70] = 1
+v_m_ksq[70] = 5
+v_m_san[70] = "19...Qxa1+"
+v_m_from[71] = 5
+v_m_to[71] = 12
+v_m_cap[71] = -1
+v_m_rf[71] = -1
+v_m_rt[71] = -1
+v_m_promo[71] = -1
+v_m_ksq[71] = -1
+v_m_san[71] = "20.Ke2"
+v_m_from[72] = 57
+v_m_to[72] = 40
+v_m_cap[72] = -1
+v_m_rf[72] = -1
+v_m_rt[72] = -1
+v_m_promo[72] = -1
+v_m_ksq[72] = -1
+v_m_san[72] = "20...Na6"
+v_m_from[73] = 37
+v_m_to[73] = 54
+v_m_cap[73] = 54
+v_m_rf[73] = -1
+v_m_rt[73] = -1
+v_m_promo[73] = -1
+v_m_chk[73] = 1
+v_m_ksq[73] = 60
+v_m_san[73] = "21.Nxg7+"
+v_m_from[74] = 60
+v_m_to[74] = 59
+v_m_cap[74] = -1
+v_m_rf[74] = -1
+v_m_rt[74] = -1
+v_m_promo[74] = -1
+v_m_ksq[74] = -1
+v_m_san[74] = "21...Kd8"
+v_m_from[75] = 21
+v_m_to[75] = 45
+v_m_cap[75] = -1
+v_m_rf[75] = -1
+v_m_rt[75] = -1
+v_m_promo[75] = -1
+v_m_chk[75] = 1
+v_m_ksq[75] = 59
+v_m_san[75] = "22.Qf6+"
+v_m_from[76] = 62
+v_m_to[76] = 45
+v_m_cap[76] = 45
+v_m_rf[76] = -1
+v_m_rt[76] = -1
+v_m_promo[76] = -1
+v_m_ksq[76] = -1
+v_m_san[76] = "22...Nxf6"
+v_m_from[77] = 43
+v_m_to[77] = 52
+v_m_cap[77] = -1
+v_m_rf[77] = -1
+v_m_rt[77] = -1
+v_m_promo[77] = -1
+v_m_chk[77] = 1
+v_m_mate[77] = 1
+v_m_ksq[77] = 59
+v_m_san[77] = "23.Be7#"
+v_m_from[78] = 12
+v_m_to[78] = 28
+v_m_cap[78] = -1
+v_m_rf[78] = -1
+v_m_rt[78] = -1
+v_m_promo[78] = -1
+v_m_ksq[78] = -1
+v_m_san[78] = "1.e4"
+v_m_from[79] = 52
+v_m_to[79] = 36
+v_m_cap[79] = -1
+v_m_rf[79] = -1
+v_m_rt[79] = -1
+v_m_promo[79] = -1
+v_m_ksq[79] = -1
+v_m_san[79] = "1...e5"
+v_m_from[80] = 6
+v_m_to[80] = 21
+v_m_cap[80] = -1
+v_m_rf[80] = -1
+v_m_rt[80] = -1
+v_m_promo[80] = -1
+v_m_ksq[80] = -1
+v_m_san[80] = "2.Nf3"
+v_m_from[81] = 57
+v_m_to[81] = 42
+v_m_cap[81] = -1
+v_m_rf[81] = -1
+v_m_rt[81] = -1
+v_m_promo[81] = -1
+v_m_ksq[81] = -1
+v_m_san[81] = "2...Nc6"
+v_m_from[82] = 5
+v_m_to[82] = 26
+v_m_cap[82] = -1
+v_m_rf[82] = -1
+v_m_rt[82] = -1
+v_m_promo[82] = -1
+v_m_ksq[82] = -1
+v_m_san[82] = "3.Bc4"
+v_m_from[83] = 61
+v_m_to[83] = 34
+v_m_cap[83] = -1
+v_m_rf[83] = -1
+v_m_rt[83] = -1
+v_m_promo[83] = -1
+v_m_ksq[83] = -1
+v_m_san[83] = "3...Bc5"
+v_m_from[84] = 9
+v_m_to[84] = 25
+v_m_cap[84] = -1
+v_m_rf[84] = -1
+v_m_rt[84] = -1
+v_m_promo[84] = -1
+v_m_ksq[84] = -1
+v_m_san[84] = "4.b4"
+v_m_from[85] = 34
+v_m_to[85] = 25
+v_m_cap[85] = 25
+v_m_rf[85] = -1
+v_m_rt[85] = -1
+v_m_promo[85] = -1
+v_m_ksq[85] = -1
+v_m_san[85] = "4...Bxb4"
+v_m_from[86] = 10
+v_m_to[86] = 18
+v_m_cap[86] = -1
+v_m_rf[86] = -1
+v_m_rt[86] = -1
+v_m_promo[86] = -1
+v_m_ksq[86] = -1
+v_m_san[86] = "5.c3"
+v_m_from[87] = 25
+v_m_to[87] = 32
+v_m_cap[87] = -1
+v_m_rf[87] = -1
+v_m_rt[87] = -1
+v_m_promo[87] = -1
+v_m_ksq[87] = -1
+v_m_san[87] = "5...Ba5"
+v_m_from[88] = 11
+v_m_to[88] = 27
+v_m_cap[88] = -1
+v_m_rf[88] = -1
+v_m_rt[88] = -1
+v_m_promo[88] = -1
+v_m_ksq[88] = -1
+v_m_san[88] = "6.d4"
+v_m_from[89] = 36
+v_m_to[89] = 27
+v_m_cap[89] = 27
+v_m_rf[89] = -1
+v_m_rt[89] = -1
+v_m_promo[89] = -1
+v_m_ksq[89] = -1
+v_m_san[89] = "6...exd4"
+v_m_from[90] = 4
+v_m_to[90] = 6
+v_m_cap[90] = -1
+v_m_rf[90] = 7
+v_m_rt[90] = 5
+v_m_promo[90] = -1
+v_m_ksq[90] = -1
+v_m_san[90] = "7.O-O"
+v_m_from[91] = 27
+v_m_to[91] = 19
+v_m_cap[91] = -1
+v_m_rf[91] = -1
+v_m_rt[91] = -1
+v_m_promo[91] = -1
+v_m_ksq[91] = -1
+v_m_san[91] = "7...d3"
+v_m_from[92] = 3
+v_m_to[92] = 17
+v_m_cap[92] = -1
+v_m_rf[92] = -1
+v_m_rt[92] = -1
+v_m_promo[92] = -1
+v_m_ksq[92] = -1
+v_m_san[92] = "8.Qb3"
+v_m_from[93] = 59
+v_m_to[93] = 45
+v_m_cap[93] = -1
+v_m_rf[93] = -1
+v_m_rt[93] = -1
+v_m_promo[93] = -1
+v_m_ksq[93] = -1
+v_m_san[93] = "8...Qf6"
+v_m_from[94] = 28
+v_m_to[94] = 36
+v_m_cap[94] = -1
+v_m_rf[94] = -1
+v_m_rt[94] = -1
+v_m_promo[94] = -1
+v_m_ksq[94] = -1
+v_m_san[94] = "9.e5"
+v_m_from[95] = 45
+v_m_to[95] = 46
+v_m_cap[95] = -1
+v_m_rf[95] = -1
+v_m_rt[95] = -1
+v_m_promo[95] = -1
+v_m_ksq[95] = -1
+v_m_san[95] = "9...Qg6"
+v_m_from[96] = 5
+v_m_to[96] = 4
+v_m_cap[96] = -1
+v_m_rf[96] = -1
+v_m_rt[96] = -1
+v_m_promo[96] = -1
+v_m_ksq[96] = -1
+v_m_san[96] = "10.Re1"
+v_m_from[97] = 62
+v_m_to[97] = 52
+v_m_cap[97] = -1
+v_m_rf[97] = -1
+v_m_rt[97] = -1
+v_m_promo[97] = -1
+v_m_ksq[97] = -1
+v_m_san[97] = "10...Nge7"
+v_m_from[98] = 2
+v_m_to[98] = 16
+v_m_cap[98] = -1
+v_m_rf[98] = -1
+v_m_rt[98] = -1
+v_m_promo[98] = -1
+v_m_ksq[98] = -1
+v_m_san[98] = "11.Ba3"
+v_m_from[99] = 49
+v_m_to[99] = 33
+v_m_cap[99] = -1
+v_m_rf[99] = -1
+v_m_rt[99] = -1
+v_m_promo[99] = -1
+v_m_ksq[99] = -1
+v_m_san[99] = "11...b5"
+v_m_from[100] = 17
+v_m_to[100] = 33
+v_m_cap[100] = 33
+v_m_rf[100] = -1
+v_m_rt[100] = -1
+v_m_promo[100] = -1
+v_m_ksq[100] = -1
+v_m_san[100] = "12.Qxb5"
+v_m_from[101] = 56
+v_m_to[101] = 57
+v_m_cap[101] = -1
+v_m_rf[101] = -1
+v_m_rt[101] = -1
+v_m_promo[101] = -1
+v_m_ksq[101] = -1
+v_m_san[101] = "12...Rb8"
+v_m_from[102] = 33
+v_m_to[102] = 24
+v_m_cap[102] = -1
+v_m_rf[102] = -1
+v_m_rt[102] = -1
+v_m_promo[102] = -1
+v_m_ksq[102] = -1
+v_m_san[102] = "13.Qa4"
+v_m_from[103] = 32
+v_m_to[103] = 41
+v_m_cap[103] = -1
+v_m_rf[103] = -1
+v_m_rt[103] = -1
+v_m_promo[103] = -1
+v_m_ksq[103] = -1
+v_m_san[103] = "13...Bb6"
+v_m_from[104] = 1
+v_m_to[104] = 11
+v_m_cap[104] = -1
+v_m_rf[104] = -1
+v_m_rt[104] = -1
+v_m_promo[104] = -1
+v_m_ksq[104] = -1
+v_m_san[104] = "14.Nbd2"
+v_m_from[105] = 58
+v_m_to[105] = 49
+v_m_cap[105] = -1
+v_m_rf[105] = -1
+v_m_rt[105] = -1
+v_m_promo[105] = -1
+v_m_ksq[105] = -1
+v_m_san[105] = "14...Bb7"
+v_m_from[106] = 11
+v_m_to[106] = 28
+v_m_cap[106] = -1
+v_m_rf[106] = -1
+v_m_rt[106] = -1
+v_m_promo[106] = -1
+v_m_ksq[106] = -1
+v_m_san[106] = "15.Ne4"
+v_m_from[107] = 46
+v_m_to[107] = 37
+v_m_cap[107] = -1
+v_m_rf[107] = -1
+v_m_rt[107] = -1
+v_m_promo[107] = -1
+v_m_ksq[107] = -1
+v_m_san[107] = "15...Qf5"
+v_m_from[108] = 26
+v_m_to[108] = 19
+v_m_cap[108] = 19
+v_m_rf[108] = -1
+v_m_rt[108] = -1
+v_m_promo[108] = -1
+v_m_ksq[108] = -1
+v_m_san[108] = "16.Bxd3"
+v_m_from[109] = 37
+v_m_to[109] = 39
+v_m_cap[109] = -1
+v_m_rf[109] = -1
+v_m_rt[109] = -1
+v_m_promo[109] = -1
+v_m_ksq[109] = -1
+v_m_san[109] = "16...Qh5"
+v_m_from[110] = 28
+v_m_to[110] = 45
+v_m_cap[110] = -1
+v_m_rf[110] = -1
+v_m_rt[110] = -1
+v_m_promo[110] = -1
+v_m_chk[110] = 1
+v_m_ksq[110] = 60
+v_m_san[110] = "17.Nf6+"
+v_m_from[111] = 54
+v_m_to[111] = 45
+v_m_cap[111] = 45
+v_m_rf[111] = -1
+v_m_rt[111] = -1
+v_m_promo[111] = -1
+v_m_ksq[111] = -1
+v_m_san[111] = "17...gxf6"
+v_m_from[112] = 36
+v_m_to[112] = 45
+v_m_cap[112] = 45
+v_m_rf[112] = -1
+v_m_rt[112] = -1
+v_m_promo[112] = -1
+v_m_ksq[112] = -1
+v_m_san[112] = "18.exf6"
+v_m_from[113] = 63
+v_m_to[113] = 62
+v_m_cap[113] = -1
+v_m_rf[113] = -1
+v_m_rt[113] = -1
+v_m_promo[113] = -1
+v_m_ksq[113] = -1
+v_m_san[113] = "18...Rg8"
+v_m_from[114] = 0
+v_m_to[114] = 3
+v_m_cap[114] = -1
+v_m_rf[114] = -1
+v_m_rt[114] = -1
+v_m_promo[114] = -1
+v_m_ksq[114] = -1
+v_m_san[114] = "19.Rad1"
+v_m_from[115] = 39
+v_m_to[115] = 21
+v_m_cap[115] = 21
+v_m_rf[115] = -1
+v_m_rt[115] = -1
+v_m_promo[115] = -1
+v_m_ksq[115] = -1
+v_m_san[115] = "19...Qxf3"
+v_m_from[116] = 4
+v_m_to[116] = 52
+v_m_cap[116] = 52
+v_m_rf[116] = -1
+v_m_rt[116] = -1
+v_m_promo[116] = -1
+v_m_chk[116] = 1
+v_m_ksq[116] = 60
+v_m_san[116] = "20.Rxe7+"
+v_m_from[117] = 42
+v_m_to[117] = 52
+v_m_cap[117] = 52
+v_m_rf[117] = -1
+v_m_rt[117] = -1
+v_m_promo[117] = -1
+v_m_ksq[117] = -1
+v_m_san[117] = "20...Nxe7"
+v_m_from[118] = 24
+v_m_to[118] = 51
+v_m_cap[118] = 51
+v_m_rf[118] = -1
+v_m_rt[118] = -1
+v_m_promo[118] = -1
+v_m_chk[118] = 1
+v_m_ksq[118] = 60
+v_m_san[118] = "21.Qxd7+"
+v_m_from[119] = 60
+v_m_to[119] = 51
+v_m_cap[119] = 51
+v_m_rf[119] = -1
+v_m_rt[119] = -1
+v_m_promo[119] = -1
+v_m_ksq[119] = -1
+v_m_san[119] = "21...Kxd7"
+v_m_from[120] = 19
+v_m_to[120] = 37
+v_m_cap[120] = -1
+v_m_rf[120] = -1
+v_m_rt[120] = -1
+v_m_promo[120] = -1
+v_m_chk[120] = 1
+v_m_ksq[120] = 51
+v_m_san[120] = "22.Bf5+"
+v_m_from[121] = 51
+v_m_to[121] = 60
+v_m_cap[121] = -1
+v_m_rf[121] = -1
+v_m_rt[121] = -1
+v_m_promo[121] = -1
+v_m_ksq[121] = -1
+v_m_san[121] = "22...Ke8"
+v_m_from[122] = 37
+v_m_to[122] = 51
+v_m_cap[122] = -1
+v_m_rf[122] = -1
+v_m_rt[122] = -1
+v_m_promo[122] = -1
+v_m_chk[122] = 1
+v_m_ksq[122] = 60
+v_m_san[122] = "23.Bd7+"
+v_m_from[123] = 60
+v_m_to[123] = 61
+v_m_cap[123] = -1
+v_m_rf[123] = -1
+v_m_rt[123] = -1
+v_m_promo[123] = -1
+v_m_ksq[123] = -1
+v_m_san[123] = "23...Kf8"
+v_m_from[124] = 16
+v_m_to[124] = 52
+v_m_cap[124] = 52
+v_m_rf[124] = -1
+v_m_rt[124] = -1
+v_m_promo[124] = -1
+v_m_chk[124] = 1
+v_m_mate[124] = 1
+v_m_ksq[124] = 61
+v_m_san[124] = "24.Bxe7#"
+v_m_from[125] = 6
+v_m_to[125] = 21
+v_m_cap[125] = -1
+v_m_rf[125] = -1
+v_m_rt[125] = -1
+v_m_promo[125] = -1
+v_m_ksq[125] = -1
+v_m_san[125] = "1.Nf3"
+v_m_from[126] = 62
+v_m_to[126] = 45
+v_m_cap[126] = -1
+v_m_rf[126] = -1
+v_m_rt[126] = -1
+v_m_promo[126] = -1
+v_m_ksq[126] = -1
+v_m_san[126] = "1...Nf6"
+v_m_from[127] = 10
+v_m_to[127] = 26
+v_m_cap[127] = -1
+v_m_rf[127] = -1
+v_m_rt[127] = -1
+v_m_promo[127] = -1
+v_m_ksq[127] = -1
+v_m_san[127] = "2.c4"
+v_m_from[128] = 54
+v_m_to[128] = 46
+v_m_cap[128] = -1
+v_m_rf[128] = -1
+v_m_rt[128] = -1
+v_m_promo[128] = -1
+v_m_ksq[128] = -1
+v_m_san[128] = "2...g6"
+v_m_from[129] = 1
+v_m_to[129] = 18
+v_m_cap[129] = -1
+v_m_rf[129] = -1
+v_m_rt[129] = -1
+v_m_promo[129] = -1
+v_m_ksq[129] = -1
+v_m_san[129] = "3.Nc3"
+v_m_from[130] = 61
+v_m_to[130] = 54
+v_m_cap[130] = -1
+v_m_rf[130] = -1
+v_m_rt[130] = -1
+v_m_promo[130] = -1
+v_m_ksq[130] = -1
+v_m_san[130] = "3...Bg7"
+v_m_from[131] = 11
+v_m_to[131] = 27
+v_m_cap[131] = -1
+v_m_rf[131] = -1
+v_m_rt[131] = -1
+v_m_promo[131] = -1
+v_m_ksq[131] = -1
+v_m_san[131] = "4.d4"
+v_m_from[132] = 60
+v_m_to[132] = 62
+v_m_cap[132] = -1
+v_m_rf[132] = 63
+v_m_rt[132] = 61
+v_m_promo[132] = -1
+v_m_ksq[132] = -1
+v_m_san[132] = "4...O-O"
+v_m_from[133] = 2
+v_m_to[133] = 29
+v_m_cap[133] = -1
+v_m_rf[133] = -1
+v_m_rt[133] = -1
+v_m_promo[133] = -1
+v_m_ksq[133] = -1
+v_m_san[133] = "5.Bf4"
+v_m_from[134] = 51
+v_m_to[134] = 35
+v_m_cap[134] = -1
+v_m_rf[134] = -1
+v_m_rt[134] = -1
+v_m_promo[134] = -1
+v_m_ksq[134] = -1
+v_m_san[134] = "5...d5"
+v_m_from[135] = 3
+v_m_to[135] = 17
+v_m_cap[135] = -1
+v_m_rf[135] = -1
+v_m_rt[135] = -1
+v_m_promo[135] = -1
+v_m_ksq[135] = -1
+v_m_san[135] = "6.Qb3"
+v_m_from[136] = 35
+v_m_to[136] = 26
+v_m_cap[136] = 26
+v_m_rf[136] = -1
+v_m_rt[136] = -1
+v_m_promo[136] = -1
+v_m_ksq[136] = -1
+v_m_san[136] = "6...dxc4"
+v_m_from[137] = 17
+v_m_to[137] = 26
+v_m_cap[137] = 26
+v_m_rf[137] = -1
+v_m_rt[137] = -1
+v_m_promo[137] = -1
+v_m_ksq[137] = -1
+v_m_san[137] = "7.Qxc4"
+v_m_from[138] = 50
+v_m_to[138] = 42
+v_m_cap[138] = -1
+v_m_rf[138] = -1
+v_m_rt[138] = -1
+v_m_promo[138] = -1
+v_m_ksq[138] = -1
+v_m_san[138] = "7...c6"
+v_m_from[139] = 12
+v_m_to[139] = 28
+v_m_cap[139] = -1
+v_m_rf[139] = -1
+v_m_rt[139] = -1
+v_m_promo[139] = -1
+v_m_ksq[139] = -1
+v_m_san[139] = "8.e4"
+v_m_from[140] = 57
+v_m_to[140] = 51
+v_m_cap[140] = -1
+v_m_rf[140] = -1
+v_m_rt[140] = -1
+v_m_promo[140] = -1
+v_m_ksq[140] = -1
+v_m_san[140] = "8...Nbd7"
+v_m_from[141] = 0
+v_m_to[141] = 3
+v_m_cap[141] = -1
+v_m_rf[141] = -1
+v_m_rt[141] = -1
+v_m_promo[141] = -1
+v_m_ksq[141] = -1
+v_m_san[141] = "9.Rd1"
+v_m_from[142] = 51
+v_m_to[142] = 41
+v_m_cap[142] = -1
+v_m_rf[142] = -1
+v_m_rt[142] = -1
+v_m_promo[142] = -1
+v_m_ksq[142] = -1
+v_m_san[142] = "9...Nb6"
+v_m_from[143] = 26
+v_m_to[143] = 34
+v_m_cap[143] = -1
+v_m_rf[143] = -1
+v_m_rt[143] = -1
+v_m_promo[143] = -1
+v_m_ksq[143] = -1
+v_m_san[143] = "10.Qc5"
+v_m_from[144] = 58
+v_m_to[144] = 30
+v_m_cap[144] = -1
+v_m_rf[144] = -1
+v_m_rt[144] = -1
+v_m_promo[144] = -1
+v_m_ksq[144] = -1
+v_m_san[144] = "10...Bg4"
+v_m_from[145] = 29
+v_m_to[145] = 38
+v_m_cap[145] = -1
+v_m_rf[145] = -1
+v_m_rt[145] = -1
+v_m_promo[145] = -1
+v_m_ksq[145] = -1
+v_m_san[145] = "11.Bg5"
+v_m_from[146] = 41
+v_m_to[146] = 24
+v_m_cap[146] = -1
+v_m_rf[146] = -1
+v_m_rt[146] = -1
+v_m_promo[146] = -1
+v_m_ksq[146] = -1
+v_m_san[146] = "11...Na4"
+v_m_from[147] = 34
+v_m_to[147] = 16
+v_m_cap[147] = -1
+v_m_rf[147] = -1
+v_m_rt[147] = -1
+v_m_promo[147] = -1
+v_m_ksq[147] = -1
+v_m_san[147] = "12.Qa3"
+v_m_from[148] = 24
+v_m_to[148] = 18
+v_m_cap[148] = 18
+v_m_rf[148] = -1
+v_m_rt[148] = -1
+v_m_promo[148] = -1
+v_m_ksq[148] = -1
+v_m_san[148] = "12...Nxc3"
+v_m_from[149] = 9
+v_m_to[149] = 18
+v_m_cap[149] = 18
+v_m_rf[149] = -1
+v_m_rt[149] = -1
+v_m_promo[149] = -1
+v_m_ksq[149] = -1
+v_m_san[149] = "13.bxc3"
+v_m_from[150] = 45
+v_m_to[150] = 28
+v_m_cap[150] = 28
+v_m_rf[150] = -1
+v_m_rt[150] = -1
+v_m_promo[150] = -1
+v_m_ksq[150] = -1
+v_m_san[150] = "13...Nxe4"
+v_m_from[151] = 38
+v_m_to[151] = 52
+v_m_cap[151] = 52
+v_m_rf[151] = -1
+v_m_rt[151] = -1
+v_m_promo[151] = -1
+v_m_ksq[151] = -1
+v_m_san[151] = "14.Bxe7"
+v_m_from[152] = 59
+v_m_to[152] = 41
+v_m_cap[152] = -1
+v_m_rf[152] = -1
+v_m_rt[152] = -1
+v_m_promo[152] = -1
+v_m_ksq[152] = -1
+v_m_san[152] = "14...Qb6"
+v_m_from[153] = 5
+v_m_to[153] = 26
+v_m_cap[153] = -1
+v_m_rf[153] = -1
+v_m_rt[153] = -1
+v_m_promo[153] = -1
+v_m_ksq[153] = -1
+v_m_san[153] = "15.Bc4"
+v_m_from[154] = 28
+v_m_to[154] = 18
+v_m_cap[154] = 18
+v_m_rf[154] = -1
+v_m_rt[154] = -1
+v_m_promo[154] = -1
+v_m_ksq[154] = -1
+v_m_san[154] = "15...Nxc3"
+v_m_from[155] = 52
+v_m_to[155] = 34
+v_m_cap[155] = -1
+v_m_rf[155] = -1
+v_m_rt[155] = -1
+v_m_promo[155] = -1
+v_m_ksq[155] = -1
+v_m_san[155] = "16.Bc5"
+v_m_from[156] = 61
+v_m_to[156] = 60
+v_m_cap[156] = -1
+v_m_rf[156] = -1
+v_m_rt[156] = -1
+v_m_promo[156] = -1
+v_m_chk[156] = 1
+v_m_ksq[156] = 4
+v_m_san[156] = "16...Rfe8+"
+v_m_from[157] = 4
+v_m_to[157] = 5
+v_m_cap[157] = -1
+v_m_rf[157] = -1
+v_m_rt[157] = -1
+v_m_promo[157] = -1
+v_m_ksq[157] = -1
+v_m_san[157] = "17.Kf1"
+v_m_from[158] = 30
+v_m_to[158] = 44
+v_m_cap[158] = -1
+v_m_rf[158] = -1
+v_m_rt[158] = -1
+v_m_promo[158] = -1
+v_m_ksq[158] = -1
+v_m_san[158] = "17...Be6"
+v_m_from[159] = 34
+v_m_to[159] = 41
+v_m_cap[159] = 41
+v_m_rf[159] = -1
+v_m_rt[159] = -1
+v_m_promo[159] = -1
+v_m_ksq[159] = -1
+v_m_san[159] = "18.Bxb6"
+v_m_from[160] = 44
+v_m_to[160] = 26
+v_m_cap[160] = 26
+v_m_rf[160] = -1
+v_m_rt[160] = -1
+v_m_promo[160] = -1
+v_m_chk[160] = 1
+v_m_ksq[160] = 5
+v_m_san[160] = "18...Bxc4+"
+v_m_from[161] = 5
+v_m_to[161] = 6
+v_m_cap[161] = -1
+v_m_rf[161] = -1
+v_m_rt[161] = -1
+v_m_promo[161] = -1
+v_m_ksq[161] = -1
+v_m_san[161] = "19.Kg1"
+v_m_from[162] = 18
+v_m_to[162] = 12
+v_m_cap[162] = -1
+v_m_rf[162] = -1
+v_m_rt[162] = -1
+v_m_promo[162] = -1
+v_m_chk[162] = 1
+v_m_ksq[162] = 6
+v_m_san[162] = "19...Ne2+"
+v_m_from[163] = 6
+v_m_to[163] = 5
+v_m_cap[163] = -1
+v_m_rf[163] = -1
+v_m_rt[163] = -1
+v_m_promo[163] = -1
+v_m_ksq[163] = -1
+v_m_san[163] = "20.Kf1"
+v_m_from[164] = 12
+v_m_to[164] = 27
+v_m_cap[164] = 27
+v_m_rf[164] = -1
+v_m_rt[164] = -1
+v_m_promo[164] = -1
+v_m_chk[164] = 1
+v_m_ksq[164] = 5
+v_m_san[164] = "20...Nxd4+"
+v_m_from[165] = 5
+v_m_to[165] = 6
+v_m_cap[165] = -1
+v_m_rf[165] = -1
+v_m_rt[165] = -1
+v_m_promo[165] = -1
+v_m_ksq[165] = -1
+v_m_san[165] = "21.Kg1"
+v_m_from[166] = 27
+v_m_to[166] = 12
+v_m_cap[166] = -1
+v_m_rf[166] = -1
+v_m_rt[166] = -1
+v_m_promo[166] = -1
+v_m_chk[166] = 1
+v_m_ksq[166] = 6
+v_m_san[166] = "21...Ne2+"
+v_m_from[167] = 6
+v_m_to[167] = 5
+v_m_cap[167] = -1
+v_m_rf[167] = -1
+v_m_rt[167] = -1
+v_m_promo[167] = -1
+v_m_ksq[167] = -1
+v_m_san[167] = "22.Kf1"
+v_m_from[168] = 12
+v_m_to[168] = 18
+v_m_cap[168] = -1
+v_m_rf[168] = -1
+v_m_rt[168] = -1
+v_m_promo[168] = -1
+v_m_chk[168] = 1
+v_m_ksq[168] = 5
+v_m_san[168] = "22...Nc3+"
+v_m_from[169] = 5
+v_m_to[169] = 6
+v_m_cap[169] = -1
+v_m_rf[169] = -1
+v_m_rt[169] = -1
+v_m_promo[169] = -1
+v_m_ksq[169] = -1
+v_m_san[169] = "23.Kg1"
+v_m_from[170] = 48
+v_m_to[170] = 41
+v_m_cap[170] = 41
+v_m_rf[170] = -1
+v_m_rt[170] = -1
+v_m_promo[170] = -1
+v_m_ksq[170] = -1
+v_m_san[170] = "23...axb6"
+v_m_from[171] = 16
+v_m_to[171] = 25
+v_m_cap[171] = -1
+v_m_rf[171] = -1
+v_m_rt[171] = -1
+v_m_promo[171] = -1
+v_m_ksq[171] = -1
+v_m_san[171] = "24.Qb4"
+v_m_from[172] = 56
+v_m_to[172] = 24
+v_m_cap[172] = -1
+v_m_rf[172] = -1
+v_m_rt[172] = -1
+v_m_promo[172] = -1
+v_m_ksq[172] = -1
+v_m_san[172] = "24...Ra4"
+v_m_from[173] = 25
+v_m_to[173] = 41
+v_m_cap[173] = 41
+v_m_rf[173] = -1
+v_m_rt[173] = -1
+v_m_promo[173] = -1
+v_m_ksq[173] = -1
+v_m_san[173] = "25.Qxb6"
+v_m_from[174] = 18
+v_m_to[174] = 3
+v_m_cap[174] = 3
+v_m_rf[174] = -1
+v_m_rt[174] = -1
+v_m_promo[174] = -1
+v_m_ksq[174] = -1
+v_m_san[174] = "25...Nxd1"
+v_m_from[175] = 15
+v_m_to[175] = 23
+v_m_cap[175] = -1
+v_m_rf[175] = -1
+v_m_rt[175] = -1
+v_m_promo[175] = -1
+v_m_ksq[175] = -1
+v_m_san[175] = "26.h3"
+v_m_from[176] = 24
+v_m_to[176] = 8
+v_m_cap[176] = 8
+v_m_rf[176] = -1
+v_m_rt[176] = -1
+v_m_promo[176] = -1
+v_m_ksq[176] = -1
+v_m_san[176] = "26...Rxa2"
+v_m_from[177] = 6
+v_m_to[177] = 15
+v_m_cap[177] = -1
+v_m_rf[177] = -1
+v_m_rt[177] = -1
+v_m_promo[177] = -1
+v_m_ksq[177] = -1
+v_m_san[177] = "27.Kh2"
+v_m_from[178] = 3
+v_m_to[178] = 13
+v_m_cap[178] = 13
+v_m_rf[178] = -1
+v_m_rt[178] = -1
+v_m_promo[178] = -1
+v_m_ksq[178] = -1
+v_m_san[178] = "27...Nxf2"
+v_m_from[179] = 7
+v_m_to[179] = 4
+v_m_cap[179] = -1
+v_m_rf[179] = -1
+v_m_rt[179] = -1
+v_m_promo[179] = -1
+v_m_ksq[179] = -1
+v_m_san[179] = "28.Re1"
+v_m_from[180] = 60
+v_m_to[180] = 4
+v_m_cap[180] = 4
+v_m_rf[180] = -1
+v_m_rt[180] = -1
+v_m_promo[180] = -1
+v_m_ksq[180] = -1
+v_m_san[180] = "28...Rxe1"
+v_m_from[181] = 41
+v_m_to[181] = 59
+v_m_cap[181] = -1
+v_m_rf[181] = -1
+v_m_rt[181] = -1
+v_m_promo[181] = -1
+v_m_chk[181] = 1
+v_m_ksq[181] = 62
+v_m_san[181] = "29.Qd8+"
+v_m_from[182] = 54
+v_m_to[182] = 61
+v_m_cap[182] = -1
+v_m_rf[182] = -1
+v_m_rt[182] = -1
+v_m_promo[182] = -1
+v_m_ksq[182] = -1
+v_m_san[182] = "29...Bf8"
+v_m_from[183] = 21
+v_m_to[183] = 4
+v_m_cap[183] = 4
+v_m_rf[183] = -1
+v_m_rt[183] = -1
+v_m_promo[183] = -1
+v_m_ksq[183] = -1
+v_m_san[183] = "30.Nxe1"
+v_m_from[184] = 26
+v_m_to[184] = 35
+v_m_cap[184] = -1
+v_m_rf[184] = -1
+v_m_rt[184] = -1
+v_m_promo[184] = -1
+v_m_ksq[184] = -1
+v_m_san[184] = "30...Bd5"
+v_m_from[185] = 4
+v_m_to[185] = 21
+v_m_cap[185] = -1
+v_m_rf[185] = -1
+v_m_rt[185] = -1
+v_m_promo[185] = -1
+v_m_ksq[185] = -1
+v_m_san[185] = "31.Nf3"
+v_m_from[186] = 13
+v_m_to[186] = 28
+v_m_cap[186] = -1
+v_m_rf[186] = -1
+v_m_rt[186] = -1
+v_m_promo[186] = -1
+v_m_ksq[186] = -1
+v_m_san[186] = "31...Ne4"
+v_m_from[187] = 59
+v_m_to[187] = 57
+v_m_cap[187] = -1
+v_m_rf[187] = -1
+v_m_rt[187] = -1
+v_m_promo[187] = -1
+v_m_ksq[187] = -1
+v_m_san[187] = "32.Qb8"
+v_m_from[188] = 49
+v_m_to[188] = 33
+v_m_cap[188] = -1
+v_m_rf[188] = -1
+v_m_rt[188] = -1
+v_m_promo[188] = -1
+v_m_ksq[188] = -1
+v_m_san[188] = "32...b5"
+v_m_from[189] = 23
+v_m_to[189] = 31
+v_m_cap[189] = -1
+v_m_rf[189] = -1
+v_m_rt[189] = -1
+v_m_promo[189] = -1
+v_m_ksq[189] = -1
+v_m_san[189] = "33.h4"
+v_m_from[190] = 55
+v_m_to[190] = 39
+v_m_cap[190] = -1
+v_m_rf[190] = -1
+v_m_rt[190] = -1
+v_m_promo[190] = -1
+v_m_ksq[190] = -1
+v_m_san[190] = "33...h5"
+v_m_from[191] = 21
+v_m_to[191] = 36
+v_m_cap[191] = -1
+v_m_rf[191] = -1
+v_m_rt[191] = -1
+v_m_promo[191] = -1
+v_m_ksq[191] = -1
+v_m_san[191] = "34.Ne5"
+v_m_from[192] = 62
+v_m_to[192] = 54
+v_m_cap[192] = -1
+v_m_rf[192] = -1
+v_m_rt[192] = -1
+v_m_promo[192] = -1
+v_m_ksq[192] = -1
+v_m_san[192] = "34...Kg7"
+v_m_from[193] = 15
+v_m_to[193] = 6
+v_m_cap[193] = -1
+v_m_rf[193] = -1
+v_m_rt[193] = -1
+v_m_promo[193] = -1
+v_m_ksq[193] = -1
+v_m_san[193] = "35.Kg1"
+v_m_from[194] = 61
+v_m_to[194] = 34
+v_m_cap[194] = -1
+v_m_rf[194] = -1
+v_m_rt[194] = -1
+v_m_promo[194] = -1
+v_m_chk[194] = 1
+v_m_ksq[194] = 6
+v_m_san[194] = "35...Bc5+"
+v_m_from[195] = 6
+v_m_to[195] = 5
+v_m_cap[195] = -1
+v_m_rf[195] = -1
+v_m_rt[195] = -1
+v_m_promo[195] = -1
+v_m_ksq[195] = -1
+v_m_san[195] = "36.Kf1"
+v_m_from[196] = 28
+v_m_to[196] = 22
+v_m_cap[196] = -1
+v_m_rf[196] = -1
+v_m_rt[196] = -1
+v_m_promo[196] = -1
+v_m_chk[196] = 1
+v_m_ksq[196] = 5
+v_m_san[196] = "36...Ng3+"
+v_m_from[197] = 5
+v_m_to[197] = 4
+v_m_cap[197] = -1
+v_m_rf[197] = -1
+v_m_rt[197] = -1
+v_m_promo[197] = -1
+v_m_ksq[197] = -1
+v_m_san[197] = "37.Ke1"
+v_m_from[198] = 34
+v_m_to[198] = 25
+v_m_cap[198] = -1
+v_m_rf[198] = -1
+v_m_rt[198] = -1
+v_m_promo[198] = -1
+v_m_chk[198] = 1
+v_m_ksq[198] = 4
+v_m_san[198] = "37...Bb4+"
+v_m_from[199] = 4
+v_m_to[199] = 3
+v_m_cap[199] = -1
+v_m_rf[199] = -1
+v_m_rt[199] = -1
+v_m_promo[199] = -1
+v_m_ksq[199] = -1
+v_m_san[199] = "38.Kd1"
+v_m_from[200] = 35
+v_m_to[200] = 17
+v_m_cap[200] = -1
+v_m_rf[200] = -1
+v_m_rt[200] = -1
+v_m_promo[200] = -1
+v_m_chk[200] = 1
+v_m_ksq[200] = 3
+v_m_san[200] = "38...Bb3+"
+v_m_from[201] = 3
+v_m_to[201] = 2
+v_m_cap[201] = -1
+v_m_rf[201] = -1
+v_m_rt[201] = -1
+v_m_promo[201] = -1
+v_m_ksq[201] = -1
+v_m_san[201] = "39.Kc1"
+v_m_from[202] = 22
+v_m_to[202] = 12
+v_m_cap[202] = -1
+v_m_rf[202] = -1
+v_m_rt[202] = -1
+v_m_promo[202] = -1
+v_m_chk[202] = 1
+v_m_ksq[202] = 2
+v_m_san[202] = "39...Ne2+"
+v_m_from[203] = 2
+v_m_to[203] = 1
+v_m_cap[203] = -1
+v_m_rf[203] = -1
+v_m_rt[203] = -1
+v_m_promo[203] = -1
+v_m_ksq[203] = -1
+v_m_san[203] = "40.Kb1"
+v_m_from[204] = 12
+v_m_to[204] = 18
+v_m_cap[204] = -1
+v_m_rf[204] = -1
+v_m_rt[204] = -1
+v_m_promo[204] = -1
+v_m_chk[204] = 1
+v_m_ksq[204] = 1
+v_m_san[204] = "40...Nc3+"
+v_m_from[205] = 1
+v_m_to[205] = 2
+v_m_cap[205] = -1
+v_m_rf[205] = -1
+v_m_rt[205] = -1
+v_m_promo[205] = -1
+v_m_ksq[205] = -1
+v_m_san[205] = "41.Kc1"
+v_m_from[206] = 8
+v_m_to[206] = 10
+v_m_cap[206] = -1
+v_m_rf[206] = -1
+v_m_rt[206] = -1
+v_m_promo[206] = -1
+v_m_chk[206] = 1
+v_m_mate[206] = 1
+v_m_ksq[206] = 2
+v_m_san[206] = "41...Rc2#"
+v_m_from[207] = 12
+v_m_to[207] = 28
+v_m_cap[207] = -1
+v_m_rf[207] = -1
+v_m_rt[207] = -1
+v_m_promo[207] = -1
+v_m_ksq[207] = -1
+v_m_san[207] = "1.e4"
+v_m_from[208] = 50
+v_m_to[208] = 42
+v_m_cap[208] = -1
+v_m_rf[208] = -1
+v_m_rt[208] = -1
+v_m_promo[208] = -1
+v_m_ksq[208] = -1
+v_m_san[208] = "1...c6"
+v_m_from[209] = 11
+v_m_to[209] = 27
+v_m_cap[209] = -1
+v_m_rf[209] = -1
+v_m_rt[209] = -1
+v_m_promo[209] = -1
+v_m_ksq[209] = -1
+v_m_san[209] = "2.d4"
+v_m_from[210] = 51
+v_m_to[210] = 35
+v_m_cap[210] = -1
+v_m_rf[210] = -1
+v_m_rt[210] = -1
+v_m_promo[210] = -1
+v_m_ksq[210] = -1
+v_m_san[210] = "2...d5"
+v_m_from[211] = 1
+v_m_to[211] = 18
+v_m_cap[211] = -1
+v_m_rf[211] = -1
+v_m_rt[211] = -1
+v_m_promo[211] = -1
+v_m_ksq[211] = -1
+v_m_san[211] = "3.Nc3"
+v_m_from[212] = 35
+v_m_to[212] = 28
+v_m_cap[212] = 28
+v_m_rf[212] = -1
+v_m_rt[212] = -1
+v_m_promo[212] = -1
+v_m_ksq[212] = -1
+v_m_san[212] = "3...dxe4"
+v_m_from[213] = 18
+v_m_to[213] = 28
+v_m_cap[213] = 28
+v_m_rf[213] = -1
+v_m_rt[213] = -1
+v_m_promo[213] = -1
+v_m_ksq[213] = -1
+v_m_san[213] = "4.Nxe4"
+v_m_from[214] = 62
+v_m_to[214] = 45
+v_m_cap[214] = -1
+v_m_rf[214] = -1
+v_m_rt[214] = -1
+v_m_promo[214] = -1
+v_m_ksq[214] = -1
+v_m_san[214] = "4...Nf6"
+v_m_from[215] = 3
+v_m_to[215] = 19
+v_m_cap[215] = -1
+v_m_rf[215] = -1
+v_m_rt[215] = -1
+v_m_promo[215] = -1
+v_m_ksq[215] = -1
+v_m_san[215] = "5.Qd3"
+v_m_from[216] = 52
+v_m_to[216] = 36
+v_m_cap[216] = -1
+v_m_rf[216] = -1
+v_m_rt[216] = -1
+v_m_promo[216] = -1
+v_m_ksq[216] = -1
+v_m_san[216] = "5...e5"
+v_m_from[217] = 27
+v_m_to[217] = 36
+v_m_cap[217] = 36
+v_m_rf[217] = -1
+v_m_rt[217] = -1
+v_m_promo[217] = -1
+v_m_ksq[217] = -1
+v_m_san[217] = "6.dxe5"
+v_m_from[218] = 59
+v_m_to[218] = 32
+v_m_cap[218] = -1
+v_m_rf[218] = -1
+v_m_rt[218] = -1
+v_m_promo[218] = -1
+v_m_chk[218] = 1
+v_m_ksq[218] = 4
+v_m_san[218] = "6...Qa5+"
+v_m_from[219] = 2
+v_m_to[219] = 11
+v_m_cap[219] = -1
+v_m_rf[219] = -1
+v_m_rt[219] = -1
+v_m_promo[219] = -1
+v_m_ksq[219] = -1
+v_m_san[219] = "7.Bd2"
+v_m_from[220] = 32
+v_m_to[220] = 36
+v_m_cap[220] = 36
+v_m_rf[220] = -1
+v_m_rt[220] = -1
+v_m_promo[220] = -1
+v_m_ksq[220] = -1
+v_m_san[220] = "7...Qxe5"
+v_m_from[221] = 4
+v_m_to[221] = 2
+v_m_cap[221] = -1
+v_m_rt[221] = 3
+v_m_promo[221] = -1
+v_m_ksq[221] = -1
+v_m_san[221] = "8.O-O-O"
+v_m_from[222] = 45
+v_m_to[222] = 28
+v_m_cap[222] = 28
+v_m_rf[222] = -1
+v_m_rt[222] = -1
+v_m_promo[222] = -1
+v_m_ksq[222] = -1
+v_m_san[222] = "8...Nxe4"
+v_m_from[223] = 19
+v_m_to[223] = 59
+v_m_cap[223] = -1
+v_m_rf[223] = -1
+v_m_rt[223] = -1
+v_m_promo[223] = -1
+v_m_chk[223] = 1
+v_m_ksq[223] = 60
+v_m_san[223] = "9.Qd8+"
+v_m_from[224] = 60
+v_m_to[224] = 59
+v_m_cap[224] = 59
+v_m_rf[224] = -1
+v_m_rt[224] = -1
+v_m_promo[224] = -1
+v_m_ksq[224] = -1
+v_m_san[224] = "9...Kxd8"
+v_m_from[225] = 11
+v_m_to[225] = 38
+v_m_cap[225] = -1
+v_m_rf[225] = -1
+v_m_rt[225] = -1
+v_m_promo[225] = -1
+v_m_chk[225] = 1
+v_m_ksq[225] = 59
+v_m_san[225] = "10.Bg5+"
+v_m_from[226] = 59
+v_m_to[226] = 50
+v_m_cap[226] = -1
+v_m_rf[226] = -1
+v_m_rt[226] = -1
+v_m_promo[226] = -1
+v_m_ksq[226] = -1
+v_m_san[226] = "10...Kc7"
+v_m_from[227] = 38
+v_m_to[227] = 59
+v_m_cap[227] = -1
+v_m_rf[227] = -1
+v_m_rt[227] = -1
+v_m_promo[227] = -1
+v_m_chk[227] = 1
+v_m_mate[227] = 1
+v_m_ksq[227] = 50
+v_m_san[227] = "11.Bd8#"
+v_m_from[228] = 12
+v_m_to[228] = 28
+v_m_cap[228] = -1
+v_m_rf[228] = -1
+v_m_rt[228] = -1
+v_m_promo[228] = -1
+v_m_ksq[228] = -1
+v_m_san[228] = "1.e4"
+v_m_from[229] = 51
+v_m_to[229] = 43
+v_m_cap[229] = -1
+v_m_rf[229] = -1
+v_m_rt[229] = -1
+v_m_promo[229] = -1
+v_m_ksq[229] = -1
+v_m_san[229] = "1...d6"
+v_m_from[230] = 11
+v_m_to[230] = 27
+v_m_cap[230] = -1
+v_m_rf[230] = -1
+v_m_rt[230] = -1
+v_m_promo[230] = -1
+v_m_ksq[230] = -1
+v_m_san[230] = "2.d4"
+v_m_from[231] = 62
+v_m_to[231] = 45
+v_m_cap[231] = -1
+v_m_rf[231] = -1
+v_m_rt[231] = -1
+v_m_promo[231] = -1
+v_m_ksq[231] = -1
+v_m_san[231] = "2...Nf6"
+v_m_from[232] = 1
+v_m_to[232] = 18
+v_m_cap[232] = -1
+v_m_rf[232] = -1
+v_m_rt[232] = -1
+v_m_promo[232] = -1
+v_m_ksq[232] = -1
+v_m_san[232] = "3.Nc3"
+v_m_from[233] = 54
+v_m_to[233] = 46
+v_m_cap[233] = -1
+v_m_rf[233] = -1
+v_m_rt[233] = -1
+v_m_promo[233] = -1
+v_m_ksq[233] = -1
+v_m_san[233] = "3...g6"
+v_m_from[234] = 2
+v_m_to[234] = 20
+v_m_cap[234] = -1
+v_m_rf[234] = -1
+v_m_rt[234] = -1
+v_m_promo[234] = -1
+v_m_ksq[234] = -1
+v_m_san[234] = "4.Be3"
+v_m_from[235] = 61
+v_m_to[235] = 54
+v_m_cap[235] = -1
+v_m_rf[235] = -1
+v_m_rt[235] = -1
+v_m_promo[235] = -1
+v_m_ksq[235] = -1
+v_m_san[235] = "4...Bg7"
+v_m_from[236] = 3
+v_m_to[236] = 11
+v_m_cap[236] = -1
+v_m_rf[236] = -1
+v_m_rt[236] = -1
+v_m_promo[236] = -1
+v_m_ksq[236] = -1
+v_m_san[236] = "5.Qd2"
+v_m_from[237] = 50
+v_m_to[237] = 42
+v_m_cap[237] = -1
+v_m_rf[237] = -1
+v_m_rt[237] = -1
+v_m_promo[237] = -1
+v_m_ksq[237] = -1
+v_m_san[237] = "5...c6"
+v_m_from[238] = 13
+v_m_to[238] = 21
+v_m_cap[238] = -1
+v_m_rf[238] = -1
+v_m_rt[238] = -1
+v_m_promo[238] = -1
+v_m_ksq[238] = -1
+v_m_san[238] = "6.f3"
+v_m_from[239] = 49
+v_m_to[239] = 33
+v_m_cap[239] = -1
+v_m_rf[239] = -1
+v_m_rt[239] = -1
+v_m_promo[239] = -1
+v_m_ksq[239] = -1
+v_m_san[239] = "6...b5"
+v_m_from[240] = 6
+v_m_to[240] = 12
+v_m_cap[240] = -1
+v_m_rf[240] = -1
+v_m_rt[240] = -1
+v_m_promo[240] = -1
+v_m_ksq[240] = -1
+v_m_san[240] = "7.Nge2"
+v_m_from[241] = 57
+v_m_to[241] = 51
+v_m_cap[241] = -1
+v_m_rf[241] = -1
+v_m_rt[241] = -1
+v_m_promo[241] = -1
+v_m_ksq[241] = -1
+v_m_san[241] = "7...Nbd7"
+v_m_from[242] = 20
+v_m_to[242] = 47
+v_m_cap[242] = -1
+v_m_rf[242] = -1
+v_m_rt[242] = -1
+v_m_promo[242] = -1
+v_m_ksq[242] = -1
+v_m_san[242] = "8.Bh6"
+v_m_from[243] = 54
+v_m_to[243] = 47
+v_m_cap[243] = 47
+v_m_rf[243] = -1
+v_m_rt[243] = -1
+v_m_promo[243] = -1
+v_m_ksq[243] = -1
+v_m_san[243] = "8...Bxh6"
+v_m_from[244] = 11
+v_m_to[244] = 47
+v_m_cap[244] = 47
+v_m_rf[244] = -1
+v_m_rt[244] = -1
+v_m_promo[244] = -1
+v_m_ksq[244] = -1
+v_m_san[244] = "9.Qxh6"
+v_m_from[245] = 58
+v_m_to[245] = 49
+v_m_cap[245] = -1
+v_m_rf[245] = -1
+v_m_rt[245] = -1
+v_m_promo[245] = -1
+v_m_ksq[245] = -1
+v_m_san[245] = "9...Bb7"
+v_m_from[246] = 8
+v_m_to[246] = 16
+v_m_cap[246] = -1
+v_m_rf[246] = -1
+v_m_rt[246] = -1
+v_m_promo[246] = -1
+v_m_ksq[246] = -1
+v_m_san[246] = "10.a3"
+v_m_from[247] = 52
+v_m_to[247] = 36
+v_m_cap[247] = -1
+v_m_rf[247] = -1
+v_m_rt[247] = -1
+v_m_promo[247] = -1
+v_m_ksq[247] = -1
+v_m_san[247] = "10...e5"
+v_m_from[248] = 4
+v_m_to[248] = 2
+v_m_cap[248] = -1
+v_m_rt[248] = 3
+v_m_promo[248] = -1
+v_m_ksq[248] = -1
+v_m_san[248] = "11.O-O-O"
+v_m_from[249] = 59
+v_m_to[249] = 52
+v_m_cap[249] = -1
+v_m_rf[249] = -1
+v_m_rt[249] = -1
+v_m_promo[249] = -1
+v_m_ksq[249] = -1
+v_m_san[249] = "11...Qe7"
+v_m_from[250] = 2
+v_m_to[250] = 1
+v_m_cap[250] = -1
+v_m_rf[250] = -1
+v_m_rt[250] = -1
+v_m_promo[250] = -1
+v_m_ksq[250] = -1
+v_m_san[250] = "12.Kb1"
+v_m_from[251] = 48
+v_m_to[251] = 40
+v_m_cap[251] = -1
+v_m_rf[251] = -1
+v_m_rt[251] = -1
+v_m_promo[251] = -1
+v_m_ksq[251] = -1
+v_m_san[251] = "12...a6"
+v_m_from[252] = 12
+v_m_to[252] = 2
+v_m_cap[252] = -1
+v_m_rf[252] = -1
+v_m_rt[252] = -1
+v_m_promo[252] = -1
+v_m_ksq[252] = -1
+v_m_san[252] = "13.Nc1"
+v_m_from[253] = 60
+v_m_to[253] = 58
+v_m_cap[253] = -1
+v_m_rf[253] = 56
+v_m_rt[253] = 59
+v_m_promo[253] = -1
+v_m_ksq[253] = -1
+v_m_san[253] = "13...O-O-O"
+v_m_from[254] = 2
+v_m_to[254] = 17
+v_m_cap[254] = -1
+v_m_rf[254] = -1
+v_m_rt[254] = -1
+v_m_promo[254] = -1
+v_m_ksq[254] = -1
+v_m_san[254] = "14.Nb3"
+v_m_from[255] = 36
+v_m_to[255] = 27
+v_m_cap[255] = 27
+v_m_rf[255] = -1
+v_m_rt[255] = -1
+v_m_promo[255] = -1
+v_m_ksq[255] = -1
+v_m_san[255] = "14...exd4"
+v_m_from[256] = 3
+v_m_to[256] = 27
+v_m_cap[256] = 27
+v_m_rf[256] = -1
+v_m_rt[256] = -1
+v_m_promo[256] = -1
+v_m_ksq[256] = -1
+v_m_san[256] = "15.Rxd4"
+v_m_from[257] = 42
+v_m_to[257] = 34
+v_m_cap[257] = -1
+v_m_rf[257] = -1
+v_m_rt[257] = -1
+v_m_promo[257] = -1
+v_m_ksq[257] = -1
+v_m_san[257] = "15...c5"
+v_m_from[258] = 27
+v_m_to[258] = 3
+v_m_cap[258] = -1
+v_m_rf[258] = -1
+v_m_rt[258] = -1
+v_m_promo[258] = -1
+v_m_ksq[258] = -1
+v_m_san[258] = "16.Rd1"
+v_m_from[259] = 51
+v_m_to[259] = 41
+v_m_cap[259] = -1
+v_m_rf[259] = -1
+v_m_rt[259] = -1
+v_m_promo[259] = -1
+v_m_ksq[259] = -1
+v_m_san[259] = "16...Nb6"
+v_m_from[260] = 14
+v_m_to[260] = 22
+v_m_cap[260] = -1
+v_m_rf[260] = -1
+v_m_rt[260] = -1
+v_m_promo[260] = -1
+v_m_ksq[260] = -1
+v_m_san[260] = "17.g3"
+v_m_from[261] = 58
+v_m_to[261] = 57
+v_m_cap[261] = -1
+v_m_rf[261] = -1
+v_m_rt[261] = -1
+v_m_promo[261] = -1
+v_m_ksq[261] = -1
+v_m_san[261] = "17...Kb8"
+v_m_from[262] = 17
+v_m_to[262] = 32
+v_m_cap[262] = -1
+v_m_rf[262] = -1
+v_m_rt[262] = -1
+v_m_promo[262] = -1
+v_m_ksq[262] = -1
+v_m_san[262] = "18.Na5"
+v_m_from[263] = 49
+v_m_to[263] = 56
+v_m_cap[263] = -1
+v_m_rf[263] = -1
+v_m_rt[263] = -1
+v_m_promo[263] = -1
+v_m_ksq[263] = -1
+v_m_san[263] = "18...Ba8"
+v_m_from[264] = 5
+v_m_to[264] = 23
+v_m_cap[264] = -1
+v_m_rf[264] = -1
+v_m_rt[264] = -1
+v_m_promo[264] = -1
+v_m_ksq[264] = -1
+v_m_san[264] = "19.Bh3"
+v_m_from[265] = 43
+v_m_to[265] = 35
+v_m_cap[265] = -1
+v_m_rf[265] = -1
+v_m_rt[265] = -1
+v_m_promo[265] = -1
+v_m_ksq[265] = -1
+v_m_san[265] = "19...d5"
+v_m_from[266] = 47
+v_m_to[266] = 29
+v_m_cap[266] = -1
+v_m_rf[266] = -1
+v_m_rt[266] = -1
+v_m_promo[266] = -1
+v_m_chk[266] = 1
+v_m_ksq[266] = 57
+v_m_san[266] = "20.Qf4+"
+v_m_from[267] = 57
+v_m_to[267] = 48
+v_m_cap[267] = -1
+v_m_rf[267] = -1
+v_m_rt[267] = -1
+v_m_promo[267] = -1
+v_m_ksq[267] = -1
+v_m_san[267] = "20...Ka7"
+v_m_from[268] = 7
+v_m_to[268] = 4
+v_m_cap[268] = -1
+v_m_rf[268] = -1
+v_m_rt[268] = -1
+v_m_promo[268] = -1
+v_m_ksq[268] = -1
+v_m_san[268] = "21.Rhe1"
+v_m_from[269] = 35
+v_m_to[269] = 27
+v_m_cap[269] = -1
+v_m_rf[269] = -1
+v_m_rt[269] = -1
+v_m_promo[269] = -1
+v_m_ksq[269] = -1
+v_m_san[269] = "21...d4"
+v_m_from[270] = 18
+v_m_to[270] = 35
+v_m_cap[270] = -1
+v_m_rf[270] = -1
+v_m_rt[270] = -1
+v_m_promo[270] = -1
+v_m_ksq[270] = -1
+v_m_san[270] = "22.Nd5"
+v_m_from[271] = 41
+v_m_to[271] = 35
+v_m_cap[271] = 35
+v_m_rf[271] = -1
+v_m_rt[271] = -1
+v_m_promo[271] = -1
+v_m_ksq[271] = -1
+v_m_san[271] = "22...Nbxd5"
+v_m_from[272] = 28
+v_m_to[272] = 35
+v_m_cap[272] = 35
+v_m_rf[272] = -1
+v_m_rt[272] = -1
+v_m_promo[272] = -1
+v_m_ksq[272] = -1
+v_m_san[272] = "23.exd5"
+v_m_from[273] = 52
+v_m_to[273] = 43
+v_m_cap[273] = -1
+v_m_rf[273] = -1
+v_m_rt[273] = -1
+v_m_promo[273] = -1
+v_m_ksq[273] = -1
+v_m_san[273] = "23...Qd6"
+v_m_from[274] = 3
+v_m_to[274] = 27
+v_m_cap[274] = 27
+v_m_rf[274] = -1
+v_m_rt[274] = -1
+v_m_promo[274] = -1
+v_m_ksq[274] = -1
+v_m_san[274] = "24.Rxd4"
+v_m_from[275] = 34
+v_m_to[275] = 27
+v_m_cap[275] = 27
+v_m_rf[275] = -1
+v_m_rt[275] = -1
+v_m_promo[275] = -1
+v_m_ksq[275] = -1
+v_m_san[275] = "24...cxd4"
+v_m_from[276] = 4
+v_m_to[276] = 52
+v_m_cap[276] = -1
+v_m_rf[276] = -1
+v_m_rt[276] = -1
+v_m_promo[276] = -1
+v_m_chk[276] = 1
+v_m_ksq[276] = 48
+v_m_san[276] = "25.Re7+"
+v_m_from[277] = 48
+v_m_to[277] = 41
+v_m_cap[277] = -1
+v_m_rf[277] = -1
+v_m_rt[277] = -1
+v_m_promo[277] = -1
+v_m_ksq[277] = -1
+v_m_san[277] = "25...Kb6"
+v_m_from[278] = 29
+v_m_to[278] = 27
+v_m_cap[278] = 27
+v_m_rf[278] = -1
+v_m_rt[278] = -1
+v_m_promo[278] = -1
+v_m_chk[278] = 1
+v_m_ksq[278] = 41
+v_m_san[278] = "26.Qxd4+"
+v_m_from[279] = 41
+v_m_to[279] = 32
+v_m_cap[279] = 32
+v_m_rf[279] = -1
+v_m_rt[279] = -1
+v_m_promo[279] = -1
+v_m_ksq[279] = -1
+v_m_san[279] = "26...Kxa5"
+v_m_from[280] = 9
+v_m_to[280] = 25
+v_m_cap[280] = -1
+v_m_rf[280] = -1
+v_m_rt[280] = -1
+v_m_promo[280] = -1
+v_m_chk[280] = 1
+v_m_ksq[280] = 32
+v_m_san[280] = "27.b4+"
+v_m_from[281] = 32
+v_m_to[281] = 24
+v_m_cap[281] = -1
+v_m_rf[281] = -1
+v_m_rt[281] = -1
+v_m_promo[281] = -1
+v_m_ksq[281] = -1
+v_m_san[281] = "27...Ka4"
+v_m_from[282] = 27
+v_m_to[282] = 18
+v_m_cap[282] = -1
+v_m_rf[282] = -1
+v_m_rt[282] = -1
+v_m_promo[282] = -1
+v_m_ksq[282] = -1
+v_m_san[282] = "28.Qc3"
+v_m_from[283] = 43
+v_m_to[283] = 35
+v_m_cap[283] = 35
+v_m_rf[283] = -1
+v_m_rt[283] = -1
+v_m_promo[283] = -1
+v_m_ksq[283] = -1
+v_m_san[283] = "28...Qxd5"
+v_m_from[284] = 52
+v_m_to[284] = 48
+v_m_cap[284] = -1
+v_m_rf[284] = -1
+v_m_rt[284] = -1
+v_m_promo[284] = -1
+v_m_ksq[284] = -1
+v_m_san[284] = "29.Ra7"
+v_m_from[285] = 56
+v_m_to[285] = 49
+v_m_cap[285] = -1
+v_m_rf[285] = -1
+v_m_rt[285] = -1
+v_m_promo[285] = -1
+v_m_ksq[285] = -1
+v_m_san[285] = "29...Bb7"
+v_m_from[286] = 48
+v_m_to[286] = 49
+v_m_cap[286] = 49
+v_m_rf[286] = -1
+v_m_rt[286] = -1
+v_m_promo[286] = -1
+v_m_ksq[286] = -1
+v_m_san[286] = "30.Rxb7"
+v_m_from[287] = 35
+v_m_to[287] = 26
+v_m_cap[287] = -1
+v_m_rf[287] = -1
+v_m_rt[287] = -1
+v_m_promo[287] = -1
+v_m_ksq[287] = -1
+v_m_san[287] = "30...Qc4"
+v_m_from[288] = 18
+v_m_to[288] = 45
+v_m_cap[288] = 45
+v_m_rf[288] = -1
+v_m_rt[288] = -1
+v_m_promo[288] = -1
+v_m_ksq[288] = -1
+v_m_san[288] = "31.Qxf6"
+v_m_from[289] = 24
+v_m_to[289] = 16
+v_m_cap[289] = 16
+v_m_rf[289] = -1
+v_m_rt[289] = -1
+v_m_promo[289] = -1
+v_m_ksq[289] = -1
+v_m_san[289] = "31...Kxa3"
+v_m_from[290] = 45
+v_m_to[290] = 40
+v_m_cap[290] = 40
+v_m_rf[290] = -1
+v_m_rt[290] = -1
+v_m_promo[290] = -1
+v_m_chk[290] = 1
+v_m_ksq[290] = 16
+v_m_san[290] = "32.Qxa6+"
+v_m_from[291] = 16
+v_m_to[291] = 25
+v_m_cap[291] = 25
+v_m_rf[291] = -1
+v_m_rt[291] = -1
+v_m_promo[291] = -1
+v_m_ksq[291] = -1
+v_m_san[291] = "32...Kxb4"
+v_m_from[292] = 10
+v_m_to[292] = 18
+v_m_cap[292] = -1
+v_m_rf[292] = -1
+v_m_rt[292] = -1
+v_m_promo[292] = -1
+v_m_chk[292] = 1
+v_m_ksq[292] = 25
+v_m_san[292] = "33.c3+"
+v_m_from[293] = 25
+v_m_to[293] = 18
+v_m_cap[293] = 18
+v_m_rf[293] = -1
+v_m_rt[293] = -1
+v_m_promo[293] = -1
+v_m_ksq[293] = -1
+v_m_san[293] = "33...Kxc3"
+v_m_from[294] = 40
+v_m_to[294] = 0
+v_m_cap[294] = -1
+v_m_rf[294] = -1
+v_m_rt[294] = -1
+v_m_promo[294] = -1
+v_m_chk[294] = 1
+v_m_ksq[294] = 18
+v_m_san[294] = "34.Qa1+"
+v_m_from[295] = 18
+v_m_to[295] = 11
+v_m_cap[295] = -1
+v_m_rf[295] = -1
+v_m_rt[295] = -1
+v_m_promo[295] = -1
+v_m_ksq[295] = -1
+v_m_san[295] = "34...Kd2"
+v_m_from[296] = 0
+v_m_to[296] = 9
+v_m_cap[296] = -1
+v_m_rf[296] = -1
+v_m_rt[296] = -1
+v_m_promo[296] = -1
+v_m_chk[296] = 1
+v_m_ksq[296] = 11
+v_m_san[296] = "35.Qb2+"
+v_m_from[297] = 11
+v_m_to[297] = 3
+v_m_cap[297] = -1
+v_m_rf[297] = -1
+v_m_rt[297] = -1
+v_m_promo[297] = -1
+v_m_ksq[297] = -1
+v_m_san[297] = "35...Kd1"
+v_m_from[298] = 23
+v_m_to[298] = 5
+v_m_cap[298] = -1
+v_m_rf[298] = -1
+v_m_rt[298] = -1
+v_m_promo[298] = -1
+v_m_ksq[298] = -1
+v_m_san[298] = "36.Bf1"
+v_m_from[299] = 59
+v_m_to[299] = 11
+v_m_cap[299] = -1
+v_m_rf[299] = -1
+v_m_rt[299] = -1
+v_m_promo[299] = -1
+v_m_ksq[299] = -1
+v_m_san[299] = "36...Rd2"
+v_m_from[300] = 49
+v_m_to[300] = 51
+v_m_cap[300] = -1
+v_m_rf[300] = -1
+v_m_rt[300] = -1
+v_m_promo[300] = -1
+v_m_ksq[300] = -1
+v_m_san[300] = "37.Rd7"
+v_m_from[301] = 11
+v_m_to[301] = 51
+v_m_cap[301] = 51
+v_m_rf[301] = -1
+v_m_rt[301] = -1
+v_m_promo[301] = -1
+v_m_ksq[301] = -1
+v_m_san[301] = "37...Rxd7"
+v_m_from[302] = 5
+v_m_to[302] = 26
+v_m_cap[302] = 26
+v_m_rf[302] = -1
+v_m_rt[302] = -1
+v_m_promo[302] = -1
+v_m_ksq[302] = -1
+v_m_san[302] = "38.Bxc4"
+v_m_from[303] = 33
+v_m_to[303] = 26
+v_m_cap[303] = 26
+v_m_rf[303] = -1
+v_m_rt[303] = -1
+v_m_promo[303] = -1
+v_m_ksq[303] = -1
+v_m_san[303] = "38...bxc4"
+v_m_from[304] = 9
+v_m_to[304] = 63
+v_m_cap[304] = 63
+v_m_rf[304] = -1
+v_m_rt[304] = -1
+v_m_promo[304] = -1
+v_m_ksq[304] = -1
+v_m_san[304] = "39.Qxh8"
+v_m_from[305] = 51
+v_m_to[305] = 19
+v_m_cap[305] = -1
+v_m_rf[305] = -1
+v_m_rt[305] = -1
+v_m_promo[305] = -1
+v_m_ksq[305] = -1
+v_m_san[305] = "39...Rd3"
+v_m_from[306] = 63
+v_m_to[306] = 56
+v_m_cap[306] = -1
+v_m_rf[306] = -1
+v_m_rt[306] = -1
+v_m_promo[306] = -1
+v_m_ksq[306] = -1
+v_m_san[306] = "40.Qa8"
+v_m_from[307] = 26
+v_m_to[307] = 18
+v_m_cap[307] = -1
+v_m_rf[307] = -1
+v_m_rt[307] = -1
+v_m_promo[307] = -1
+v_m_ksq[307] = -1
+v_m_san[307] = "40...c3"
+v_m_from[308] = 56
+v_m_to[308] = 24
+v_m_cap[308] = -1
+v_m_rf[308] = -1
+v_m_rt[308] = -1
+v_m_promo[308] = -1
+v_m_chk[308] = 1
+v_m_ksq[308] = 3
+v_m_san[308] = "41.Qa4+"
+v_m_from[309] = 3
+v_m_to[309] = 4
+v_m_cap[309] = -1
+v_m_rf[309] = -1
+v_m_rt[309] = -1
+v_m_promo[309] = -1
+v_m_ksq[309] = -1
+v_m_san[309] = "41...Ke1"
+v_m_from[310] = 21
+v_m_to[310] = 29
+v_m_cap[310] = -1
+v_m_rf[310] = -1
+v_m_rt[310] = -1
+v_m_promo[310] = -1
+v_m_ksq[310] = -1
+v_m_san[310] = "42.f4"
+v_m_from[311] = 53
+v_m_to[311] = 37
+v_m_cap[311] = -1
+v_m_rf[311] = -1
+v_m_rt[311] = -1
+v_m_promo[311] = -1
+v_m_ksq[311] = -1
+v_m_san[311] = "42...f5"
+v_m_from[312] = 1
+v_m_to[312] = 2
+v_m_cap[312] = -1
+v_m_rf[312] = -1
+v_m_rt[312] = -1
+v_m_promo[312] = -1
+v_m_ksq[312] = -1
+v_m_san[312] = "43.Kc1"
+v_m_from[313] = 19
+v_m_to[313] = 11
+v_m_cap[313] = -1
+v_m_rf[313] = -1
+v_m_rt[313] = -1
+v_m_promo[313] = -1
+v_m_ksq[313] = -1
+v_m_san[313] = "43...Rd2"
+v_m_from[314] = 24
+v_m_to[314] = 48
+v_m_cap[314] = -1
+v_m_rf[314] = -1
+v_m_rt[314] = -1
+v_m_promo[314] = -1
+v_m_ksq[314] = -1
+v_m_san[314] = "44.Qa7"
+v_m_from[315] = 12
+v_m_to[315] = 28
+v_m_cap[315] = -1
+v_m_rf[315] = -1
+v_m_rt[315] = -1
+v_m_promo[315] = -1
+v_m_ksq[315] = -1
+v_m_san[315] = "1.e4"
+v_m_from[316] = 52
+v_m_to[316] = 36
+v_m_cap[316] = -1
+v_m_rf[316] = -1
+v_m_rt[316] = -1
+v_m_promo[316] = -1
+v_m_ksq[316] = -1
+v_m_san[316] = "1...e5"
+v_m_from[317] = 5
+v_m_to[317] = 26
+v_m_cap[317] = -1
+v_m_rf[317] = -1
+v_m_rt[317] = -1
+v_m_promo[317] = -1
+v_m_ksq[317] = -1
+v_m_san[317] = "2.Bc4"
+v_m_from[318] = 51
+v_m_to[318] = 43
+v_m_cap[318] = -1
+v_m_rf[318] = -1
+v_m_rt[318] = -1
+v_m_promo[318] = -1
+v_m_ksq[318] = -1
+v_m_san[318] = "2...d6"
+v_m_from[319] = 6
+v_m_to[319] = 21
+v_m_cap[319] = -1
+v_m_rf[319] = -1
+v_m_rt[319] = -1
+v_m_promo[319] = -1
+v_m_ksq[319] = -1
+v_m_san[319] = "3.Nf3"
+v_m_from[320] = 58
+v_m_to[320] = 30
+v_m_cap[320] = -1
+v_m_rf[320] = -1
+v_m_rt[320] = -1
+v_m_promo[320] = -1
+v_m_ksq[320] = -1
+v_m_san[320] = "3...Bg4"
+v_m_from[321] = 1
+v_m_to[321] = 18
+v_m_cap[321] = -1
+v_m_rf[321] = -1
+v_m_rt[321] = -1
+v_m_promo[321] = -1
+v_m_ksq[321] = -1
+v_m_san[321] = "4.Nc3"
+v_m_from[322] = 54
+v_m_to[322] = 46
+v_m_cap[322] = -1
+v_m_rf[322] = -1
+v_m_rt[322] = -1
+v_m_promo[322] = -1
+v_m_ksq[322] = -1
+v_m_san[322] = "4...g6"
+v_m_from[323] = 21
+v_m_to[323] = 36
+v_m_cap[323] = 36
+v_m_rf[323] = -1
+v_m_rt[323] = -1
+v_m_promo[323] = -1
+v_m_ksq[323] = -1
+v_m_san[323] = "5.Nxe5"
+v_m_from[324] = 30
+v_m_to[324] = 3
+v_m_cap[324] = 3
+v_m_rf[324] = -1
+v_m_rt[324] = -1
+v_m_promo[324] = -1
+v_m_ksq[324] = -1
+v_m_san[324] = "5...Bxd1"
+v_m_from[325] = 26
+v_m_to[325] = 53
+v_m_cap[325] = 53
+v_m_rf[325] = -1
+v_m_rt[325] = -1
+v_m_promo[325] = -1
+v_m_chk[325] = 1
+v_m_ksq[325] = 60
+v_m_san[325] = "6.Bxf7+"
+v_m_from[326] = 60
+v_m_to[326] = 52
+v_m_cap[326] = -1
+v_m_rf[326] = -1
+v_m_rt[326] = -1
+v_m_promo[326] = -1
+v_m_ksq[326] = -1
+v_m_san[326] = "6...Ke7"
+v_m_from[327] = 18
+v_m_to[327] = 35
+v_m_cap[327] = -1
+v_m_rf[327] = -1
+v_m_rt[327] = -1
+v_m_promo[327] = -1
+v_m_chk[327] = 1
+v_m_mate[327] = 1
+v_m_ksq[327] = 52
+v_m_san[327] = "7.Nd5#"
+v_m_from[328] = 11
+v_m_to[328] = 27
+v_m_cap[328] = -1
+v_m_rf[328] = -1
+v_m_rt[328] = -1
+v_m_promo[328] = -1
+v_m_ksq[328] = -1
+v_m_san[328] = "1.d4"
+v_m_from[329] = 52
+v_m_to[329] = 44
+v_m_cap[329] = -1
+v_m_rf[329] = -1
+v_m_rt[329] = -1
+v_m_promo[329] = -1
+v_m_ksq[329] = -1
+v_m_san[329] = "1...e6"
+v_m_from[330] = 6
+v_m_to[330] = 21
+v_m_cap[330] = -1
+v_m_rf[330] = -1
+v_m_rt[330] = -1
+v_m_promo[330] = -1
+v_m_ksq[330] = -1
+v_m_san[330] = "2.Nf3"
+v_m_from[331] = 53
+v_m_to[331] = 37
+v_m_cap[331] = -1
+v_m_rf[331] = -1
+v_m_rt[331] = -1
+v_m_promo[331] = -1
+v_m_ksq[331] = -1
+v_m_san[331] = "2...f5"
+v_m_from[332] = 1
+v_m_to[332] = 18
+v_m_cap[332] = -1
+v_m_rf[332] = -1
+v_m_rt[332] = -1
+v_m_promo[332] = -1
+v_m_ksq[332] = -1
+v_m_san[332] = "3.Nc3"
+v_m_from[333] = 62
+v_m_to[333] = 45
+v_m_cap[333] = -1
+v_m_rf[333] = -1
+v_m_rt[333] = -1
+v_m_promo[333] = -1
+v_m_ksq[333] = -1
+v_m_san[333] = "3...Nf6"
+v_m_from[334] = 2
+v_m_to[334] = 38
+v_m_cap[334] = -1
+v_m_rf[334] = -1
+v_m_rt[334] = -1
+v_m_promo[334] = -1
+v_m_ksq[334] = -1
+v_m_san[334] = "4.Bg5"
+v_m_from[335] = 61
+v_m_to[335] = 52
+v_m_cap[335] = -1
+v_m_rf[335] = -1
+v_m_rt[335] = -1
+v_m_promo[335] = -1
+v_m_ksq[335] = -1
+v_m_san[335] = "4...Be7"
+v_m_from[336] = 38
+v_m_to[336] = 45
+v_m_cap[336] = 45
+v_m_rf[336] = -1
+v_m_rt[336] = -1
+v_m_promo[336] = -1
+v_m_ksq[336] = -1
+v_m_san[336] = "5.Bxf6"
+v_m_from[337] = 52
+v_m_to[337] = 45
+v_m_cap[337] = 45
+v_m_rf[337] = -1
+v_m_rt[337] = -1
+v_m_promo[337] = -1
+v_m_ksq[337] = -1
+v_m_san[337] = "5...Bxf6"
+v_m_from[338] = 12
+v_m_to[338] = 28
+v_m_cap[338] = -1
+v_m_rf[338] = -1
+v_m_rt[338] = -1
+v_m_promo[338] = -1
+v_m_ksq[338] = -1
+v_m_san[338] = "6.e4"
+v_m_from[339] = 37
+v_m_to[339] = 28
+v_m_cap[339] = 28
+v_m_rf[339] = -1
+v_m_rt[339] = -1
+v_m_promo[339] = -1
+v_m_ksq[339] = -1
+v_m_san[339] = "6...fxe4"
+v_m_from[340] = 18
+v_m_to[340] = 28
+v_m_cap[340] = 28
+v_m_rf[340] = -1
+v_m_rt[340] = -1
+v_m_promo[340] = -1
+v_m_ksq[340] = -1
+v_m_san[340] = "7.Nxe4"
+v_m_from[341] = 49
+v_m_to[341] = 41
+v_m_cap[341] = -1
+v_m_rf[341] = -1
+v_m_rt[341] = -1
+v_m_promo[341] = -1
+v_m_ksq[341] = -1
+v_m_san[341] = "7...b6"
+v_m_from[342] = 21
+v_m_to[342] = 36
+v_m_cap[342] = -1
+v_m_rf[342] = -1
+v_m_rt[342] = -1
+v_m_promo[342] = -1
+v_m_ksq[342] = -1
+v_m_san[342] = "8.Ne5"
+v_m_from[343] = 60
+v_m_to[343] = 62
+v_m_cap[343] = -1
+v_m_rf[343] = 63
+v_m_rt[343] = 61
+v_m_promo[343] = -1
+v_m_ksq[343] = -1
+v_m_san[343] = "8...O-O"
+v_m_from[344] = 5
+v_m_to[344] = 19
+v_m_cap[344] = -1
+v_m_rf[344] = -1
+v_m_rt[344] = -1
+v_m_promo[344] = -1
+v_m_ksq[344] = -1
+v_m_san[344] = "9.Bd3"
+v_m_from[345] = 58
+v_m_to[345] = 49
+v_m_cap[345] = -1
+v_m_rf[345] = -1
+v_m_rt[345] = -1
+v_m_promo[345] = -1
+v_m_ksq[345] = -1
+v_m_san[345] = "9...Bb7"
+v_m_from[346] = 3
+v_m_to[346] = 39
+v_m_cap[346] = -1
+v_m_rf[346] = -1
+v_m_rt[346] = -1
+v_m_promo[346] = -1
+v_m_ksq[346] = -1
+v_m_san[346] = "10.Qh5"
+v_m_from[347] = 59
+v_m_to[347] = 52
+v_m_cap[347] = -1
+v_m_rf[347] = -1
+v_m_rt[347] = -1
+v_m_promo[347] = -1
+v_m_ksq[347] = -1
+v_m_san[347] = "10...Qe7"
+v_m_from[348] = 39
+v_m_to[348] = 55
+v_m_cap[348] = 55
+v_m_rf[348] = -1
+v_m_rt[348] = -1
+v_m_promo[348] = -1
+v_m_chk[348] = 1
+v_m_ksq[348] = 62
+v_m_san[348] = "11.Qxh7+"
+v_m_from[349] = 62
+v_m_to[349] = 55
+v_m_cap[349] = 55
+v_m_rf[349] = -1
+v_m_rt[349] = -1
+v_m_promo[349] = -1
+v_m_ksq[349] = -1
+v_m_san[349] = "11...Kxh7"
+v_m_from[350] = 28
+v_m_to[350] = 45
+v_m_cap[350] = 45
+v_m_rf[350] = -1
+v_m_rt[350] = -1
+v_m_promo[350] = -1
+v_m_chk[350] = 1
+v_m_ksq[350] = 55
+v_m_san[350] = "12.Nxf6+"
+v_m_from[351] = 55
+v_m_to[351] = 47
+v_m_cap[351] = -1
+v_m_rf[351] = -1
+v_m_rt[351] = -1
+v_m_promo[351] = -1
+v_m_ksq[351] = -1
+v_m_san[351] = "12...Kh6"
+v_m_from[352] = 36
+v_m_to[352] = 30
+v_m_cap[352] = -1
+v_m_rf[352] = -1
+v_m_rt[352] = -1
+v_m_promo[352] = -1
+v_m_chk[352] = 1
+v_m_ksq[352] = 47
+v_m_san[352] = "13.Neg4+"
+v_m_from[353] = 47
+v_m_to[353] = 38
+v_m_cap[353] = -1
+v_m_rf[353] = -1
+v_m_rt[353] = -1
+v_m_promo[353] = -1
+v_m_ksq[353] = -1
+v_m_san[353] = "13...Kg5"
+v_m_from[354] = 15
+v_m_to[354] = 31
+v_m_cap[354] = -1
+v_m_rf[354] = -1
+v_m_rt[354] = -1
+v_m_promo[354] = -1
+v_m_chk[354] = 1
+v_m_ksq[354] = 38
+v_m_san[354] = "14.h4+"
+v_m_from[355] = 38
+v_m_to[355] = 29
+v_m_cap[355] = -1
+v_m_rf[355] = -1
+v_m_rt[355] = -1
+v_m_promo[355] = -1
+v_m_ksq[355] = -1
+v_m_san[355] = "14...Kf4"
+v_m_from[356] = 14
+v_m_to[356] = 22
+v_m_cap[356] = -1
+v_m_rf[356] = -1
+v_m_rt[356] = -1
+v_m_promo[356] = -1
+v_m_chk[356] = 1
+v_m_ksq[356] = 29
+v_m_san[356] = "15.g3+"
+v_m_from[357] = 29
+v_m_to[357] = 21
+v_m_cap[357] = -1
+v_m_rf[357] = -1
+v_m_rt[357] = -1
+v_m_promo[357] = -1
+v_m_ksq[357] = -1
+v_m_san[357] = "15...Kf3"
+v_m_from[358] = 19
+v_m_to[358] = 12
+v_m_cap[358] = -1
+v_m_rf[358] = -1
+v_m_rt[358] = -1
+v_m_promo[358] = -1
+v_m_chk[358] = 1
+v_m_ksq[358] = 21
+v_m_san[358] = "16.Be2+"
+v_m_from[359] = 21
+v_m_to[359] = 14
+v_m_cap[359] = -1
+v_m_rf[359] = -1
+v_m_rt[359] = -1
+v_m_promo[359] = -1
+v_m_ksq[359] = -1
+v_m_san[359] = "16...Kg2"
+v_m_from[360] = 7
+v_m_to[360] = 15
+v_m_cap[360] = -1
+v_m_rf[360] = -1
+v_m_rt[360] = -1
+v_m_promo[360] = -1
+v_m_chk[360] = 1
+v_m_ksq[360] = 14
+v_m_san[360] = "17.Rh2+"
+v_m_from[361] = 14
+v_m_to[361] = 6
+v_m_cap[361] = -1
+v_m_rf[361] = -1
+v_m_rt[361] = -1
+v_m_promo[361] = -1
+v_m_ksq[361] = -1
+v_m_san[361] = "17...Kg1"
+v_m_from[362] = 4
+v_m_to[362] = 11
+v_m_cap[362] = -1
+v_m_rf[362] = -1
+v_m_rt[362] = -1
+v_m_promo[362] = -1
+v_m_chk[362] = 1
+v_m_mate[362] = 1
+v_m_ksq[362] = 6
+v_m_san[362] = "18.Kd2#"
+v_m_from[363] = 11
+v_m_to[363] = 27
+v_m_cap[363] = -1
+v_m_rf[363] = -1
+v_m_rt[363] = -1
+v_m_promo[363] = -1
+v_m_ksq[363] = -1
+v_m_san[363] = "1.d4"
+v_m_from[364] = 53
+v_m_to[364] = 37
+v_m_cap[364] = -1
+v_m_rf[364] = -1
+v_m_rt[364] = -1
+v_m_promo[364] = -1
+v_m_ksq[364] = -1
+v_m_san[364] = "1...f5"
+v_m_from[365] = 10
+v_m_to[365] = 26
+v_m_cap[365] = -1
+v_m_rf[365] = -1
+v_m_rt[365] = -1
+v_m_promo[365] = -1
+v_m_ksq[365] = -1
+v_m_san[365] = "2.c4"
+v_m_from[366] = 62
+v_m_to[366] = 45
+v_m_cap[366] = -1
+v_m_rf[366] = -1
+v_m_rt[366] = -1
+v_m_promo[366] = -1
+v_m_ksq[366] = -1
+v_m_san[366] = "2...Nf6"
+v_m_from[367] = 1
+v_m_to[367] = 18
+v_m_cap[367] = -1
+v_m_rf[367] = -1
+v_m_rt[367] = -1
+v_m_promo[367] = -1
+v_m_ksq[367] = -1
+v_m_san[367] = "3.Nc3"
+v_m_from[368] = 52
+v_m_to[368] = 44
+v_m_cap[368] = -1
+v_m_rf[368] = -1
+v_m_rt[368] = -1
+v_m_promo[368] = -1
+v_m_ksq[368] = -1
+v_m_san[368] = "3...e6"
+v_m_from[369] = 6
+v_m_to[369] = 21
+v_m_cap[369] = -1
+v_m_rf[369] = -1
+v_m_rt[369] = -1
+v_m_promo[369] = -1
+v_m_ksq[369] = -1
+v_m_san[369] = "4.Nf3"
+v_m_from[370] = 51
+v_m_to[370] = 35
+v_m_cap[370] = -1
+v_m_rf[370] = -1
+v_m_rt[370] = -1
+v_m_promo[370] = -1
+v_m_ksq[370] = -1
+v_m_san[370] = "4...d5"
+v_m_from[371] = 12
+v_m_to[371] = 20
+v_m_cap[371] = -1
+v_m_rf[371] = -1
+v_m_rt[371] = -1
+v_m_promo[371] = -1
+v_m_ksq[371] = -1
+v_m_san[371] = "5.e3"
+v_m_from[372] = 50
+v_m_to[372] = 42
+v_m_cap[372] = -1
+v_m_rf[372] = -1
+v_m_rt[372] = -1
+v_m_promo[372] = -1
+v_m_ksq[372] = -1
+v_m_san[372] = "5...c6"
+v_m_from[373] = 5
+v_m_to[373] = 19
+v_m_cap[373] = -1
+v_m_rf[373] = -1
+v_m_rt[373] = -1
+v_m_promo[373] = -1
+v_m_ksq[373] = -1
+v_m_san[373] = "6.Bd3"
+v_m_from[374] = 61
+v_m_to[374] = 43
+v_m_cap[374] = -1
+v_m_rf[374] = -1
+v_m_rt[374] = -1
+v_m_promo[374] = -1
+v_m_ksq[374] = -1
+v_m_san[374] = "6...Bd6"
+v_m_from[375] = 4
+v_m_to[375] = 6
+v_m_cap[375] = -1
+v_m_rf[375] = 7
+v_m_rt[375] = 5
+v_m_promo[375] = -1
+v_m_ksq[375] = -1
+v_m_san[375] = "7.O-O"
+v_m_from[376] = 60
+v_m_to[376] = 62
+v_m_cap[376] = -1
+v_m_rf[376] = 63
+v_m_rt[376] = 61
+v_m_promo[376] = -1
+v_m_ksq[376] = -1
+v_m_san[376] = "7...O-O"
+v_m_from[377] = 18
+v_m_to[377] = 12
+v_m_cap[377] = -1
+v_m_rf[377] = -1
+v_m_rt[377] = -1
+v_m_promo[377] = -1
+v_m_ksq[377] = -1
+v_m_san[377] = "8.Ne2"
+v_m_from[378] = 57
+v_m_to[378] = 51
+v_m_cap[378] = -1
+v_m_rf[378] = -1
+v_m_rt[378] = -1
+v_m_promo[378] = -1
+v_m_ksq[378] = -1
+v_m_san[378] = "8...Nbd7"
+v_m_from[379] = 21
+v_m_to[379] = 38
+v_m_cap[379] = -1
+v_m_rf[379] = -1
+v_m_rt[379] = -1
+v_m_promo[379] = -1
+v_m_ksq[379] = -1
+v_m_san[379] = "9.Ng5"
+v_m_from[380] = 43
+v_m_to[380] = 15
+v_m_cap[380] = 15
+v_m_rf[380] = -1
+v_m_rt[380] = -1
+v_m_promo[380] = -1
+v_m_chk[380] = 1
+v_m_ksq[380] = 6
+v_m_san[380] = "9...Bxh2+"
+v_m_from[381] = 6
+v_m_to[381] = 7
+v_m_cap[381] = -1
+v_m_rf[381] = -1
+v_m_rt[381] = -1
+v_m_promo[381] = -1
+v_m_ksq[381] = -1
+v_m_san[381] = "10.Kh1"
+v_m_from[382] = 45
+v_m_to[382] = 30
+v_m_cap[382] = -1
+v_m_rf[382] = -1
+v_m_rt[382] = -1
+v_m_promo[382] = -1
+v_m_ksq[382] = -1
+v_m_san[382] = "10...Ng4"
+v_m_from[383] = 13
+v_m_to[383] = 29
+v_m_cap[383] = -1
+v_m_rf[383] = -1
+v_m_rt[383] = -1
+v_m_promo[383] = -1
+v_m_ksq[383] = -1
+v_m_san[383] = "11.f4"
+v_m_from[384] = 59
+v_m_to[384] = 60
+v_m_cap[384] = -1
+v_m_rf[384] = -1
+v_m_rt[384] = -1
+v_m_promo[384] = -1
+v_m_ksq[384] = -1
+v_m_san[384] = "11...Qe8"
+v_m_from[385] = 14
+v_m_to[385] = 22
+v_m_cap[385] = -1
+v_m_rf[385] = -1
+v_m_rt[385] = -1
+v_m_promo[385] = -1
+v_m_ksq[385] = -1
+v_m_san[385] = "12.g3"
+v_m_from[386] = 60
+v_m_to[386] = 39
+v_m_cap[386] = -1
+v_m_rf[386] = -1
+v_m_rt[386] = -1
+v_m_promo[386] = -1
+v_m_ksq[386] = -1
+v_m_san[386] = "12...Qh5"
+v_m_from[387] = 7
+v_m_to[387] = 14
+v_m_cap[387] = -1
+v_m_rf[387] = -1
+v_m_rt[387] = -1
+v_m_promo[387] = -1
+v_m_ksq[387] = -1
+v_m_san[387] = "13.Kg2"
+v_m_from[388] = 15
+v_m_to[388] = 6
+v_m_cap[388] = -1
+v_m_rf[388] = -1
+v_m_rt[388] = -1
+v_m_promo[388] = -1
+v_m_ksq[388] = -1
+v_m_san[388] = "13...Bg1"
+v_m_from[389] = 12
+v_m_to[389] = 6
+v_m_cap[389] = 6
+v_m_rf[389] = -1
+v_m_rt[389] = -1
+v_m_promo[389] = -1
+v_m_ksq[389] = -1
+v_m_san[389] = "14.Nxg1"
+v_m_from[390] = 39
+v_m_to[390] = 15
+v_m_cap[390] = -1
+v_m_rf[390] = -1
+v_m_rt[390] = -1
+v_m_promo[390] = -1
+v_m_chk[390] = 1
+v_m_ksq[390] = 14
+v_m_san[390] = "14...Qh2+"
+v_m_from[391] = 14
+v_m_to[391] = 21
+v_m_cap[391] = -1
+v_m_rf[391] = -1
+v_m_rt[391] = -1
+v_m_promo[391] = -1
+v_m_ksq[391] = -1
+v_m_san[391] = "15.Kf3"
+v_m_from[392] = 44
+v_m_to[392] = 36
+v_m_cap[392] = -1
+v_m_rf[392] = -1
+v_m_rt[392] = -1
+v_m_promo[392] = -1
+v_m_ksq[392] = -1
+v_m_san[392] = "15...e5"
+v_m_from[393] = 27
+v_m_to[393] = 36
+v_m_cap[393] = 36
+v_m_rf[393] = -1
+v_m_rt[393] = -1
+v_m_promo[393] = -1
+v_m_ksq[393] = -1
+v_m_san[393] = "16.dxe5"
+v_m_from[394] = 51
+v_m_to[394] = 36
+v_m_cap[394] = 36
+v_m_rf[394] = -1
+v_m_rt[394] = -1
+v_m_promo[394] = -1
+v_m_chk[394] = 1
+v_m_ksq[394] = 21
+v_m_san[394] = "16...Ndxe5+"
+v_m_from[395] = 29
+v_m_to[395] = 36
+v_m_cap[395] = 36
+v_m_rf[395] = -1
+v_m_rt[395] = -1
+v_m_promo[395] = -1
+v_m_ksq[395] = -1
+v_m_san[395] = "17.fxe5"
+v_m_from[396] = 30
+v_m_to[396] = 36
+v_m_cap[396] = 36
+v_m_rf[396] = -1
+v_m_rt[396] = -1
+v_m_promo[396] = -1
+v_m_chk[396] = 1
+v_m_ksq[396] = 21
+v_m_san[396] = "17...Nxe5+"
+v_m_from[397] = 21
+v_m_to[397] = 29
+v_m_cap[397] = -1
+v_m_rf[397] = -1
+v_m_rt[397] = -1
+v_m_promo[397] = -1
+v_m_ksq[397] = -1
+v_m_san[397] = "18.Kf4"
+v_m_from[398] = 36
+v_m_to[398] = 46
+v_m_cap[398] = -1
+v_m_rf[398] = -1
+v_m_rt[398] = -1
+v_m_promo[398] = -1
+v_m_chk[398] = 1
+v_m_ksq[398] = 29
+v_m_san[398] = "18...Ng6+"
+v_m_from[399] = 29
+v_m_to[399] = 21
+v_m_cap[399] = -1
+v_m_rf[399] = -1
+v_m_rt[399] = -1
+v_m_promo[399] = -1
+v_m_ksq[399] = -1
+v_m_san[399] = "19.Kf3"
+v_m_from[400] = 37
+v_m_to[400] = 29
+v_m_cap[400] = -1
+v_m_rf[400] = -1
+v_m_rt[400] = -1
+v_m_promo[400] = -1
+v_m_ksq[400] = -1
+v_m_san[400] = "19...f4"
+v_m_from[401] = 20
+v_m_to[401] = 29
+v_m_cap[401] = 29
+v_m_rf[401] = -1
+v_m_rt[401] = -1
+v_m_promo[401] = -1
+v_m_ksq[401] = -1
+v_m_san[401] = "20.exf4"
+v_m_from[402] = 58
+v_m_to[402] = 30
+v_m_cap[402] = -1
+v_m_rf[402] = -1
+v_m_rt[402] = -1
+v_m_promo[402] = -1
+v_m_chk[402] = 1
+v_m_ksq[402] = 21
+v_m_san[402] = "20...Bg4+"
+v_m_from[403] = 21
+v_m_to[403] = 30
+v_m_cap[403] = 30
+v_m_rf[403] = -1
+v_m_rt[403] = -1
+v_m_promo[403] = -1
+v_m_ksq[403] = -1
+v_m_san[403] = "21.Kxg4"
+v_m_from[404] = 46
+v_m_to[404] = 36
+v_m_cap[404] = -1
+v_m_rf[404] = -1
+v_m_rt[404] = -1
+v_m_promo[404] = -1
+v_m_chk[404] = 1
+v_m_ksq[404] = 30
+v_m_san[404] = "21...Ne5+"
+v_m_from[405] = 29
+v_m_to[405] = 36
+v_m_cap[405] = 36
+v_m_rf[405] = -1
+v_m_rt[405] = -1
+v_m_promo[405] = -1
+v_m_ksq[405] = -1
+v_m_san[405] = "22.fxe5"
+v_m_from[406] = 55
+v_m_to[406] = 39
+v_m_cap[406] = -1
+v_m_rf[406] = -1
+v_m_rt[406] = -1
+v_m_promo[406] = -1
+v_m_chk[406] = 1
+v_m_mate[406] = 1
+v_m_ksq[406] = 30
+v_m_san[406] = "22...h5#"
+v_m_from[407] = 11
+v_m_to[407] = 27
+v_m_cap[407] = -1
+v_m_rf[407] = -1
+v_m_rt[407] = -1
+v_m_promo[407] = -1
+v_m_ksq[407] = -1
+v_m_san[407] = "1.d4"
+v_m_from[408] = 51
+v_m_to[408] = 35
+v_m_cap[408] = -1
+v_m_rf[408] = -1
+v_m_rt[408] = -1
+v_m_promo[408] = -1
+v_m_ksq[408] = -1
+v_m_san[408] = "1...d5"
+v_m_from[409] = 6
+v_m_to[409] = 21
+v_m_cap[409] = -1
+v_m_rf[409] = -1
+v_m_rt[409] = -1
+v_m_promo[409] = -1
+v_m_ksq[409] = -1
+v_m_san[409] = "2.Nf3"
+v_m_from[410] = 52
+v_m_to[410] = 44
+v_m_cap[410] = -1
+v_m_rf[410] = -1
+v_m_rt[410] = -1
+v_m_promo[410] = -1
+v_m_ksq[410] = -1
+v_m_san[410] = "2...e6"
+v_m_from[411] = 12
+v_m_to[411] = 20
+v_m_cap[411] = -1
+v_m_rf[411] = -1
+v_m_rt[411] = -1
+v_m_promo[411] = -1
+v_m_ksq[411] = -1
+v_m_san[411] = "3.e3"
+v_m_from[412] = 50
+v_m_to[412] = 34
+v_m_cap[412] = -1
+v_m_rf[412] = -1
+v_m_rt[412] = -1
+v_m_promo[412] = -1
+v_m_ksq[412] = -1
+v_m_san[412] = "3...c5"
+v_m_from[413] = 10
+v_m_to[413] = 26
+v_m_cap[413] = -1
+v_m_rf[413] = -1
+v_m_rt[413] = -1
+v_m_promo[413] = -1
+v_m_ksq[413] = -1
+v_m_san[413] = "4.c4"
+v_m_from[414] = 57
+v_m_to[414] = 42
+v_m_cap[414] = -1
+v_m_rf[414] = -1
+v_m_rt[414] = -1
+v_m_promo[414] = -1
+v_m_ksq[414] = -1
+v_m_san[414] = "4...Nc6"
+v_m_from[415] = 1
+v_m_to[415] = 18
+v_m_cap[415] = -1
+v_m_rf[415] = -1
+v_m_rt[415] = -1
+v_m_promo[415] = -1
+v_m_ksq[415] = -1
+v_m_san[415] = "5.Nc3"
+v_m_from[416] = 62
+v_m_to[416] = 45
+v_m_cap[416] = -1
+v_m_rf[416] = -1
+v_m_rt[416] = -1
+v_m_promo[416] = -1
+v_m_ksq[416] = -1
+v_m_san[416] = "5...Nf6"
+v_m_from[417] = 27
+v_m_to[417] = 34
+v_m_cap[417] = 34
+v_m_rf[417] = -1
+v_m_rt[417] = -1
+v_m_promo[417] = -1
+v_m_ksq[417] = -1
+v_m_san[417] = "6.dxc5"
+v_m_from[418] = 61
+v_m_to[418] = 34
+v_m_cap[418] = 34
+v_m_rf[418] = -1
+v_m_rt[418] = -1
+v_m_promo[418] = -1
+v_m_ksq[418] = -1
+v_m_san[418] = "6...Bxc5"
+v_m_from[419] = 8
+v_m_to[419] = 16
+v_m_cap[419] = -1
+v_m_rf[419] = -1
+v_m_rt[419] = -1
+v_m_promo[419] = -1
+v_m_ksq[419] = -1
+v_m_san[419] = "7.a3"
+v_m_from[420] = 48
+v_m_to[420] = 40
+v_m_cap[420] = -1
+v_m_rf[420] = -1
+v_m_rt[420] = -1
+v_m_promo[420] = -1
+v_m_ksq[420] = -1
+v_m_san[420] = "7...a6"
+v_m_from[421] = 9
+v_m_to[421] = 25
+v_m_cap[421] = -1
+v_m_rf[421] = -1
+v_m_rt[421] = -1
+v_m_promo[421] = -1
+v_m_ksq[421] = -1
+v_m_san[421] = "8.b4"
+v_m_from[422] = 34
+v_m_to[422] = 43
+v_m_cap[422] = -1
+v_m_rf[422] = -1
+v_m_rt[422] = -1
+v_m_promo[422] = -1
+v_m_ksq[422] = -1
+v_m_san[422] = "8...Bd6"
+v_m_from[423] = 2
+v_m_to[423] = 9
+v_m_cap[423] = -1
+v_m_rf[423] = -1
+v_m_rt[423] = -1
+v_m_promo[423] = -1
+v_m_ksq[423] = -1
+v_m_san[423] = "9.Bb2"
+v_m_from[424] = 60
+v_m_to[424] = 62
+v_m_cap[424] = -1
+v_m_rf[424] = 63
+v_m_rt[424] = 61
+v_m_promo[424] = -1
+v_m_ksq[424] = -1
+v_m_san[424] = "9...O-O"
+v_m_from[425] = 3
+v_m_to[425] = 11
+v_m_cap[425] = -1
+v_m_rf[425] = -1
+v_m_rt[425] = -1
+v_m_promo[425] = -1
+v_m_ksq[425] = -1
+v_m_san[425] = "10.Qd2"
+v_m_from[426] = 59
+v_m_to[426] = 52
+v_m_cap[426] = -1
+v_m_rf[426] = -1
+v_m_rt[426] = -1
+v_m_promo[426] = -1
+v_m_ksq[426] = -1
+v_m_san[426] = "10...Qe7"
+v_m_from[427] = 5
+v_m_to[427] = 19
+v_m_cap[427] = -1
+v_m_rf[427] = -1
+v_m_rt[427] = -1
+v_m_promo[427] = -1
+v_m_ksq[427] = -1
+v_m_san[427] = "11.Bd3"
+v_m_from[428] = 35
+v_m_to[428] = 26
+v_m_cap[428] = 26
+v_m_rf[428] = -1
+v_m_rt[428] = -1
+v_m_promo[428] = -1
+v_m_ksq[428] = -1
+v_m_san[428] = "11...dxc4"
+v_m_from[429] = 19
+v_m_to[429] = 26
+v_m_cap[429] = 26
+v_m_rf[429] = -1
+v_m_rt[429] = -1
+v_m_promo[429] = -1
+v_m_ksq[429] = -1
+v_m_san[429] = "12.Bxc4"
+v_m_from[430] = 49
+v_m_to[430] = 33
+v_m_cap[430] = -1
+v_m_rf[430] = -1
+v_m_rt[430] = -1
+v_m_promo[430] = -1
+v_m_ksq[430] = -1
+v_m_san[430] = "12...b5"
+v_m_from[431] = 26
+v_m_to[431] = 19
+v_m_cap[431] = -1
+v_m_rf[431] = -1
+v_m_rt[431] = -1
+v_m_promo[431] = -1
+v_m_ksq[431] = -1
+v_m_san[431] = "13.Bd3"
+v_m_from[432] = 61
+v_m_to[432] = 59
+v_m_cap[432] = -1
+v_m_rf[432] = -1
+v_m_rt[432] = -1
+v_m_promo[432] = -1
+v_m_ksq[432] = -1
+v_m_san[432] = "13...Rd8"
+v_m_from[433] = 11
+v_m_to[433] = 12
+v_m_cap[433] = -1
+v_m_rf[433] = -1
+v_m_rt[433] = -1
+v_m_promo[433] = -1
+v_m_ksq[433] = -1
+v_m_san[433] = "14.Qe2"
+v_m_from[434] = 58
+v_m_to[434] = 49
+v_m_cap[434] = -1
+v_m_rf[434] = -1
+v_m_rt[434] = -1
+v_m_promo[434] = -1
+v_m_ksq[434] = -1
+v_m_san[434] = "14...Bb7"
+v_m_from[435] = 4
+v_m_to[435] = 6
+v_m_cap[435] = -1
+v_m_rf[435] = 7
+v_m_rt[435] = 5
+v_m_promo[435] = -1
+v_m_ksq[435] = -1
+v_m_san[435] = "15.O-O"
+v_m_from[436] = 42
+v_m_to[436] = 36
+v_m_cap[436] = -1
+v_m_rf[436] = -1
+v_m_rt[436] = -1
+v_m_promo[436] = -1
+v_m_ksq[436] = -1
+v_m_san[436] = "15...Ne5"
+v_m_from[437] = 21
+v_m_to[437] = 36
+v_m_cap[437] = 36
+v_m_rf[437] = -1
+v_m_rt[437] = -1
+v_m_promo[437] = -1
+v_m_ksq[437] = -1
+v_m_san[437] = "16.Nxe5"
+v_m_from[438] = 43
+v_m_to[438] = 36
+v_m_cap[438] = 36
+v_m_rf[438] = -1
+v_m_rt[438] = -1
+v_m_promo[438] = -1
+v_m_ksq[438] = -1
+v_m_san[438] = "16...Bxe5"
+v_m_from[439] = 13
+v_m_to[439] = 29
+v_m_cap[439] = -1
+v_m_rf[439] = -1
+v_m_rt[439] = -1
+v_m_promo[439] = -1
+v_m_ksq[439] = -1
+v_m_san[439] = "17.f4"
+v_m_from[440] = 36
+v_m_to[440] = 50
+v_m_cap[440] = -1
+v_m_rf[440] = -1
+v_m_rt[440] = -1
+v_m_promo[440] = -1
+v_m_ksq[440] = -1
+v_m_san[440] = "17...Bc7"
+v_m_from[441] = 20
+v_m_to[441] = 28
+v_m_cap[441] = -1
+v_m_rf[441] = -1
+v_m_rt[441] = -1
+v_m_promo[441] = -1
+v_m_ksq[441] = -1
+v_m_san[441] = "18.e4"
+v_m_from[442] = 56
+v_m_to[442] = 58
+v_m_cap[442] = -1
+v_m_rf[442] = -1
+v_m_rt[442] = -1
+v_m_promo[442] = -1
+v_m_ksq[442] = -1
+v_m_san[442] = "18...Rac8"
+v_m_from[443] = 28
+v_m_to[443] = 36
+v_m_cap[443] = -1
+v_m_rf[443] = -1
+v_m_rt[443] = -1
+v_m_promo[443] = -1
+v_m_ksq[443] = -1
+v_m_san[443] = "19.e5"
+v_m_from[444] = 50
+v_m_to[444] = 41
+v_m_cap[444] = -1
+v_m_rf[444] = -1
+v_m_rt[444] = -1
+v_m_promo[444] = -1
+v_m_chk[444] = 1
+v_m_ksq[444] = 6
+v_m_san[444] = "19...Bb6+"
+v_m_from[445] = 6
+v_m_to[445] = 7
+v_m_cap[445] = -1
+v_m_rf[445] = -1
+v_m_rt[445] = -1
+v_m_promo[445] = -1
+v_m_ksq[445] = -1
+v_m_san[445] = "20.Kh1"
+v_m_from[446] = 45
+v_m_to[446] = 30
+v_m_cap[446] = -1
+v_m_rf[446] = -1
+v_m_rt[446] = -1
+v_m_promo[446] = -1
+v_m_ksq[446] = -1
+v_m_san[446] = "20...Ng4"
+v_m_from[447] = 19
+v_m_to[447] = 28
+v_m_cap[447] = -1
+v_m_rf[447] = -1
+v_m_rt[447] = -1
+v_m_promo[447] = -1
+v_m_ksq[447] = -1
+v_m_san[447] = "21.Be4"
+v_m_from[448] = 52
+v_m_to[448] = 31
+v_m_cap[448] = -1
+v_m_rf[448] = -1
+v_m_rt[448] = -1
+v_m_promo[448] = -1
+v_m_ksq[448] = -1
+v_m_san[448] = "21...Qh4"
+v_m_from[449] = 14
+v_m_to[449] = 22
+v_m_cap[449] = -1
+v_m_rf[449] = -1
+v_m_rt[449] = -1
+v_m_promo[449] = -1
+v_m_ksq[449] = -1
+v_m_san[449] = "22.g3"
+v_m_from[450] = 58
+v_m_to[450] = 18
+v_m_cap[450] = 18
+v_m_rf[450] = -1
+v_m_rt[450] = -1
+v_m_promo[450] = -1
+v_m_ksq[450] = -1
+v_m_san[450] = "22...Rxc3"
+v_m_from[451] = 22
+v_m_to[451] = 31
+v_m_cap[451] = 31
+v_m_rf[451] = -1
+v_m_rt[451] = -1
+v_m_promo[451] = -1
+v_m_ksq[451] = -1
+v_m_san[451] = "23.gxh4"
+v_m_from[452] = 59
+v_m_to[452] = 11
+v_m_cap[452] = -1
+v_m_rf[452] = -1
+v_m_rt[452] = -1
+v_m_promo[452] = -1
+v_m_ksq[452] = -1
+v_m_san[452] = "23...Rd2"
+v_m_from[453] = 12
+v_m_to[453] = 11
+v_m_cap[453] = 11
+v_m_rf[453] = -1
+v_m_rt[453] = -1
+v_m_promo[453] = -1
+v_m_ksq[453] = -1
+v_m_san[453] = "24.Qxd2"
+v_m_from[454] = 49
+v_m_to[454] = 28
+v_m_cap[454] = 28
+v_m_rf[454] = -1
+v_m_rt[454] = -1
+v_m_promo[454] = -1
+v_m_chk[454] = 1
+v_m_ksq[454] = 7
+v_m_san[454] = "24...Bxe4+"
+v_m_from[455] = 11
+v_m_to[455] = 14
+v_m_cap[455] = -1
+v_m_rf[455] = -1
+v_m_rt[455] = -1
+v_m_promo[455] = -1
+v_m_ksq[455] = -1
+v_m_san[455] = "25.Qg2"
+v_m_from[456] = 18
+v_m_to[456] = 23
+v_m_cap[456] = -1
+v_m_rf[456] = -1
+v_m_rt[456] = -1
+v_m_promo[456] = -1
+v_m_ksq[456] = -1
+v_m_san[456] = "25...Rh3"
+v_m_from[457] = 12
+v_m_to[457] = 28
+v_m_cap[457] = -1
+v_m_rf[457] = -1
+v_m_rt[457] = -1
+v_m_promo[457] = -1
+v_m_ksq[457] = -1
+v_m_san[457] = "1.e4"
+v_m_from[458] = 50
+v_m_to[458] = 42
+v_m_cap[458] = -1
+v_m_rf[458] = -1
+v_m_rt[458] = -1
+v_m_promo[458] = -1
+v_m_ksq[458] = -1
+v_m_san[458] = "1...c6"
+v_m_from[459] = 11
+v_m_to[459] = 27
+v_m_cap[459] = -1
+v_m_rf[459] = -1
+v_m_rt[459] = -1
+v_m_promo[459] = -1
+v_m_ksq[459] = -1
+v_m_san[459] = "2.d4"
+v_m_from[460] = 51
+v_m_to[460] = 35
+v_m_cap[460] = -1
+v_m_rf[460] = -1
+v_m_rt[460] = -1
+v_m_promo[460] = -1
+v_m_ksq[460] = -1
+v_m_san[460] = "2...d5"
+v_m_from[461] = 1
+v_m_to[461] = 18
+v_m_cap[461] = -1
+v_m_rf[461] = -1
+v_m_rt[461] = -1
+v_m_promo[461] = -1
+v_m_ksq[461] = -1
+v_m_san[461] = "3.Nc3"
+v_m_from[462] = 35
+v_m_to[462] = 28
+v_m_cap[462] = 28
+v_m_rf[462] = -1
+v_m_rt[462] = -1
+v_m_promo[462] = -1
+v_m_ksq[462] = -1
+v_m_san[462] = "3...dxe4"
+v_m_from[463] = 18
+v_m_to[463] = 28
+v_m_cap[463] = 28
+v_m_rf[463] = -1
+v_m_rt[463] = -1
+v_m_promo[463] = -1
+v_m_ksq[463] = -1
+v_m_san[463] = "4.Nxe4"
+v_m_from[464] = 57
+v_m_to[464] = 51
+v_m_cap[464] = -1
+v_m_rf[464] = -1
+v_m_rt[464] = -1
+v_m_promo[464] = -1
+v_m_ksq[464] = -1
+v_m_san[464] = "4...Nd7"
+v_m_from[465] = 28
+v_m_to[465] = 38
+v_m_cap[465] = -1
+v_m_rf[465] = -1
+v_m_rt[465] = -1
+v_m_promo[465] = -1
+v_m_ksq[465] = -1
+v_m_san[465] = "5.Ng5"
+v_m_from[466] = 62
+v_m_to[466] = 45
+v_m_cap[466] = -1
+v_m_rf[466] = -1
+v_m_rt[466] = -1
+v_m_promo[466] = -1
+v_m_ksq[466] = -1
+v_m_san[466] = "5...Ngf6"
+v_m_from[467] = 5
+v_m_to[467] = 19
+v_m_cap[467] = -1
+v_m_rf[467] = -1
+v_m_rt[467] = -1
+v_m_promo[467] = -1
+v_m_ksq[467] = -1
+v_m_san[467] = "6.Bd3"
+v_m_from[468] = 52
+v_m_to[468] = 44
+v_m_cap[468] = -1
+v_m_rf[468] = -1
+v_m_rt[468] = -1
+v_m_promo[468] = -1
+v_m_ksq[468] = -1
+v_m_san[468] = "6...e6"
+v_m_from[469] = 6
+v_m_to[469] = 21
+v_m_cap[469] = -1
+v_m_rf[469] = -1
+v_m_rt[469] = -1
+v_m_promo[469] = -1
+v_m_ksq[469] = -1
+v_m_san[469] = "7.N1f3"
+v_m_from[470] = 55
+v_m_to[470] = 47
+v_m_cap[470] = -1
+v_m_rf[470] = -1
+v_m_rt[470] = -1
+v_m_promo[470] = -1
+v_m_ksq[470] = -1
+v_m_san[470] = "7...h6"
+v_m_from[471] = 38
+v_m_to[471] = 44
+v_m_cap[471] = 44
+v_m_rf[471] = -1
+v_m_rt[471] = -1
+v_m_promo[471] = -1
+v_m_ksq[471] = -1
+v_m_san[471] = "8.Nxe6"
+v_m_from[472] = 59
+v_m_to[472] = 52
+v_m_cap[472] = -1
+v_m_rf[472] = -1
+v_m_rt[472] = -1
+v_m_promo[472] = -1
+v_m_ksq[472] = -1
+v_m_san[472] = "8...Qe7"
+v_m_from[473] = 4
+v_m_to[473] = 6
+v_m_cap[473] = -1
+v_m_rf[473] = 7
+v_m_rt[473] = 5
+v_m_promo[473] = -1
+v_m_ksq[473] = -1
+v_m_san[473] = "9.O-O"
+v_m_from[474] = 53
+v_m_to[474] = 44
+v_m_cap[474] = 44
+v_m_rf[474] = -1
+v_m_rt[474] = -1
+v_m_promo[474] = -1
+v_m_ksq[474] = -1
+v_m_san[474] = "9...fxe6"
+v_m_from[475] = 19
+v_m_to[475] = 46
+v_m_cap[475] = -1
+v_m_rf[475] = -1
+v_m_rt[475] = -1
+v_m_promo[475] = -1
+v_m_chk[475] = 1
+v_m_ksq[475] = 60
+v_m_san[475] = "10.Bg6+"
+v_m_from[476] = 60
+v_m_to[476] = 59
+v_m_cap[476] = -1
+v_m_rf[476] = -1
+v_m_rt[476] = -1
+v_m_promo[476] = -1
+v_m_ksq[476] = -1
+v_m_san[476] = "10...Kd8"
+v_m_from[477] = 2
+v_m_to[477] = 29
+v_m_cap[477] = -1
+v_m_rf[477] = -1
+v_m_rt[477] = -1
+v_m_promo[477] = -1
+v_m_ksq[477] = -1
+v_m_san[477] = "11.Bf4"
+v_m_from[478] = 49
+v_m_to[478] = 33
+v_m_cap[478] = -1
+v_m_rf[478] = -1
+v_m_rt[478] = -1
+v_m_promo[478] = -1
+v_m_ksq[478] = -1
+v_m_san[478] = "11...b5"
+v_m_from[479] = 8
+v_m_to[479] = 24
+v_m_cap[479] = -1
+v_m_rf[479] = -1
+v_m_rt[479] = -1
+v_m_promo[479] = -1
+v_m_ksq[479] = -1
+v_m_san[479] = "12.a4"
+v_m_from[480] = 58
+v_m_to[480] = 49
+v_m_cap[480] = -1
+v_m_rf[480] = -1
+v_m_rt[480] = -1
+v_m_promo[480] = -1
+v_m_ksq[480] = -1
+v_m_san[480] = "12...Bb7"
+v_m_from[481] = 5
+v_m_to[481] = 4
+v_m_cap[481] = -1
+v_m_rf[481] = -1
+v_m_rt[481] = -1
+v_m_promo[481] = -1
+v_m_ksq[481] = -1
+v_m_san[481] = "13.Re1"
+v_m_from[482] = 45
+v_m_to[482] = 35
+v_m_cap[482] = -1
+v_m_rf[482] = -1
+v_m_rt[482] = -1
+v_m_promo[482] = -1
+v_m_ksq[482] = -1
+v_m_san[482] = "13...Nd5"
+v_m_from[483] = 29
+v_m_to[483] = 22
+v_m_cap[483] = -1
+v_m_rf[483] = -1
+v_m_rt[483] = -1
+v_m_promo[483] = -1
+v_m_ksq[483] = -1
+v_m_san[483] = "14.Bg3"
+v_m_from[484] = 59
+v_m_to[484] = 58
+v_m_cap[484] = -1
+v_m_rf[484] = -1
+v_m_rt[484] = -1
+v_m_promo[484] = -1
+v_m_ksq[484] = -1
+v_m_san[484] = "14...Kc8"
+v_m_from[485] = 24
+v_m_to[485] = 33
+v_m_cap[485] = 33
+v_m_rf[485] = -1
+v_m_rt[485] = -1
+v_m_promo[485] = -1
+v_m_ksq[485] = -1
+v_m_san[485] = "15.axb5"
+v_m_from[486] = 42
+v_m_to[486] = 33
+v_m_cap[486] = 33
+v_m_rf[486] = -1
+v_m_rt[486] = -1
+v_m_promo[486] = -1
+v_m_ksq[486] = -1
+v_m_san[486] = "15...cxb5"
+v_m_from[487] = 3
+v_m_to[487] = 19
+v_m_cap[487] = -1
+v_m_rf[487] = -1
+v_m_rt[487] = -1
+v_m_promo[487] = -1
+v_m_ksq[487] = -1
+v_m_san[487] = "16.Qd3"
+v_m_from[488] = 49
+v_m_to[488] = 42
+v_m_cap[488] = -1
+v_m_rf[488] = -1
+v_m_rt[488] = -1
+v_m_promo[488] = -1
+v_m_ksq[488] = -1
+v_m_san[488] = "16...Bc6"
+v_m_from[489] = 46
+v_m_to[489] = 37
+v_m_cap[489] = -1
+v_m_rf[489] = -1
+v_m_rt[489] = -1
+v_m_promo[489] = -1
+v_m_ksq[489] = -1
+v_m_san[489] = "17.Bf5"
+v_m_from[490] = 44
+v_m_to[490] = 37
+v_m_cap[490] = 37
+v_m_rf[490] = -1
+v_m_rt[490] = -1
+v_m_promo[490] = -1
+v_m_ksq[490] = -1
+v_m_san[490] = "17...exf5"
+v_m_from[491] = 4
+v_m_to[491] = 52
+v_m_cap[491] = 52
+v_m_rf[491] = -1
+v_m_rt[491] = -1
+v_m_promo[491] = -1
+v_m_ksq[491] = -1
+v_m_san[491] = "18.Rxe7"
+v_m_from[492] = 61
+v_m_to[492] = 52
+v_m_cap[492] = 52
+v_m_rf[492] = -1
+v_m_rt[492] = -1
+v_m_promo[492] = -1
+v_m_ksq[492] = -1
+v_m_san[492] = "18...Bxe7"
+v_m_from[493] = 10
+v_m_to[493] = 26
+v_m_cap[493] = -1
+v_m_rf[493] = -1
+v_m_rt[493] = -1
+v_m_promo[493] = -1
+v_m_ksq[493] = -1
+v_m_san[493] = "19.c4"
+v_m_from[494] = 12
+v_m_to[494] = 28
+v_m_cap[494] = -1
+v_m_rf[494] = -1
+v_m_rt[494] = -1
+v_m_promo[494] = -1
+v_m_ksq[494] = -1
+v_m_san[494] = "1.e4"
+v_m_from[495] = 62
+v_m_to[495] = 45
+v_m_cap[495] = -1
+v_m_rf[495] = -1
+v_m_rt[495] = -1
+v_m_promo[495] = -1
+v_m_ksq[495] = -1
+v_m_san[495] = "1...Nf6"
+v_m_from[496] = 28
+v_m_to[496] = 36
+v_m_cap[496] = -1
+v_m_rf[496] = -1
+v_m_rt[496] = -1
+v_m_promo[496] = -1
+v_m_ksq[496] = -1
+v_m_san[496] = "2.e5"
+v_m_from[497] = 45
+v_m_to[497] = 35
+v_m_cap[497] = -1
+v_m_rf[497] = -1
+v_m_rt[497] = -1
+v_m_promo[497] = -1
+v_m_ksq[497] = -1
+v_m_san[497] = "2...Nd5"
+v_m_from[498] = 11
+v_m_to[498] = 27
+v_m_cap[498] = -1
+v_m_rf[498] = -1
+v_m_rt[498] = -1
+v_m_promo[498] = -1
+v_m_ksq[498] = -1
+v_m_san[498] = "3.d4"
+v_m_from[499] = 51
+v_m_to[499] = 43
+v_m_cap[499] = -1
+v_m_rf[499] = -1
+v_m_rt[499] = -1
+v_m_promo[499] = -1
+v_m_ksq[499] = -1
+v_m_san[499] = "3...d6"
+v_m_from[500] = 6
+v_m_to[500] = 21
+v_m_cap[500] = -1
+v_m_rf[500] = -1
+v_m_rt[500] = -1
+v_m_promo[500] = -1
+v_m_ksq[500] = -1
+v_m_san[500] = "4.Nf3"
+v_m_from[501] = 54
+v_m_to[501] = 46
+v_m_cap[501] = -1
+v_m_rf[501] = -1
+v_m_rt[501] = -1
+v_m_promo[501] = -1
+v_m_ksq[501] = -1
+v_m_san[501] = "4...g6"
+v_m_from[502] = 5
+v_m_to[502] = 26
+v_m_cap[502] = -1
+v_m_rf[502] = -1
+v_m_rt[502] = -1
+v_m_promo[502] = -1
+v_m_ksq[502] = -1
+v_m_san[502] = "5.Bc4"
+v_m_from[503] = 35
+v_m_to[503] = 41
+v_m_cap[503] = -1
+v_m_rf[503] = -1
+v_m_rt[503] = -1
+v_m_promo[503] = -1
+v_m_ksq[503] = -1
+v_m_san[503] = "5...Nb6"
+v_m_from[504] = 26
+v_m_to[504] = 17
+v_m_cap[504] = -1
+v_m_rf[504] = -1
+v_m_rt[504] = -1
+v_m_promo[504] = -1
+v_m_ksq[504] = -1
+v_m_san[504] = "6.Bb3"
+v_m_from[505] = 61
+v_m_to[505] = 54
+v_m_cap[505] = -1
+v_m_rf[505] = -1
+v_m_rt[505] = -1
+v_m_promo[505] = -1
+v_m_ksq[505] = -1
+v_m_san[505] = "6...Bg7"
+v_m_from[506] = 3
+v_m_to[506] = 12
+v_m_cap[506] = -1
+v_m_rf[506] = -1
+v_m_rt[506] = -1
+v_m_promo[506] = -1
+v_m_ksq[506] = -1
+v_m_san[506] = "7.Qe2"
+v_m_from[507] = 57
+v_m_to[507] = 42
+v_m_cap[507] = -1
+v_m_rf[507] = -1
+v_m_rt[507] = -1
+v_m_promo[507] = -1
+v_m_ksq[507] = -1
+v_m_san[507] = "7...Nc6"
+v_m_from[508] = 4
+v_m_to[508] = 6
+v_m_cap[508] = -1
+v_m_rf[508] = 7
+v_m_rt[508] = 5
+v_m_promo[508] = -1
+v_m_ksq[508] = -1
+v_m_san[508] = "8.O-O"
+v_m_from[509] = 60
+v_m_to[509] = 62
+v_m_cap[509] = -1
+v_m_rf[509] = 63
+v_m_rt[509] = 61
+v_m_promo[509] = -1
+v_m_ksq[509] = -1
+v_m_san[509] = "8...O-O"
+v_m_from[510] = 15
+v_m_to[510] = 23
+v_m_cap[510] = -1
+v_m_rf[510] = -1
+v_m_rt[510] = -1
+v_m_promo[510] = -1
+v_m_ksq[510] = -1
+v_m_san[510] = "9.h3"
+v_m_from[511] = 48
+v_m_to[511] = 32
+v_m_cap[511] = -1
+v_m_rf[511] = -1
+v_m_rt[511] = -1
+v_m_promo[511] = -1
+v_m_ksq[511] = -1
+v_m_san[511] = "9...a5"
+v_m_from[512] = 8
+v_m_to[512] = 24
+v_m_cap[512] = -1
+v_m_rf[512] = -1
+v_m_rt[512] = -1
+v_m_promo[512] = -1
+v_m_ksq[512] = -1
+v_m_san[512] = "10.a4"
+v_m_from[513] = 43
+v_m_to[513] = 36
+v_m_cap[513] = 36
+v_m_rf[513] = -1
+v_m_rt[513] = -1
+v_m_promo[513] = -1
+v_m_ksq[513] = -1
+v_m_san[513] = "10...dxe5"
+v_m_from[514] = 27
+v_m_to[514] = 36
+v_m_cap[514] = 36
+v_m_rf[514] = -1
+v_m_rt[514] = -1
+v_m_promo[514] = -1
+v_m_ksq[514] = -1
+v_m_san[514] = "11.dxe5"
+v_m_from[515] = 42
+v_m_to[515] = 27
+v_m_cap[515] = -1
+v_m_rf[515] = -1
+v_m_rt[515] = -1
+v_m_promo[515] = -1
+v_m_ksq[515] = -1
+v_m_san[515] = "11...Nd4"
+v_m_from[516] = 21
+v_m_to[516] = 27
+v_m_cap[516] = 27
+v_m_rf[516] = -1
+v_m_rt[516] = -1
+v_m_promo[516] = -1
+v_m_ksq[516] = -1
+v_m_san[516] = "12.Nxd4"
+v_m_from[517] = 59
+v_m_to[517] = 27
+v_m_cap[517] = 27
+v_m_rf[517] = -1
+v_m_rt[517] = -1
+v_m_promo[517] = -1
+v_m_ksq[517] = -1
+v_m_san[517] = "12...Qxd4"
+v_m_from[518] = 5
+v_m_to[518] = 4
+v_m_cap[518] = -1
+v_m_rf[518] = -1
+v_m_rt[518] = -1
+v_m_promo[518] = -1
+v_m_ksq[518] = -1
+v_m_san[518] = "13.Re1"
+v_m_from[519] = 52
+v_m_to[519] = 44
+v_m_cap[519] = -1
+v_m_rf[519] = -1
+v_m_rt[519] = -1
+v_m_promo[519] = -1
+v_m_ksq[519] = -1
+v_m_san[519] = "13...e6"
+v_m_from[520] = 1
+v_m_to[520] = 11
+v_m_cap[520] = -1
+v_m_rf[520] = -1
+v_m_rt[520] = -1
+v_m_promo[520] = -1
+v_m_ksq[520] = -1
+v_m_san[520] = "14.Nd2"
+v_m_from[521] = 41
+v_m_to[521] = 35
+v_m_cap[521] = -1
+v_m_rf[521] = -1
+v_m_rt[521] = -1
+v_m_promo[521] = -1
+v_m_ksq[521] = -1
+v_m_san[521] = "14...Nd5"
+v_m_from[522] = 11
+v_m_to[522] = 21
+v_m_cap[522] = -1
+v_m_rf[522] = -1
+v_m_rt[522] = -1
+v_m_promo[522] = -1
+v_m_ksq[522] = -1
+v_m_san[522] = "15.Nf3"
+v_m_from[523] = 27
+v_m_to[523] = 34
+v_m_cap[523] = -1
+v_m_rf[523] = -1
+v_m_rt[523] = -1
+v_m_promo[523] = -1
+v_m_ksq[523] = -1
+v_m_san[523] = "15...Qc5"
+v_m_from[524] = 12
+v_m_to[524] = 28
+v_m_cap[524] = -1
+v_m_rf[524] = -1
+v_m_rt[524] = -1
+v_m_promo[524] = -1
+v_m_ksq[524] = -1
+v_m_san[524] = "16.Qe4"
+v_m_from[525] = 34
+v_m_to[525] = 25
+v_m_cap[525] = -1
+v_m_rf[525] = -1
+v_m_rt[525] = -1
+v_m_promo[525] = -1
+v_m_ksq[525] = -1
+v_m_san[525] = "16...Qb4"
+v_m_from[526] = 17
+v_m_to[526] = 26
+v_m_cap[526] = -1
+v_m_rf[526] = -1
+v_m_rt[526] = -1
+v_m_promo[526] = -1
+v_m_ksq[526] = -1
+v_m_san[526] = "17.Bc4"
+v_m_from[527] = 35
+v_m_to[527] = 41
+v_m_cap[527] = -1
+v_m_rf[527] = -1
+v_m_rt[527] = -1
+v_m_promo[527] = -1
+v_m_ksq[527] = -1
+v_m_san[527] = "17...Nb6"
+v_m_from[528] = 9
+v_m_to[528] = 17
+v_m_cap[528] = -1
+v_m_rf[528] = -1
+v_m_rt[528] = -1
+v_m_promo[528] = -1
+v_m_ksq[528] = -1
+v_m_san[528] = "18.b3"
+v_m_from[529] = 41
+v_m_to[529] = 26
+v_m_cap[529] = 26
+v_m_rf[529] = -1
+v_m_rt[529] = -1
+v_m_promo[529] = -1
+v_m_ksq[529] = -1
+v_m_san[529] = "18...Nxc4"
+v_m_from[530] = 17
+v_m_to[530] = 26
+v_m_cap[530] = 26
+v_m_rf[530] = -1
+v_m_rt[530] = -1
+v_m_promo[530] = -1
+v_m_ksq[530] = -1
+v_m_san[530] = "19.bxc4"
+v_m_from[531] = 61
+v_m_to[531] = 60
+v_m_cap[531] = -1
+v_m_rf[531] = -1
+v_m_rt[531] = -1
+v_m_promo[531] = -1
+v_m_ksq[531] = -1
+v_m_san[531] = "19...Re8"
+v_m_from[532] = 4
+v_m_to[532] = 3
+v_m_cap[532] = -1
+v_m_rf[532] = -1
+v_m_rt[532] = -1
+v_m_promo[532] = -1
+v_m_ksq[532] = -1
+v_m_san[532] = "20.Rd1"
+v_m_from[533] = 25
+v_m_to[533] = 34
+v_m_cap[533] = -1
+v_m_rf[533] = -1
+v_m_rt[533] = -1
+v_m_promo[533] = -1
+v_m_ksq[533] = -1
+v_m_san[533] = "20...Qc5"
+v_m_from[534] = 28
+v_m_to[534] = 31
+v_m_cap[534] = -1
+v_m_rf[534] = -1
+v_m_rt[534] = -1
+v_m_promo[534] = -1
+v_m_ksq[534] = -1
+v_m_san[534] = "21.Qh4"
+v_m_from[535] = 49
+v_m_to[535] = 41
+v_m_cap[535] = -1
+v_m_rf[535] = -1
+v_m_rt[535] = -1
+v_m_promo[535] = -1
+v_m_ksq[535] = -1
+v_m_san[535] = "21...b6"
+v_m_from[536] = 2
+v_m_to[536] = 20
+v_m_cap[536] = -1
+v_m_rf[536] = -1
+v_m_rt[536] = -1
+v_m_promo[536] = -1
+v_m_ksq[536] = -1
+v_m_san[536] = "22.Be3"
+v_m_from[537] = 34
+v_m_to[537] = 42
+v_m_cap[537] = -1
+v_m_rf[537] = -1
+v_m_rt[537] = -1
+v_m_promo[537] = -1
+v_m_ksq[537] = -1
+v_m_san[537] = "22...Qc6"
+v_m_from[538] = 20
+v_m_to[538] = 47
+v_m_cap[538] = -1
+v_m_rf[538] = -1
+v_m_rt[538] = -1
+v_m_promo[538] = -1
+v_m_ksq[538] = -1
+v_m_san[538] = "23.Bh6"
+v_m_from[539] = 54
+v_m_to[539] = 63
+v_m_cap[539] = -1
+v_m_rf[539] = -1
+v_m_rt[539] = -1
+v_m_promo[539] = -1
+v_m_ksq[539] = -1
+v_m_san[539] = "23...Bh8"
+v_m_from[540] = 3
+v_m_to[540] = 59
+v_m_cap[540] = -1
+v_m_rf[540] = -1
+v_m_rt[540] = -1
+v_m_promo[540] = -1
+v_m_ksq[540] = -1
+v_m_san[540] = "24.Rd8"
+v_m_from[541] = 58
+v_m_to[541] = 49
+v_m_cap[541] = -1
+v_m_rf[541] = -1
+v_m_rt[541] = -1
+v_m_promo[541] = -1
+v_m_ksq[541] = -1
+v_m_san[541] = "24...Bb7"
+v_m_from[542] = 0
+v_m_to[542] = 3
+v_m_cap[542] = -1
+v_m_rf[542] = -1
+v_m_rt[542] = -1
+v_m_promo[542] = -1
+v_m_ksq[542] = -1
+v_m_san[542] = "25.Rad1"
+v_m_from[543] = 63
+v_m_to[543] = 54
+v_m_cap[543] = -1
+v_m_rf[543] = -1
+v_m_rt[543] = -1
+v_m_promo[543] = -1
+v_m_ksq[543] = -1
+v_m_san[543] = "25...Bg7"
+v_m_from[544] = 59
+v_m_to[544] = 51
+v_m_cap[544] = -1
+v_m_rf[544] = -1
+v_m_rt[544] = -1
+v_m_promo[544] = -1
+v_m_ksq[544] = -1
+v_m_san[544] = "26.R8d7"
+v_m_from[545] = 60
+v_m_to[545] = 61
+v_m_cap[545] = -1
+v_m_rf[545] = -1
+v_m_rt[545] = -1
+v_m_promo[545] = -1
+v_m_ksq[545] = -1
+v_m_san[545] = "26...Rf8"
+v_m_from[546] = 47
+v_m_to[546] = 54
+v_m_cap[546] = 54
+v_m_rf[546] = -1
+v_m_rt[546] = -1
+v_m_promo[546] = -1
+v_m_ksq[546] = -1
+v_m_san[546] = "27.Bxg7"
+v_m_from[547] = 62
+v_m_to[547] = 54
+v_m_cap[547] = 54
+v_m_rf[547] = -1
+v_m_rt[547] = -1
+v_m_promo[547] = -1
+v_m_ksq[547] = -1
+v_m_san[547] = "27...Kxg7"
+v_m_from[548] = 3
+v_m_to[548] = 27
+v_m_cap[548] = -1
+v_m_rf[548] = -1
+v_m_rt[548] = -1
+v_m_promo[548] = -1
+v_m_ksq[548] = -1
+v_m_san[548] = "28.R1d4"
+v_m_from[549] = 56
+v_m_to[549] = 60
+v_m_cap[549] = -1
+v_m_rf[549] = -1
+v_m_rt[549] = -1
+v_m_promo[549] = -1
+v_m_ksq[549] = -1
+v_m_san[549] = "28...Rae8"
+v_m_from[550] = 31
+v_m_to[550] = 45
+v_m_cap[550] = -1
+v_m_rf[550] = -1
+v_m_rt[550] = -1
+v_m_promo[550] = -1
+v_m_chk[550] = 1
+v_m_ksq[550] = 54
+v_m_san[550] = "29.Qf6+"
+v_m_from[551] = 54
+v_m_to[551] = 62
+v_m_cap[551] = -1
+v_m_rf[551] = -1
+v_m_rt[551] = -1
+v_m_promo[551] = -1
+v_m_ksq[551] = -1
+v_m_san[551] = "29...Kg8"
+v_m_from[552] = 23
+v_m_to[552] = 31
+v_m_cap[552] = -1
+v_m_rf[552] = -1
+v_m_rt[552] = -1
+v_m_promo[552] = -1
+v_m_ksq[552] = -1
+v_m_san[552] = "30.h4"
+v_m_from[553] = 55
+v_m_to[553] = 39
+v_m_cap[553] = -1
+v_m_rf[553] = -1
+v_m_rt[553] = -1
+v_m_promo[553] = -1
+v_m_ksq[553] = -1
+v_m_san[553] = "30...h5"
+v_m_from[554] = 6
+v_m_to[554] = 15
+v_m_cap[554] = -1
+v_m_rf[554] = -1
+v_m_rt[554] = -1
+v_m_promo[554] = -1
+v_m_ksq[554] = -1
+v_m_san[554] = "31.Kh2"
+v_m_from[555] = 60
+v_m_to[555] = 58
+v_m_cap[555] = -1
+v_m_rf[555] = -1
+v_m_rt[555] = -1
+v_m_promo[555] = -1
+v_m_ksq[555] = -1
+v_m_san[555] = "31...Rc8"
+v_m_from[556] = 15
+v_m_to[556] = 22
+v_m_cap[556] = -1
+v_m_rf[556] = -1
+v_m_rt[556] = -1
+v_m_promo[556] = -1
+v_m_ksq[556] = -1
+v_m_san[556] = "32.Kg3"
+v_m_from[557] = 58
+v_m_to[557] = 60
+v_m_cap[557] = -1
+v_m_rf[557] = -1
+v_m_rt[557] = -1
+v_m_promo[557] = -1
+v_m_ksq[557] = -1
+v_m_san[557] = "32...Rce8"
+v_m_from[558] = 22
+v_m_to[558] = 29
+v_m_cap[558] = -1
+v_m_rf[558] = -1
+v_m_rt[558] = -1
+v_m_promo[558] = -1
+v_m_ksq[558] = -1
+v_m_san[558] = "33.Kf4"
+v_m_from[559] = 49
+v_m_to[559] = 58
+v_m_cap[559] = -1
+v_m_rf[559] = -1
+v_m_rt[559] = -1
+v_m_promo[559] = -1
+v_m_ksq[559] = -1
+v_m_san[559] = "33...Bc8"
+v_m_from[560] = 29
+v_m_to[560] = 38
+v_m_cap[560] = -1
+v_m_rf[560] = -1
+v_m_rt[560] = -1
+v_m_promo[560] = -1
+v_m_ksq[560] = -1
+v_m_san[560] = "34.Kg5"
+v_m_from[561] = 10
+v_m_to[561] = 26
+v_m_cap[561] = -1
+v_m_rf[561] = -1
+v_m_rt[561] = -1
+v_m_promo[561] = -1
+v_m_ksq[561] = -1
+v_m_san[561] = "1.c4"
+v_m_from[562] = 52
+v_m_to[562] = 44
+v_m_cap[562] = -1
+v_m_rf[562] = -1
+v_m_rt[562] = -1
+v_m_promo[562] = -1
+v_m_ksq[562] = -1
+v_m_san[562] = "1...e6"
+v_m_from[563] = 6
+v_m_to[563] = 21
+v_m_cap[563] = -1
+v_m_rf[563] = -1
+v_m_rt[563] = -1
+v_m_promo[563] = -1
+v_m_ksq[563] = -1
+v_m_san[563] = "2.Nf3"
+v_m_from[564] = 51
+v_m_to[564] = 35
+v_m_cap[564] = -1
+v_m_rf[564] = -1
+v_m_rt[564] = -1
+v_m_promo[564] = -1
+v_m_ksq[564] = -1
+v_m_san[564] = "2...d5"
+v_m_from[565] = 11
+v_m_to[565] = 27
+v_m_cap[565] = -1
+v_m_rf[565] = -1
+v_m_rt[565] = -1
+v_m_promo[565] = -1
+v_m_ksq[565] = -1
+v_m_san[565] = "3.d4"
+v_m_from[566] = 62
+v_m_to[566] = 45
+v_m_cap[566] = -1
+v_m_rf[566] = -1
+v_m_rt[566] = -1
+v_m_promo[566] = -1
+v_m_ksq[566] = -1
+v_m_san[566] = "3...Nf6"
+v_m_from[567] = 1
+v_m_to[567] = 18
+v_m_cap[567] = -1
+v_m_rf[567] = -1
+v_m_rt[567] = -1
+v_m_promo[567] = -1
+v_m_ksq[567] = -1
+v_m_san[567] = "4.Nc3"
+v_m_from[568] = 61
+v_m_to[568] = 52
+v_m_cap[568] = -1
+v_m_rf[568] = -1
+v_m_rt[568] = -1
+v_m_promo[568] = -1
+v_m_ksq[568] = -1
+v_m_san[568] = "4...Be7"
+v_m_from[569] = 2
+v_m_to[569] = 38
+v_m_cap[569] = -1
+v_m_rf[569] = -1
+v_m_rt[569] = -1
+v_m_promo[569] = -1
+v_m_ksq[569] = -1
+v_m_san[569] = "5.Bg5"
+v_m_from[570] = 60
+v_m_to[570] = 62
+v_m_cap[570] = -1
+v_m_rf[570] = 63
+v_m_rt[570] = 61
+v_m_promo[570] = -1
+v_m_ksq[570] = -1
+v_m_san[570] = "5...O-O"
+v_m_from[571] = 12
+v_m_to[571] = 20
+v_m_cap[571] = -1
+v_m_rf[571] = -1
+v_m_rt[571] = -1
+v_m_promo[571] = -1
+v_m_ksq[571] = -1
+v_m_san[571] = "6.e3"
+v_m_from[572] = 55
+v_m_to[572] = 47
+v_m_cap[572] = -1
+v_m_rf[572] = -1
+v_m_rt[572] = -1
+v_m_promo[572] = -1
+v_m_ksq[572] = -1
+v_m_san[572] = "6...h6"
+v_m_from[573] = 38
+v_m_to[573] = 31
+v_m_cap[573] = -1
+v_m_rf[573] = -1
+v_m_rt[573] = -1
+v_m_promo[573] = -1
+v_m_ksq[573] = -1
+v_m_san[573] = "7.Bh4"
+v_m_from[574] = 49
+v_m_to[574] = 41
+v_m_cap[574] = -1
+v_m_rf[574] = -1
+v_m_rt[574] = -1
+v_m_promo[574] = -1
+v_m_ksq[574] = -1
+v_m_san[574] = "7...b6"
+v_m_from[575] = 26
+v_m_to[575] = 35
+v_m_cap[575] = 35
+v_m_rf[575] = -1
+v_m_rt[575] = -1
+v_m_promo[575] = -1
+v_m_ksq[575] = -1
+v_m_san[575] = "8.cxd5"
+v_m_from[576] = 45
+v_m_to[576] = 35
+v_m_cap[576] = 35
+v_m_rf[576] = -1
+v_m_rt[576] = -1
+v_m_promo[576] = -1
+v_m_ksq[576] = -1
+v_m_san[576] = "8...Nxd5"
+v_m_from[577] = 31
+v_m_to[577] = 52
+v_m_cap[577] = 52
+v_m_rf[577] = -1
+v_m_rt[577] = -1
+v_m_promo[577] = -1
+v_m_ksq[577] = -1
+v_m_san[577] = "9.Bxe7"
+v_m_from[578] = 59
+v_m_to[578] = 52
+v_m_cap[578] = 52
+v_m_rf[578] = -1
+v_m_rt[578] = -1
+v_m_promo[578] = -1
+v_m_ksq[578] = -1
+v_m_san[578] = "9...Qxe7"
+v_m_from[579] = 18
+v_m_to[579] = 35
+v_m_cap[579] = 35
+v_m_rf[579] = -1
+v_m_rt[579] = -1
+v_m_promo[579] = -1
+v_m_ksq[579] = -1
+v_m_san[579] = "10.Nxd5"
+v_m_from[580] = 44
+v_m_to[580] = 35
+v_m_cap[580] = 35
+v_m_rf[580] = -1
+v_m_rt[580] = -1
+v_m_promo[580] = -1
+v_m_ksq[580] = -1
+v_m_san[580] = "10...exd5"
+v_m_from[581] = 0
+v_m_to[581] = 2
+v_m_cap[581] = -1
+v_m_rf[581] = -1
+v_m_rt[581] = -1
+v_m_promo[581] = -1
+v_m_ksq[581] = -1
+v_m_san[581] = "11.Rc1"
+v_m_from[582] = 58
+v_m_to[582] = 44
+v_m_cap[582] = -1
+v_m_rf[582] = -1
+v_m_rt[582] = -1
+v_m_promo[582] = -1
+v_m_ksq[582] = -1
+v_m_san[582] = "11...Be6"
+v_m_from[583] = 3
+v_m_to[583] = 24
+v_m_cap[583] = -1
+v_m_rf[583] = -1
+v_m_rt[583] = -1
+v_m_promo[583] = -1
+v_m_ksq[583] = -1
+v_m_san[583] = "12.Qa4"
+v_m_from[584] = 50
+v_m_to[584] = 34
+v_m_cap[584] = -1
+v_m_rf[584] = -1
+v_m_rt[584] = -1
+v_m_promo[584] = -1
+v_m_ksq[584] = -1
+v_m_san[584] = "12...c5"
+v_m_from[585] = 24
+v_m_to[585] = 16
+v_m_cap[585] = -1
+v_m_rf[585] = -1
+v_m_rt[585] = -1
+v_m_promo[585] = -1
+v_m_ksq[585] = -1
+v_m_san[585] = "13.Qa3"
+v_m_from[586] = 61
+v_m_to[586] = 58
+v_m_cap[586] = -1
+v_m_rf[586] = -1
+v_m_rt[586] = -1
+v_m_promo[586] = -1
+v_m_ksq[586] = -1
+v_m_san[586] = "13...Rc8"
+v_m_from[587] = 5
+v_m_to[587] = 33
+v_m_cap[587] = -1
+v_m_rf[587] = -1
+v_m_rt[587] = -1
+v_m_promo[587] = -1
+v_m_ksq[587] = -1
+v_m_san[587] = "14.Bb5"
+v_m_from[588] = 48
+v_m_to[588] = 40
+v_m_cap[588] = -1
+v_m_rf[588] = -1
+v_m_rt[588] = -1
+v_m_promo[588] = -1
+v_m_ksq[588] = -1
+v_m_san[588] = "14...a6"
+v_m_from[589] = 27
+v_m_to[589] = 34
+v_m_cap[589] = 34
+v_m_rf[589] = -1
+v_m_rt[589] = -1
+v_m_promo[589] = -1
+v_m_ksq[589] = -1
+v_m_san[589] = "15.dxc5"
+v_m_from[590] = 41
+v_m_to[590] = 34
+v_m_cap[590] = 34
+v_m_rf[590] = -1
+v_m_rt[590] = -1
+v_m_promo[590] = -1
+v_m_ksq[590] = -1
+v_m_san[590] = "15...bxc5"
+v_m_from[591] = 4
+v_m_to[591] = 6
+v_m_cap[591] = -1
+v_m_rf[591] = 7
+v_m_rt[591] = 5
+v_m_promo[591] = -1
+v_m_ksq[591] = -1
+v_m_san[591] = "16.O-O"
+v_m_from[592] = 56
+v_m_to[592] = 48
+v_m_cap[592] = -1
+v_m_rf[592] = -1
+v_m_rt[592] = -1
+v_m_promo[592] = -1
+v_m_ksq[592] = -1
+v_m_san[592] = "16...Ra7"
+v_m_from[593] = 33
+v_m_to[593] = 12
+v_m_cap[593] = -1
+v_m_rf[593] = -1
+v_m_rt[593] = -1
+v_m_promo[593] = -1
+v_m_ksq[593] = -1
+v_m_san[593] = "17.Be2"
+v_m_from[594] = 57
+v_m_to[594] = 51
+v_m_cap[594] = -1
+v_m_rf[594] = -1
+v_m_rt[594] = -1
+v_m_promo[594] = -1
+v_m_ksq[594] = -1
+v_m_san[594] = "17...Nd7"
+v_m_from[595] = 21
+v_m_to[595] = 27
+v_m_cap[595] = -1
+v_m_rf[595] = -1
+v_m_rt[595] = -1
+v_m_promo[595] = -1
+v_m_ksq[595] = -1
+v_m_san[595] = "18.Nd4"
+v_m_from[596] = 52
+v_m_to[596] = 61
+v_m_cap[596] = -1
+v_m_rf[596] = -1
+v_m_rt[596] = -1
+v_m_promo[596] = -1
+v_m_ksq[596] = -1
+v_m_san[596] = "18...Qf8"
+v_m_from[597] = 27
+v_m_to[597] = 44
+v_m_cap[597] = 44
+v_m_rf[597] = -1
+v_m_rt[597] = -1
+v_m_promo[597] = -1
+v_m_ksq[597] = -1
+v_m_san[597] = "19.Nxe6"
+v_m_from[598] = 53
+v_m_to[598] = 44
+v_m_cap[598] = 44
+v_m_rf[598] = -1
+v_m_rt[598] = -1
+v_m_promo[598] = -1
+v_m_ksq[598] = -1
+v_m_san[598] = "19...fxe6"
+v_m_from[599] = 20
+v_m_to[599] = 28
+v_m_cap[599] = -1
+v_m_rf[599] = -1
+v_m_rt[599] = -1
+v_m_promo[599] = -1
+v_m_ksq[599] = -1
+v_m_san[599] = "20.e4"
+v_m_from[600] = 35
+v_m_to[600] = 27
+v_m_cap[600] = -1
+v_m_rf[600] = -1
+v_m_rt[600] = -1
+v_m_promo[600] = -1
+v_m_ksq[600] = -1
+v_m_san[600] = "20...d4"
+v_m_from[601] = 13
+v_m_to[601] = 29
+v_m_cap[601] = -1
+v_m_rf[601] = -1
+v_m_rt[601] = -1
+v_m_promo[601] = -1
+v_m_ksq[601] = -1
+v_m_san[601] = "21.f4"
+v_m_from[602] = 61
+v_m_to[602] = 52
+v_m_cap[602] = -1
+v_m_rf[602] = -1
+v_m_rt[602] = -1
+v_m_promo[602] = -1
+v_m_ksq[602] = -1
+v_m_san[602] = "21...Qe7"
+v_m_from[603] = 28
+v_m_to[603] = 36
+v_m_cap[603] = -1
+v_m_rf[603] = -1
+v_m_rt[603] = -1
+v_m_promo[603] = -1
+v_m_ksq[603] = -1
+v_m_san[603] = "22.e5"
+v_m_from[604] = 58
+v_m_to[604] = 57
+v_m_cap[604] = -1
+v_m_rf[604] = -1
+v_m_rt[604] = -1
+v_m_promo[604] = -1
+v_m_ksq[604] = -1
+v_m_san[604] = "22...Rb8"
+v_m_from[605] = 12
+v_m_to[605] = 26
+v_m_cap[605] = -1
+v_m_rf[605] = -1
+v_m_rt[605] = -1
+v_m_promo[605] = -1
+v_m_ksq[605] = -1
+v_m_san[605] = "23.Bc4"
+v_m_from[606] = 62
+v_m_to[606] = 63
+v_m_cap[606] = -1
+v_m_rf[606] = -1
+v_m_rt[606] = -1
+v_m_promo[606] = -1
+v_m_ksq[606] = -1
+v_m_san[606] = "23...Kh8"
+v_m_from[607] = 16
+v_m_to[607] = 23
+v_m_cap[607] = -1
+v_m_rf[607] = -1
+v_m_rt[607] = -1
+v_m_promo[607] = -1
+v_m_ksq[607] = -1
+v_m_san[607] = "24.Qh3"
+v_m_from[608] = 51
+v_m_to[608] = 61
+v_m_cap[608] = -1
+v_m_rf[608] = -1
+v_m_rt[608] = -1
+v_m_promo[608] = -1
+v_m_ksq[608] = -1
+v_m_san[608] = "24...Nf8"
+v_m_from[609] = 9
+v_m_to[609] = 17
+v_m_cap[609] = -1
+v_m_rf[609] = -1
+v_m_rt[609] = -1
+v_m_promo[609] = -1
+v_m_ksq[609] = -1
+v_m_san[609] = "25.b3"
+v_m_from[610] = 40
+v_m_to[610] = 32
+v_m_cap[610] = -1
+v_m_rf[610] = -1
+v_m_rt[610] = -1
+v_m_promo[610] = -1
+v_m_ksq[610] = -1
+v_m_san[610] = "25...a5"
+v_m_from[611] = 29
+v_m_to[611] = 37
+v_m_cap[611] = -1
+v_m_rf[611] = -1
+v_m_rt[611] = -1
+v_m_promo[611] = -1
+v_m_ksq[611] = -1
+v_m_san[611] = "26.f5"
+v_m_from[612] = 44
+v_m_to[612] = 37
+v_m_cap[612] = 37
+v_m_rf[612] = -1
+v_m_rt[612] = -1
+v_m_promo[612] = -1
+v_m_ksq[612] = -1
+v_m_san[612] = "26...exf5"
+v_m_from[613] = 5
+v_m_to[613] = 37
+v_m_cap[613] = 37
+v_m_rf[613] = -1
+v_m_rt[613] = -1
+v_m_promo[613] = -1
+v_m_ksq[613] = -1
+v_m_san[613] = "27.Rxf5"
+v_m_from[614] = 61
+v_m_to[614] = 55
+v_m_cap[614] = -1
+v_m_rf[614] = -1
+v_m_rt[614] = -1
+v_m_promo[614] = -1
+v_m_ksq[614] = -1
+v_m_san[614] = "27...Nh7"
+v_m_from[615] = 2
+v_m_to[615] = 5
+v_m_cap[615] = -1
+v_m_rf[615] = -1
+v_m_rt[615] = -1
+v_m_promo[615] = -1
+v_m_ksq[615] = -1
+v_m_san[615] = "28.Rcf1"
+v_m_from[616] = 52
+v_m_to[616] = 59
+v_m_cap[616] = -1
+v_m_rf[616] = -1
+v_m_rt[616] = -1
+v_m_promo[616] = -1
+v_m_ksq[616] = -1
+v_m_san[616] = "28...Qd8"
+v_m_from[617] = 23
+v_m_to[617] = 22
+v_m_cap[617] = -1
+v_m_rf[617] = -1
+v_m_rt[617] = -1
+v_m_promo[617] = -1
+v_m_ksq[617] = -1
+v_m_san[617] = "29.Qg3"
+v_m_from[618] = 48
+v_m_to[618] = 52
+v_m_cap[618] = -1
+v_m_rf[618] = -1
+v_m_rt[618] = -1
+v_m_promo[618] = -1
+v_m_ksq[618] = -1
+v_m_san[618] = "29...Re7"
+v_m_from[619] = 15
+v_m_to[619] = 31
+v_m_cap[619] = -1
+v_m_rf[619] = -1
+v_m_rt[619] = -1
+v_m_promo[619] = -1
+v_m_ksq[619] = -1
+v_m_san[619] = "30.h4"
+v_m_from[620] = 57
+v_m_to[620] = 49
+v_m_cap[620] = -1
+v_m_rf[620] = -1
+v_m_rt[620] = -1
+v_m_promo[620] = -1
+v_m_ksq[620] = -1
+v_m_san[620] = "30...Rbb7"
+v_m_from[621] = 36
+v_m_to[621] = 44
+v_m_cap[621] = -1
+v_m_rf[621] = -1
+v_m_rt[621] = -1
+v_m_promo[621] = -1
+v_m_ksq[621] = -1
+v_m_san[621] = "31.e6"
+v_m_from[622] = 49
+v_m_to[622] = 50
+v_m_cap[622] = -1
+v_m_rf[622] = -1
+v_m_rt[622] = -1
+v_m_promo[622] = -1
+v_m_ksq[622] = -1
+v_m_san[622] = "31...Rbc7"
+v_m_from[623] = 22
+v_m_to[623] = 36
+v_m_cap[623] = -1
+v_m_rf[623] = -1
+v_m_rt[623] = -1
+v_m_promo[623] = -1
+v_m_ksq[623] = -1
+v_m_san[623] = "32.Qe5"
+v_m_from[624] = 59
+v_m_to[624] = 60
+v_m_cap[624] = -1
+v_m_rf[624] = -1
+v_m_rt[624] = -1
+v_m_promo[624] = -1
+v_m_ksq[624] = -1
+v_m_san[624] = "32...Qe8"
+v_m_from[625] = 8
+v_m_to[625] = 24
+v_m_cap[625] = -1
+v_m_rf[625] = -1
+v_m_rt[625] = -1
+v_m_promo[625] = -1
+v_m_ksq[625] = -1
+v_m_san[625] = "33.a4"
+v_m_from[626] = 60
+v_m_to[626] = 59
+v_m_cap[626] = -1
+v_m_rf[626] = -1
+v_m_rt[626] = -1
+v_m_promo[626] = -1
+v_m_ksq[626] = -1
+v_m_san[626] = "33...Qd8"
+v_m_from[627] = 5
+v_m_to[627] = 13
+v_m_cap[627] = -1
+v_m_rf[627] = -1
+v_m_rt[627] = -1
+v_m_promo[627] = -1
+v_m_ksq[627] = -1
+v_m_san[627] = "34.R1f2"
+v_m_from[628] = 59
+v_m_to[628] = 60
+v_m_cap[628] = -1
+v_m_rf[628] = -1
+v_m_rt[628] = -1
+v_m_promo[628] = -1
+v_m_ksq[628] = -1
+v_m_san[628] = "34...Qe8"
+v_m_from[629] = 13
+v_m_to[629] = 21
+v_m_cap[629] = -1
+v_m_rf[629] = -1
+v_m_rt[629] = -1
+v_m_promo[629] = -1
+v_m_ksq[629] = -1
+v_m_san[629] = "35.R2f3"
+v_m_from[630] = 60
+v_m_to[630] = 59
+v_m_cap[630] = -1
+v_m_rf[630] = -1
+v_m_rt[630] = -1
+v_m_promo[630] = -1
+v_m_ksq[630] = -1
+v_m_san[630] = "35...Qd8"
+v_m_from[631] = 26
+v_m_to[631] = 19
+v_m_cap[631] = -1
+v_m_rf[631] = -1
+v_m_rt[631] = -1
+v_m_promo[631] = -1
+v_m_ksq[631] = -1
+v_m_san[631] = "36.Bd3"
+v_m_from[632] = 59
+v_m_to[632] = 60
+v_m_cap[632] = -1
+v_m_rf[632] = -1
+v_m_rt[632] = -1
+v_m_promo[632] = -1
+v_m_ksq[632] = -1
+v_m_san[632] = "36...Qe8"
+v_m_from[633] = 36
+v_m_to[633] = 28
+v_m_cap[633] = -1
+v_m_rf[633] = -1
+v_m_rt[633] = -1
+v_m_promo[633] = -1
+v_m_ksq[633] = -1
+v_m_san[633] = "37.Qe4"
+v_m_from[634] = 55
+v_m_to[634] = 45
+v_m_cap[634] = -1
+v_m_rf[634] = -1
+v_m_rt[634] = -1
+v_m_promo[634] = -1
+v_m_ksq[634] = -1
+v_m_san[634] = "37...Nf6"
+v_m_from[635] = 37
+v_m_to[635] = 45
+v_m_cap[635] = 45
+v_m_rf[635] = -1
+v_m_rt[635] = -1
+v_m_promo[635] = -1
+v_m_ksq[635] = -1
+v_m_san[635] = "38.Rxf6"
+v_m_from[636] = 54
+v_m_to[636] = 45
+v_m_cap[636] = 45
+v_m_rf[636] = -1
+v_m_rt[636] = -1
+v_m_promo[636] = -1
+v_m_ksq[636] = -1
+v_m_san[636] = "38...gxf6"
+v_m_from[637] = 21
+v_m_to[637] = 45
+v_m_cap[637] = 45
+v_m_rf[637] = -1
+v_m_rt[637] = -1
+v_m_promo[637] = -1
+v_m_ksq[637] = -1
+v_m_san[637] = "39.Rxf6"
+v_m_from[638] = 63
+v_m_to[638] = 62
+v_m_cap[638] = -1
+v_m_rf[638] = -1
+v_m_rt[638] = -1
+v_m_promo[638] = -1
+v_m_ksq[638] = -1
+v_m_san[638] = "39...Kg8"
+v_m_from[639] = 19
+v_m_to[639] = 26
+v_m_cap[639] = -1
+v_m_rf[639] = -1
+v_m_rt[639] = -1
+v_m_promo[639] = -1
+v_m_ksq[639] = -1
+v_m_san[639] = "40.Bc4"
+v_m_from[640] = 62
+v_m_to[640] = 63
+v_m_cap[640] = -1
+v_m_rf[640] = -1
+v_m_rt[640] = -1
+v_m_promo[640] = -1
+v_m_ksq[640] = -1
+v_m_san[640] = "40...Kh8"
+v_m_from[641] = 28
+v_m_to[641] = 29
+v_m_cap[641] = -1
+v_m_rf[641] = -1
+v_m_rt[641] = -1
+v_m_promo[641] = -1
+v_m_ksq[641] = -1
+v_m_san[641] = "41.Qf4"
+v_m_from[642] = 12
+v_m_to[642] = 28
+v_m_cap[642] = -1
+v_m_rf[642] = -1
+v_m_rt[642] = -1
+v_m_promo[642] = -1
+v_m_ksq[642] = -1
+v_m_san[642] = "1.e4"
+v_m_from[643] = 52
+v_m_to[643] = 36
+v_m_cap[643] = -1
+v_m_rf[643] = -1
+v_m_rt[643] = -1
+v_m_promo[643] = -1
+v_m_ksq[643] = -1
+v_m_san[643] = "1...e5"
+v_m_from[644] = 6
+v_m_to[644] = 21
+v_m_cap[644] = -1
+v_m_rf[644] = -1
+v_m_rt[644] = -1
+v_m_promo[644] = -1
+v_m_ksq[644] = -1
+v_m_san[644] = "2.Nf3"
+v_m_from[645] = 51
+v_m_to[645] = 43
+v_m_cap[645] = -1
+v_m_rf[645] = -1
+v_m_rt[645] = -1
+v_m_promo[645] = -1
+v_m_ksq[645] = -1
+v_m_san[645] = "2...d6"
+v_m_from[646] = 11
+v_m_to[646] = 27
+v_m_cap[646] = -1
+v_m_rf[646] = -1
+v_m_rt[646] = -1
+v_m_promo[646] = -1
+v_m_ksq[646] = -1
+v_m_san[646] = "3.d4"
+v_m_from[647] = 36
+v_m_to[647] = 27
+v_m_cap[647] = 27
+v_m_rf[647] = -1
+v_m_rt[647] = -1
+v_m_promo[647] = -1
+v_m_ksq[647] = -1
+v_m_san[647] = "3...exd4"
+v_m_from[648] = 3
+v_m_to[648] = 27
+v_m_cap[648] = 27
+v_m_rf[648] = -1
+v_m_rt[648] = -1
+v_m_promo[648] = -1
+v_m_ksq[648] = -1
+v_m_san[648] = "4.Qxd4"
+v_m_from[649] = 57
+v_m_to[649] = 42
+v_m_cap[649] = -1
+v_m_rf[649] = -1
+v_m_rt[649] = -1
+v_m_promo[649] = -1
+v_m_ksq[649] = -1
+v_m_san[649] = "4...Nc6"
+v_m_from[650] = 5
+v_m_to[650] = 33
+v_m_cap[650] = -1
+v_m_rf[650] = -1
+v_m_rt[650] = -1
+v_m_promo[650] = -1
+v_m_ksq[650] = -1
+v_m_san[650] = "5.Bb5"
+v_m_from[651] = 58
+v_m_to[651] = 51
+v_m_cap[651] = -1
+v_m_rf[651] = -1
+v_m_rt[651] = -1
+v_m_promo[651] = -1
+v_m_ksq[651] = -1
+v_m_san[651] = "5...Bd7"
+v_m_from[652] = 33
+v_m_to[652] = 42
+v_m_cap[652] = 42
+v_m_rf[652] = -1
+v_m_rt[652] = -1
+v_m_promo[652] = -1
+v_m_ksq[652] = -1
+v_m_san[652] = "6.Bxc6"
+v_m_from[653] = 51
+v_m_to[653] = 42
+v_m_cap[653] = 42
+v_m_rf[653] = -1
+v_m_rt[653] = -1
+v_m_promo[653] = -1
+v_m_ksq[653] = -1
+v_m_san[653] = "6...Bxc6"
+v_m_from[654] = 1
+v_m_to[654] = 18
+v_m_cap[654] = -1
+v_m_rf[654] = -1
+v_m_rt[654] = -1
+v_m_promo[654] = -1
+v_m_ksq[654] = -1
+v_m_san[654] = "7.Nc3"
+v_m_from[655] = 62
+v_m_to[655] = 45
+v_m_cap[655] = -1
+v_m_rf[655] = -1
+v_m_rt[655] = -1
+v_m_promo[655] = -1
+v_m_ksq[655] = -1
+v_m_san[655] = "7...Nf6"
+v_m_from[656] = 4
+v_m_to[656] = 6
+v_m_cap[656] = -1
+v_m_rf[656] = 7
+v_m_rt[656] = 5
+v_m_promo[656] = -1
+v_m_ksq[656] = -1
+v_m_san[656] = "8.O-O"
+v_m_from[657] = 61
+v_m_to[657] = 52
+v_m_cap[657] = -1
+v_m_rf[657] = -1
+v_m_rt[657] = -1
+v_m_promo[657] = -1
+v_m_ksq[657] = -1
+v_m_san[657] = "8...Be7"
+v_m_from[658] = 18
+v_m_to[658] = 35
+v_m_cap[658] = -1
+v_m_rf[658] = -1
+v_m_rt[658] = -1
+v_m_promo[658] = -1
+v_m_ksq[658] = -1
+v_m_san[658] = "9.Nd5"
+v_m_from[659] = 42
+v_m_to[659] = 35
+v_m_cap[659] = 35
+v_m_rf[659] = -1
+v_m_rt[659] = -1
+v_m_promo[659] = -1
+v_m_ksq[659] = -1
+v_m_san[659] = "9...Bxd5"
+v_m_from[660] = 28
+v_m_to[660] = 35
+v_m_cap[660] = 35
+v_m_rf[660] = -1
+v_m_rt[660] = -1
+v_m_promo[660] = -1
+v_m_ksq[660] = -1
+v_m_san[660] = "10.exd5"
+v_m_from[661] = 60
+v_m_to[661] = 62
+v_m_cap[661] = -1
+v_m_rf[661] = 63
+v_m_rt[661] = 61
+v_m_promo[661] = -1
+v_m_ksq[661] = -1
+v_m_san[661] = "10...O-O"
+v_m_from[662] = 2
+v_m_to[662] = 38
+v_m_cap[662] = -1
+v_m_rf[662] = -1
+v_m_rt[662] = -1
+v_m_promo[662] = -1
+v_m_ksq[662] = -1
+v_m_san[662] = "11.Bg5"
+v_m_from[663] = 50
+v_m_to[663] = 42
+v_m_cap[663] = -1
+v_m_rf[663] = -1
+v_m_rt[663] = -1
+v_m_promo[663] = -1
+v_m_ksq[663] = -1
+v_m_san[663] = "11...c6"
+v_m_from[664] = 10
+v_m_to[664] = 26
+v_m_cap[664] = -1
+v_m_rf[664] = -1
+v_m_rt[664] = -1
+v_m_promo[664] = -1
+v_m_ksq[664] = -1
+v_m_san[664] = "12.c4"
+v_m_from[665] = 42
+v_m_to[665] = 35
+v_m_cap[665] = 35
+v_m_rf[665] = -1
+v_m_rt[665] = -1
+v_m_promo[665] = -1
+v_m_ksq[665] = -1
+v_m_san[665] = "12...cxd5"
+v_m_from[666] = 26
+v_m_to[666] = 35
+v_m_cap[666] = 35
+v_m_rf[666] = -1
+v_m_rt[666] = -1
+v_m_promo[666] = -1
+v_m_ksq[666] = -1
+v_m_san[666] = "13.cxd5"
+v_m_from[667] = 61
+v_m_to[667] = 60
+v_m_cap[667] = -1
+v_m_rf[667] = -1
+v_m_rt[667] = -1
+v_m_promo[667] = -1
+v_m_ksq[667] = -1
+v_m_san[667] = "13...Re8"
+v_m_from[668] = 5
+v_m_to[668] = 4
+v_m_cap[668] = -1
+v_m_rf[668] = -1
+v_m_rt[668] = -1
+v_m_promo[668] = -1
+v_m_ksq[668] = -1
+v_m_san[668] = "14.Rfe1"
+v_m_from[669] = 48
+v_m_to[669] = 32
+v_m_cap[669] = -1
+v_m_rf[669] = -1
+v_m_rt[669] = -1
+v_m_promo[669] = -1
+v_m_ksq[669] = -1
+v_m_san[669] = "14...a5"
+v_m_from[670] = 4
+v_m_to[670] = 12
+v_m_cap[670] = -1
+v_m_rf[670] = -1
+v_m_rt[670] = -1
+v_m_promo[670] = -1
+v_m_ksq[670] = -1
+v_m_san[670] = "15.Re2"
+v_m_from[671] = 56
+v_m_to[671] = 58
+v_m_cap[671] = -1
+v_m_rf[671] = -1
+v_m_rt[671] = -1
+v_m_promo[671] = -1
+v_m_ksq[671] = -1
+v_m_san[671] = "15...Rc8"
+v_m_from[672] = 0
+v_m_to[672] = 4
+v_m_cap[672] = -1
+v_m_rf[672] = -1
+v_m_rt[672] = -1
+v_m_promo[672] = -1
+v_m_ksq[672] = -1
+v_m_san[672] = "16.Rae1"
+v_m_from[673] = 59
+v_m_to[673] = 51
+v_m_cap[673] = -1
+v_m_rf[673] = -1
+v_m_rt[673] = -1
+v_m_promo[673] = -1
+v_m_ksq[673] = -1
+v_m_san[673] = "16...Qd7"
+v_m_from[674] = 38
+v_m_to[674] = 45
+v_m_cap[674] = 45
+v_m_rf[674] = -1
+v_m_rt[674] = -1
+v_m_promo[674] = -1
+v_m_ksq[674] = -1
+v_m_san[674] = "17.Bxf6"
+v_m_from[675] = 52
+v_m_to[675] = 45
+v_m_cap[675] = 45
+v_m_rf[675] = -1
+v_m_rt[675] = -1
+v_m_promo[675] = -1
+v_m_ksq[675] = -1
+v_m_san[675] = "17...Bxf6"
+v_m_from[676] = 27
+v_m_to[676] = 30
+v_m_cap[676] = -1
+v_m_rf[676] = -1
+v_m_rt[676] = -1
+v_m_promo[676] = -1
+v_m_ksq[676] = -1
+v_m_san[676] = "18.Qg4"
+v_m_from[677] = 51
+v_m_to[677] = 33
+v_m_cap[677] = -1
+v_m_rf[677] = -1
+v_m_rt[677] = -1
+v_m_promo[677] = -1
+v_m_ksq[677] = -1
+v_m_san[677] = "18...Qb5"
+v_m_from[678] = 30
+v_m_to[678] = 26
+v_m_cap[678] = -1
+v_m_rf[678] = -1
+v_m_rt[678] = -1
+v_m_promo[678] = -1
+v_m_ksq[678] = -1
+v_m_san[678] = "19.Qc4"
+v_m_from[679] = 33
+v_m_to[679] = 51
+v_m_cap[679] = -1
+v_m_rf[679] = -1
+v_m_rt[679] = -1
+v_m_promo[679] = -1
+v_m_ksq[679] = -1
+v_m_san[679] = "19...Qd7"
+v_m_from[680] = 26
+v_m_to[680] = 50
+v_m_cap[680] = -1
+v_m_rf[680] = -1
+v_m_rt[680] = -1
+v_m_promo[680] = -1
+v_m_ksq[680] = -1
+v_m_san[680] = "20.Qc7"
+v_m_from[681] = 51
+v_m_to[681] = 33
+v_m_cap[681] = -1
+v_m_rf[681] = -1
+v_m_rt[681] = -1
+v_m_promo[681] = -1
+v_m_ksq[681] = -1
+v_m_san[681] = "20...Qb5"
+v_m_from[682] = 8
+v_m_to[682] = 24
+v_m_cap[682] = -1
+v_m_rf[682] = -1
+v_m_rt[682] = -1
+v_m_promo[682] = -1
+v_m_ksq[682] = -1
+v_m_san[682] = "21.a4"
+v_m_from[683] = 33
+v_m_to[683] = 24
+v_m_cap[683] = 24
+v_m_rf[683] = -1
+v_m_rt[683] = -1
+v_m_promo[683] = -1
+v_m_ksq[683] = -1
+v_m_san[683] = "21...Qxa4"
+v_m_from[684] = 12
+v_m_to[684] = 28
+v_m_cap[684] = -1
+v_m_rf[684] = -1
+v_m_rt[684] = -1
+v_m_promo[684] = -1
+v_m_ksq[684] = -1
+v_m_san[684] = "22.Re4"
+v_m_from[685] = 24
+v_m_to[685] = 33
+v_m_cap[685] = -1
+v_m_rf[685] = -1
+v_m_rt[685] = -1
+v_m_promo[685] = -1
+v_m_ksq[685] = -1
+v_m_san[685] = "22...Qb5"
+v_m_from[686] = 50
+v_m_to[686] = 49
+v_m_cap[686] = 49
+v_m_rf[686] = -1
+v_m_rt[686] = -1
+v_m_promo[686] = -1
+v_m_ksq[686] = -1
+v_m_san[686] = "23.Qxb7"
+v_m_from[687] = 11
+v_m_to[687] = 27
+v_m_cap[687] = -1
+v_m_rf[687] = -1
+v_m_rt[687] = -1
+v_m_promo[687] = -1
+v_m_ksq[687] = -1
+v_m_san[687] = "1.d4"
+v_m_from[688] = 52
+v_m_to[688] = 44
+v_m_cap[688] = -1
+v_m_rf[688] = -1
+v_m_rt[688] = -1
+v_m_promo[688] = -1
+v_m_ksq[688] = -1
+v_m_san[688] = "1...e6"
+v_m_from[689] = 12
+v_m_to[689] = 28
+v_m_cap[689] = -1
+v_m_rf[689] = -1
+v_m_rt[689] = -1
+v_m_promo[689] = -1
+v_m_ksq[689] = -1
+v_m_san[689] = "2.e4"
+v_m_from[690] = 51
+v_m_to[690] = 35
+v_m_cap[690] = -1
+v_m_rf[690] = -1
+v_m_rt[690] = -1
+v_m_promo[690] = -1
+v_m_ksq[690] = -1
+v_m_san[690] = "2...d5"
+v_m_from[691] = 1
+v_m_to[691] = 18
+v_m_cap[691] = -1
+v_m_rf[691] = -1
+v_m_rt[691] = -1
+v_m_promo[691] = -1
+v_m_ksq[691] = -1
+v_m_san[691] = "3.Nc3"
+v_m_from[692] = 50
+v_m_to[692] = 34
+v_m_cap[692] = -1
+v_m_rf[692] = -1
+v_m_rt[692] = -1
+v_m_promo[692] = -1
+v_m_ksq[692] = -1
+v_m_san[692] = "3...c5"
+v_m_from[693] = 6
+v_m_to[693] = 21
+v_m_cap[693] = -1
+v_m_rf[693] = -1
+v_m_rt[693] = -1
+v_m_promo[693] = -1
+v_m_ksq[693] = -1
+v_m_san[693] = "4.Nf3"
+v_m_from[694] = 57
+v_m_to[694] = 42
+v_m_cap[694] = -1
+v_m_rf[694] = -1
+v_m_rt[694] = -1
+v_m_promo[694] = -1
+v_m_ksq[694] = -1
+v_m_san[694] = "4...Nc6"
+v_m_from[695] = 28
+v_m_to[695] = 35
+v_m_cap[695] = 35
+v_m_rf[695] = -1
+v_m_rt[695] = -1
+v_m_promo[695] = -1
+v_m_ksq[695] = -1
+v_m_san[695] = "5.exd5"
+v_m_from[696] = 44
+v_m_to[696] = 35
+v_m_cap[696] = 35
+v_m_rf[696] = -1
+v_m_rt[696] = -1
+v_m_promo[696] = -1
+v_m_ksq[696] = -1
+v_m_san[696] = "5...exd5"
+v_m_from[697] = 5
+v_m_to[697] = 12
+v_m_cap[697] = -1
+v_m_rf[697] = -1
+v_m_rt[697] = -1
+v_m_promo[697] = -1
+v_m_ksq[697] = -1
+v_m_san[697] = "6.Be2"
+v_m_from[698] = 62
+v_m_to[698] = 45
+v_m_cap[698] = -1
+v_m_rf[698] = -1
+v_m_rt[698] = -1
+v_m_promo[698] = -1
+v_m_ksq[698] = -1
+v_m_san[698] = "6...Nf6"
+v_m_from[699] = 4
+v_m_to[699] = 6
+v_m_cap[699] = -1
+v_m_rf[699] = 7
+v_m_rt[699] = 5
+v_m_promo[699] = -1
+v_m_ksq[699] = -1
+v_m_san[699] = "7.O-O"
+v_m_from[700] = 61
+v_m_to[700] = 52
+v_m_cap[700] = -1
+v_m_rf[700] = -1
+v_m_rt[700] = -1
+v_m_promo[700] = -1
+v_m_ksq[700] = -1
+v_m_san[700] = "7...Be7"
+v_m_from[701] = 2
+v_m_to[701] = 38
+v_m_cap[701] = -1
+v_m_rf[701] = -1
+v_m_rt[701] = -1
+v_m_promo[701] = -1
+v_m_ksq[701] = -1
+v_m_san[701] = "8.Bg5"
+v_m_from[702] = 60
+v_m_to[702] = 62
+v_m_cap[702] = -1
+v_m_rf[702] = 63
+v_m_rt[702] = 61
+v_m_promo[702] = -1
+v_m_ksq[702] = -1
+v_m_san[702] = "8...O-O"
+v_m_from[703] = 27
+v_m_to[703] = 34
+v_m_cap[703] = 34
+v_m_rf[703] = -1
+v_m_rt[703] = -1
+v_m_promo[703] = -1
+v_m_ksq[703] = -1
+v_m_san[703] = "9.dxc5"
+v_m_from[704] = 58
+v_m_to[704] = 44
+v_m_cap[704] = -1
+v_m_rf[704] = -1
+v_m_rt[704] = -1
+v_m_promo[704] = -1
+v_m_ksq[704] = -1
+v_m_san[704] = "9...Be6"
+v_m_from[705] = 21
+v_m_to[705] = 27
+v_m_cap[705] = -1
+v_m_rf[705] = -1
+v_m_rt[705] = -1
+v_m_promo[705] = -1
+v_m_ksq[705] = -1
+v_m_san[705] = "10.Nd4"
+v_m_from[706] = 52
+v_m_to[706] = 34
+v_m_cap[706] = 34
+v_m_rf[706] = -1
+v_m_rt[706] = -1
+v_m_promo[706] = -1
+v_m_ksq[706] = -1
+v_m_san[706] = "10...Bxc5"
+v_m_from[707] = 27
+v_m_to[707] = 44
+v_m_cap[707] = 44
+v_m_rf[707] = -1
+v_m_rt[707] = -1
+v_m_promo[707] = -1
+v_m_ksq[707] = -1
+v_m_san[707] = "11.Nxe6"
+v_m_from[708] = 53
+v_m_to[708] = 44
+v_m_cap[708] = 44
+v_m_rf[708] = -1
+v_m_rt[708] = -1
+v_m_promo[708] = -1
+v_m_ksq[708] = -1
+v_m_san[708] = "11...fxe6"
+v_m_from[709] = 12
+v_m_to[709] = 30
+v_m_cap[709] = -1
+v_m_rf[709] = -1
+v_m_rt[709] = -1
+v_m_promo[709] = -1
+v_m_ksq[709] = -1
+v_m_san[709] = "12.Bg4"
+v_m_from[710] = 59
+v_m_to[710] = 43
+v_m_cap[710] = -1
+v_m_rf[710] = -1
+v_m_rt[710] = -1
+v_m_promo[710] = -1
+v_m_ksq[710] = -1
+v_m_san[710] = "12...Qd6"
+v_m_from[711] = 30
+v_m_to[711] = 23
+v_m_cap[711] = -1
+v_m_rf[711] = -1
+v_m_rt[711] = -1
+v_m_promo[711] = -1
+v_m_ksq[711] = -1
+v_m_san[711] = "13.Bh3"
+v_m_from[712] = 56
+v_m_to[712] = 60
+v_m_cap[712] = -1
+v_m_rf[712] = -1
+v_m_rt[712] = -1
+v_m_promo[712] = -1
+v_m_ksq[712] = -1
+v_m_san[712] = "13...Rae8"
+v_m_from[713] = 3
+v_m_to[713] = 11
+v_m_cap[713] = -1
+v_m_rf[713] = -1
+v_m_rt[713] = -1
+v_m_promo[713] = -1
+v_m_ksq[713] = -1
+v_m_san[713] = "14.Qd2"
+v_m_from[714] = 34
+v_m_to[714] = 25
+v_m_cap[714] = -1
+v_m_rf[714] = -1
+v_m_rt[714] = -1
+v_m_promo[714] = -1
+v_m_ksq[714] = -1
+v_m_san[714] = "14...Bb4"
+v_m_from[715] = 38
+v_m_to[715] = 45
+v_m_cap[715] = 45
+v_m_rf[715] = -1
+v_m_rt[715] = -1
+v_m_promo[715] = -1
+v_m_ksq[715] = -1
+v_m_san[715] = "15.Bxf6"
+v_m_from[716] = 61
+v_m_to[716] = 45
+v_m_cap[716] = 45
+v_m_rf[716] = -1
+v_m_rt[716] = -1
+v_m_promo[716] = -1
+v_m_ksq[716] = -1
+v_m_san[716] = "15...Rxf6"
+v_m_from[717] = 0
+v_m_to[717] = 3
+v_m_cap[717] = -1
+v_m_rf[717] = -1
+v_m_rt[717] = -1
+v_m_promo[717] = -1
+v_m_ksq[717] = -1
+v_m_san[717] = "16.Rad1"
+v_m_from[718] = 43
+v_m_to[718] = 34
+v_m_cap[718] = -1
+v_m_rf[718] = -1
+v_m_rt[718] = -1
+v_m_promo[718] = -1
+v_m_ksq[718] = -1
+v_m_san[718] = "16...Qc5"
+v_m_from[719] = 11
+v_m_to[719] = 12
+v_m_cap[719] = -1
+v_m_rf[719] = -1
+v_m_rt[719] = -1
+v_m_promo[719] = -1
+v_m_ksq[719] = -1
+v_m_san[719] = "17.Qe2"
+v_m_from[720] = 25
+v_m_to[720] = 18
+v_m_cap[720] = 18
+v_m_rf[720] = -1
+v_m_rt[720] = -1
+v_m_promo[720] = -1
+v_m_ksq[720] = -1
+v_m_san[720] = "17...Bxc3"
+v_m_from[721] = 9
+v_m_to[721] = 18
+v_m_cap[721] = 18
+v_m_rf[721] = -1
+v_m_rt[721] = -1
+v_m_promo[721] = -1
+v_m_ksq[721] = -1
+v_m_san[721] = "18.bxc3"
+v_m_from[722] = 34
+v_m_to[722] = 18
+v_m_cap[722] = 18
+v_m_rf[722] = -1
+v_m_rt[722] = -1
+v_m_promo[722] = -1
+v_m_ksq[722] = -1
+v_m_san[722] = "18...Qxc3"
+v_m_from[723] = 3
+v_m_to[723] = 35
+v_m_cap[723] = 35
+v_m_rf[723] = -1
+v_m_rt[723] = -1
+v_m_promo[723] = -1
+v_m_ksq[723] = -1
+v_m_san[723] = "19.Rxd5"
+v_m_from[724] = 42
+v_m_to[724] = 27
+v_m_cap[724] = -1
+v_m_rf[724] = -1
+v_m_rt[724] = -1
+v_m_promo[724] = -1
+v_m_ksq[724] = -1
+v_m_san[724] = "19...Nd4"
+v_m_from[725] = 12
+v_m_to[725] = 39
+v_m_cap[725] = -1
+v_m_rf[725] = -1
+v_m_rt[725] = -1
+v_m_promo[725] = -1
+v_m_ksq[725] = -1
+v_m_san[725] = "20.Qh5"
+v_m_from[726] = 60
+v_m_to[726] = 61
+v_m_cap[726] = -1
+v_m_rf[726] = -1
+v_m_rt[726] = -1
+v_m_promo[726] = -1
+v_m_ksq[726] = -1
+v_m_san[726] = "20...Ref8"
+v_m_from[727] = 35
+v_m_to[727] = 36
+v_m_cap[727] = -1
+v_m_rf[727] = -1
+v_m_rt[727] = -1
+v_m_promo[727] = -1
+v_m_ksq[727] = -1
+v_m_san[727] = "21.Re5"
+v_m_from[728] = 45
+v_m_to[728] = 47
+v_m_cap[728] = -1
+v_m_rf[728] = -1
+v_m_rt[728] = -1
+v_m_promo[728] = -1
+v_m_ksq[728] = -1
+v_m_san[728] = "21...Rh6"
+v_m_from[729] = 39
+v_m_to[729] = 38
+v_m_cap[729] = -1
+v_m_rf[729] = -1
+v_m_rt[729] = -1
+v_m_promo[729] = -1
+v_m_ksq[729] = -1
+v_m_san[729] = "22.Qg5"
+v_m_from[730] = 47
+v_m_to[730] = 23
+v_m_cap[730] = 23
+v_m_rf[730] = -1
+v_m_rt[730] = -1
+v_m_promo[730] = -1
+v_m_ksq[730] = -1
+v_m_san[730] = "22...Rxh3"
+v_m_from[731] = 36
+v_m_to[731] = 34
+v_m_cap[731] = -1
+v_m_rf[731] = -1
+v_m_rt[731] = -1
+v_m_promo[731] = -1
+v_m_ksq[731] = -1
+v_m_san[731] = "23.Rc5"
+v_m_from[732] = 18
+v_m_to[732] = 22
+v_m_cap[732] = -1
+v_m_rf[732] = -1
+v_m_rt[732] = -1
+v_m_promo[732] = -1
+v_m_ksq[732] = -1
+v_m_san[732] = "23...Qg3"
+v_m_from[733] = 12
+v_m_to[733] = 28
+v_m_cap[733] = -1
+v_m_rf[733] = -1
+v_m_rt[733] = -1
+v_m_promo[733] = -1
+v_m_ksq[733] = -1
+v_m_san[733] = "1.e4"
+v_m_from[734] = 51
+v_m_to[734] = 35
+v_m_cap[734] = -1
+v_m_rf[734] = -1
+v_m_rt[734] = -1
+v_m_promo[734] = -1
+v_m_ksq[734] = -1
+v_m_san[734] = "1...d5"
+v_m_from[735] = 28
+v_m_to[735] = 35
+v_m_cap[735] = 35
+v_m_rf[735] = -1
+v_m_rt[735] = -1
+v_m_promo[735] = -1
+v_m_ksq[735] = -1
+v_m_san[735] = "2.exd5"
+v_m_from[736] = 59
+v_m_to[736] = 35
+v_m_cap[736] = 35
+v_m_rf[736] = -1
+v_m_rt[736] = -1
+v_m_promo[736] = -1
+v_m_ksq[736] = -1
+v_m_san[736] = "2...Qxd5"
+v_m_from[737] = 1
+v_m_to[737] = 18
+v_m_cap[737] = -1
+v_m_rf[737] = -1
+v_m_rt[737] = -1
+v_m_promo[737] = -1
+v_m_ksq[737] = -1
+v_m_san[737] = "3.Nc3"
+v_m_from[738] = 35
+v_m_to[738] = 32
+v_m_cap[738] = -1
+v_m_rf[738] = -1
+v_m_rt[738] = -1
+v_m_promo[738] = -1
+v_m_ksq[738] = -1
+v_m_san[738] = "3...Qa5"
+v_m_from[739] = 11
+v_m_to[739] = 27
+v_m_cap[739] = -1
+v_m_rf[739] = -1
+v_m_rt[739] = -1
+v_m_promo[739] = -1
+v_m_ksq[739] = -1
+v_m_san[739] = "4.d4"
+v_m_from[740] = 50
+v_m_to[740] = 42
+v_m_cap[740] = -1
+v_m_rf[740] = -1
+v_m_rt[740] = -1
+v_m_promo[740] = -1
+v_m_ksq[740] = -1
+v_m_san[740] = "4...c6"
+v_m_from[741] = 6
+v_m_to[741] = 21
+v_m_cap[741] = -1
+v_m_rf[741] = -1
+v_m_rt[741] = -1
+v_m_promo[741] = -1
+v_m_ksq[741] = -1
+v_m_san[741] = "5.Nf3"
+v_m_from[742] = 58
+v_m_to[742] = 30
+v_m_cap[742] = -1
+v_m_rf[742] = -1
+v_m_rt[742] = -1
+v_m_promo[742] = -1
+v_m_ksq[742] = -1
+v_m_san[742] = "5...Bg4"
+v_m_from[743] = 2
+v_m_to[743] = 29
+v_m_cap[743] = -1
+v_m_rf[743] = -1
+v_m_rt[743] = -1
+v_m_promo[743] = -1
+v_m_ksq[743] = -1
+v_m_san[743] = "6.Bf4"
+v_m_from[744] = 52
+v_m_to[744] = 44
+v_m_cap[744] = -1
+v_m_rf[744] = -1
+v_m_rt[744] = -1
+v_m_promo[744] = -1
+v_m_ksq[744] = -1
+v_m_san[744] = "6...e6"
+v_m_from[745] = 15
+v_m_to[745] = 23
+v_m_cap[745] = -1
+v_m_rf[745] = -1
+v_m_rt[745] = -1
+v_m_promo[745] = -1
+v_m_ksq[745] = -1
+v_m_san[745] = "7.h3"
+v_m_from[746] = 30
+v_m_to[746] = 21
+v_m_cap[746] = 21
+v_m_rf[746] = -1
+v_m_rt[746] = -1
+v_m_promo[746] = -1
+v_m_ksq[746] = -1
+v_m_san[746] = "7...Bxf3"
+v_m_from[747] = 3
+v_m_to[747] = 21
+v_m_cap[747] = 21
+v_m_rf[747] = -1
+v_m_rt[747] = -1
+v_m_promo[747] = -1
+v_m_ksq[747] = -1
+v_m_san[747] = "8.Qxf3"
+v_m_from[748] = 61
+v_m_to[748] = 25
+v_m_cap[748] = -1
+v_m_rf[748] = -1
+v_m_rt[748] = -1
+v_m_promo[748] = -1
+v_m_ksq[748] = -1
+v_m_san[748] = "8...Bb4"
+v_m_from[749] = 5
+v_m_to[749] = 12
+v_m_cap[749] = -1
+v_m_rf[749] = -1
+v_m_rt[749] = -1
+v_m_promo[749] = -1
+v_m_ksq[749] = -1
+v_m_san[749] = "9.Be2"
+v_m_from[750] = 57
+v_m_to[750] = 51
+v_m_cap[750] = -1
+v_m_rf[750] = -1
+v_m_rt[750] = -1
+v_m_promo[750] = -1
+v_m_ksq[750] = -1
+v_m_san[750] = "9...Nd7"
+v_m_from[751] = 8
+v_m_to[751] = 16
+v_m_cap[751] = -1
+v_m_rf[751] = -1
+v_m_rt[751] = -1
+v_m_promo[751] = -1
+v_m_ksq[751] = -1
+v_m_san[751] = "10.a3"
+v_m_from[752] = 60
+v_m_to[752] = 58
+v_m_cap[752] = -1
+v_m_rf[752] = 56
+v_m_rt[752] = 59
+v_m_promo[752] = -1
+v_m_ksq[752] = -1
+v_m_san[752] = "10...O-O-O"
+v_m_from[753] = 16
+v_m_to[753] = 25
+v_m_cap[753] = 25
+v_m_rf[753] = -1
+v_m_rt[753] = -1
+v_m_promo[753] = -1
+v_m_ksq[753] = -1
+v_m_san[753] = "11.axb4"
+v_m_from[754] = 32
+v_m_to[754] = 0
+v_m_rf[754] = -1
+v_m_rt[754] = -1
+v_m_promo[754] = -1
+v_m_chk[754] = 1
+v_m_ksq[754] = 4
+v_m_san[754] = "11...Qxa1+"
+v_m_from[755] = 4
+v_m_to[755] = 11
+v_m_cap[755] = -1
+v_m_rf[755] = -1
+v_m_rt[755] = -1
+v_m_promo[755] = -1
+v_m_ksq[755] = -1
+v_m_san[755] = "12.Kd2"
+v_m_from[756] = 0
+v_m_to[756] = 7
+v_m_cap[756] = 7
+v_m_rf[756] = -1
+v_m_rt[756] = -1
+v_m_promo[756] = -1
+v_m_ksq[756] = -1
+v_m_san[756] = "12...Qxh1"
+v_m_from[757] = 21
+v_m_to[757] = 42
+v_m_cap[757] = 42
+v_m_rf[757] = -1
+v_m_rt[757] = -1
+v_m_promo[757] = -1
+v_m_chk[757] = 1
+v_m_ksq[757] = 58
+v_m_san[757] = "13.Qxc6+"
+v_m_from[758] = 49
+v_m_to[758] = 42
+v_m_cap[758] = 42
+v_m_rf[758] = -1
+v_m_rt[758] = -1
+v_m_promo[758] = -1
+v_m_ksq[758] = -1
+v_m_san[758] = "13...bxc6"
+v_m_from[759] = 12
+v_m_to[759] = 40
+v_m_cap[759] = -1
+v_m_rf[759] = -1
+v_m_rt[759] = -1
+v_m_promo[759] = -1
+v_m_chk[759] = 1
+v_m_mate[759] = 1
+v_m_ksq[759] = 58
+v_m_san[759] = "14.Ba6#"
+
+# ---------------- Board state ----------------
+v_x0 = 4
+v_y0 = 0
+create_array(v_sq, 64, numeric)       # piece id on each square, -1 = empty
+create_array(v_ptype, 32, numeric)    # 0 P 1 N 2 B 3 R 4 Q 5 K
+create_array(v_pcol, 32, numeric)     # 0 white 1 black
+create_array(v_pon, 32, numeric)
+create_array(v_back, 8, numeric)
+v_back[0] = 3
+v_back[1] = 1
+v_back[2] = 2
+v_back[3] = 4
+v_back[4] = 5
+v_back[5] = 2
+v_back[6] = 1
+v_back[7] = 3
+
+# sparks for the checkmate flourish
+v_ns = 70
+create_array(v_spx, v_ns, numeric)
+create_array(v_spy, v_ns, numeric)
+create_array(v_svx, v_ns, numeric)
+create_array(v_svy, v_ns, numeric)
+create_array(v_sc, v_ns, numeric)
+
+# square v_s -> top-left screen corner v_qx, v_qy
+def sq_xy {
+    v_qx = v_x0 + (v_s % 8) * 7
+    v_qy = v_y0 + (7 - floor(v_s / 8)) * 7
+}
+
+# draw square v_s with highlight v_hl (0 none, 1 last move, 2 check)
+def draw_sq {
+    call sq_xy
+    v_light = ((v_s % 8) + floor(v_s / 8)) % 2
+    if v_hl == 2 then
+        if v_light == 1 then
+            v_rc = "crimson"
+            v_ri = 75
+        else
+            v_rc = "red"
+            v_ri = 55
+        endif
+    elseif v_hl == 1 then
+        if v_light == 1 then
+            v_rc = "gold"
+            v_ri = 55
+        else
+            v_rc = "bronze"
+            v_ri = 55
+        endif
+    else
+        if v_light == 1 then
+            v_rc = "tan"
+            v_ri = 60
+        else
+            v_rc = "wood_brown"
+            v_ri = 45
+        endif
+    endif
+    draw_rectangle(v_qx, v_qy, 7, 7, v_rc, v_ri, true)
+}
+
+def draw_board {
+    v_hl = 0
+    for v_s in (0, 63, 1)
+        call draw_sq
+    endfor v_s
+    draw_text(0, 50, "1", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 43, "2", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 36, "3", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 29, "4", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 22, "5", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 15, "6", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 8, "7", tiny64_font, 8, dark_gray, 70, NORMAL)
+    draw_text(0, 1, "8", tiny64_font, 8, dark_gray, 70, NORMAL)
+}
+
+# bottom strip text v_txt in colour v_tc
+def strip_text {
+    draw_rectangle(0, 57, 64, 7, black, 100, true)
+    draw_text(32, 58, v_txt, tiny64_font, 8, v_tc, 100, NORMAL, CENTER)
+}
+
+def setup_pieces {
+    for v_s in (0, 63, 1)
+        v_sq[v_s] = -1
+    endfor v_s
+    for v_i in (0, 7, 1)
+        v_ptype[v_i] = v_back[v_i]
+        v_ptype[v_i + 8] = 0
+        v_ptype[v_i + 16] = v_back[v_i]
+        v_ptype[v_i + 24] = 0
+        v_sq[v_i] = v_i
+        v_sq[v_i + 8] = v_i + 8
+        v_sq[v_i + 56] = v_i + 16
+        v_sq[v_i + 48] = v_i + 24
+    endfor v_i
+    for v_i in (0, 31, 1)
+        v_pcol[v_i] = 0
+        if v_i >= 16 then
+            v_pcol[v_i] = 1
+        endif
+    endfor v_i
+}
+
+# ---- captured-piece flyer (one at a time) ----
+v_fl_id = -1
+def start_flyer {
+    if v_fl_id >= 0 then
+        hide_sprite(pc, v_fl_id)
+    endif
+    v_fl_id = v_cid
+    v_s = v_capsq
+    call sq_xy
+    v_flx = v_qx
+    v_fly = v_qy
+    if v_pcol[v_cid] == 0 then
+        v_flvx = -random(1.2, 2.0, 2)
+    else
+        v_flvx = random(1.2, 2.0, 2)
+    endif
+    v_flvy = -random(1.8, 2.6, 2)
+    v_flk = 0
+    set_sprite_z(pc, 8, v_fl_id)
+}
+def update_flyer {
+    if v_fl_id >= 0 then
+        v_flk = v_flk + 1
+        v_flx = v_flx + v_flvx
+        v_fly = v_fly + v_flvy
+        v_flvy = v_flvy + 0.16
+        move_sprite(pc, v_flx, v_fly, v_fl_id, v_ptype[v_fl_id] * 2 + v_pcol[v_fl_id])
+        set_sprite_transform(pc, max(0.3, 1.25 - v_flk * 0.02), v_flk * 24 * v_flvx, v_fl_id)
+        if v_flk > 45 or v_fly > 70 or v_flx < -10 or v_flx > 72 then
+            hide_sprite(pc, v_fl_id)
+            reset_sprite_transform(pc, v_fl_id)
+            v_fl_id = -1
+        endif
+    endif
+}
+
+# ---- order of games: play all, then reshuffle ----
+create_array(v_order, v_games, numeric)
+v_last_game = -1
+def shuffle_games {
+    for v_i in (0, v_games - 1, 1)
+        v_order[v_i] = v_i
+    endfor v_i
+    for v_i in (v_games - 1, 1, -1)
+        v_j = random(0, v_i, 0)
+        v_t = v_order[v_i]
+        v_order[v_i] = v_order[v_j]
+        v_order[v_j] = v_t
+    endfor v_i
+    if v_order[0] == v_last_game then
+        v_t = v_order[0]
+        v_order[0] = v_order[v_games - 1]
+        v_order[v_games - 1] = v_t
+    endif
+}
+
+# ---------------- One game ----------------
+def play_game {
+    # ---- title card ----
+    for v_i in (0, 31, 1)
+        hide_sprite(pc, v_i)
+    endfor v_i
+    begin_frame
+        draw_text(32, 3, v_g_t1[v_g], tiny64_font, 8, gold, 100, NORMAL, CENTER)
+        draw_text(32, 10, v_g_t2[v_g], tiny64_font, 8, gold, 100, NORMAL, CENTER)
+        draw_line(12, 18, 51, 18, bronze, 50)
+        draw_text(32, 23, v_g_white[v_g], tiny64_font, 8, white, 100, NORMAL, CENTER)
+        draw_text(32, 31, "vs", tiny64_font, 8, gray, 70, NORMAL, CENTER)
+        draw_text(32, 39, v_g_black[v_g], tiny64_font, 8, silver, 90, NORMAL, CENTER)
+        draw_line(12, 48, 51, 48, bronze, 50)
+        draw_text(32, 53, v_g_place[v_g], tiny64_font, 8, tan, 80, NORMAL, CENTER)
+    end_frame
+    rest(v_title_secs)
+
+    # ---- set up: board, then pieces drop in rank by rank ----
+    call setup_pieces
+    begin_frame
+        call draw_board
+        v_txt = v_g_white[v_g]
+        v_tc = "white"
+        call strip_text
+    end_frame
+    for v_i in (0, 31, 1)
+        v_pon[v_i] = 0
+    endfor v_i
+    for v_k in (0, 39, 1)
+        begin_frame(true)
+            for v_i in (0, 31, 1)
+                v_d = (v_i % 16) * 1.5
+                if v_i >= 16 then
+                    v_d = ((31 - v_i) % 16) * 1.5 + 4
+                endif
+                v_u = (v_k - v_d) / 8
+                if v_u >= 0 and v_u <= 1.2 then
+                    if v_pon[v_i] == 0 then
+                        v_pon[v_i] = 1
+                        v_s = v_i
+                        if v_i >= 24 then
+                            v_s = 24 + v_i
+                        elseif v_i >= 16 then
+                            v_s = 40 + v_i
+                        endif
+                        call sq_xy
+                        set_sprite_scale(pc, 2.6, v_i)
+                        show_sprite(pc, v_qx, v_qy, v_i, 1, v_ptype[v_i] * 2 + v_pcol[v_i])
+                    endif
+                    set_sprite_scale(pc, max(1, 2.6 - 1.6 * min(1, v_u)), v_i)
+                endif
+            endfor v_i
+        end_frame
+    endfor v_k
+    rest(0.6)
+
+    v_pf = -1
+    v_pt = -1
+    v_pk = -1
+    v_first = v_g_start[v_g]
+    v_lastm = v_first + v_g_len[v_g] - 1
+    for v_m in (v_first, v_lastm, 1)
+        v_f = v_m_from[v_m]
+        v_t = v_m_to[v_m]
+        v_id = v_sq[v_f]
+        v_capsq = v_m_cap[v_m]
+        v_cid = -1
+        if v_capsq >= 0 then
+            v_cid = v_sq[v_capsq]
+        endif
+        v_rid = -1
+        if v_m_rf[v_m] >= 0 then
+            v_rid = v_sq[v_m_rf[v_m]]
+            v_s = v_m_rf[v_m]
+            call sq_xy
+            v_rfx = v_qx
+            v_rfy = v_qy
+            v_s = v_m_rt[v_m]
+            call sq_xy
+            v_rtx = v_qx
+            v_rty = v_qy
+        endif
+        v_s = v_f
+        call sq_xy
+        v_fx = v_qx
+        v_fy = v_qy
+        v_s = v_t
+        call sq_xy
+        v_tx = v_qx
+        v_ty = v_qy
+        v_cel = v_ptype[v_id] * 2 + v_pcol[v_id]
+        set_sprite_z(pc, 6, v_id)
+        v_frames = v_move_frames
+        if v_ptype[v_id] == 1 then
+            v_frames = v_move_frames + 3
+        endif
+
+        for v_k in (1, v_frames, 1)
+            v_u = v_k / v_frames
+            v_e = v_u * v_u * (3 - 2 * v_u)
+            v_lift = sin(v_u * 3.14159)
+            begin_frame(true)
+                if v_k == 1 then
+                    # clear the old highlights, mark the new move
+                    v_hl = 0
+                    if v_pf >= 0 then
+                        v_s = v_pf
+                        call draw_sq
+                        v_s = v_pt
+                        call draw_sq
+                    endif
+                    if v_pk >= 0 then
+                        v_s = v_pk
+                        call draw_sq
+                    endif
+                    v_hl = 1
+                    v_s = v_f
+                    call draw_sq
+                    v_s = v_t
+                    call draw_sq
+                endif
+                move_sprite(pc, v_fx + (v_tx - v_fx) * v_e, v_fy + (v_ty - v_fy) * v_e - v_lift * 2, v_id, v_cel)
+                set_sprite_scale(pc, 1 + 0.45 * v_lift, v_id)
+                if v_rid >= 0 then
+                    move_sprite(pc, v_rfx + (v_rtx - v_rfx) * v_e, v_rfy + (v_rty - v_rfy) * v_e - v_lift * 2, v_rid, v_ptype[v_rid] * 2 + v_pcol[v_rid])
+                    set_sprite_scale(pc, 1 + 0.45 * v_lift, v_rid)
+                endif
+                if v_k == v_frames and v_cid >= 0 then
+                    call start_flyer
+                endif
+                call update_flyer
+            end_frame
+        endfor v_k
+
+        # ---- update the board ----
+        v_sq[v_f] = -1
+        if v_capsq >= 0 then
+            v_sq[v_capsq] = -1
+        endif
+        v_sq[v_t] = v_id
+        if v_rid >= 0 then
+            v_sq[v_m_rf[v_m]] = -1
+            v_sq[v_m_rt[v_m]] = v_rid
+        endif
+        if v_m_promo[v_m] >= 0 then
+            v_ptype[v_id] = v_m_promo[v_m]
+        endif
+        v_cel = v_ptype[v_id] * 2 + v_pcol[v_id]
+        v_pf = v_f
+        v_pt = v_t
+        v_pk = -1
+        v_wait = v_pause
+        if v_cid >= 0 then
+            v_wait = v_wait + 8
+        endif
+        begin_frame(true)
+            move_sprite(pc, v_tx, v_ty, v_id, v_cel)
+            set_sprite_scale(pc, 1, v_id)
+            set_sprite_z(pc, 1, v_id)
+            if v_rid >= 0 then
+                set_sprite_scale(pc, 1, v_rid)
+            endif
+            if v_m_chk[v_m] == 1 then
+                v_pk = v_m_ksq[v_m]
+                v_s = v_pk
+                v_hl = 2
+                call draw_sq
+                v_wait = v_wait + 12
+            endif
+            v_txt = v_m_san[v_m]
+            if (v_m - v_first) % 2 == 0 then
+                v_tc = "white"
+            else
+                v_tc = "silver"
+            endif
+            call strip_text
+            call update_flyer
+        end_frame
+        if v_m < v_lastm then
+            for v_k in (1, v_wait, 1)
+                begin_frame(true)
+                    call update_flyer
+                end_frame
+            endfor v_k
+        endif
+    endfor v_m
+
+    # ---- finale: checkmate sparks + toppling king, or a resignation ----
+    v_white_won = 1
+    if (v_lastm - v_first) % 2 == 1 then
+        v_white_won = 0
+    endif
+    v_mate = v_m_mate[v_lastm]
+    if v_mate == 1 then
+        v_kid = v_sq[v_m_ksq[v_lastm]]
+    else
+        # resignation: the side that did not move last resigns
+        v_kid = 20
+        if v_white_won == 0 then
+            v_kid = 4
+        endif
+    endif
+    for v_s2 in (0, 63, 1)
+        if v_sq[v_s2] == v_kid then
+            v_ks = v_s2
+        endif
+    endfor v_s2
+    v_s = v_ks
+    call sq_xy
+    v_kx = v_qx
+    v_ky = v_qy
+    v_s = v_m_to[v_lastm]
+    call sq_xy
+    v_bx = v_qx + 3
+    v_by = v_qy + 3
+    if v_mate == 1 then
+        for v_i in (0, v_ns - 1, 1)
+            v_a = random(0, 6.283, 3)
+            v_sp = random(0.4, 1.8, 2)
+            v_spx[v_i] = v_bx
+            v_spy[v_i] = v_by
+            v_svx[v_i] = cos(v_a) * v_sp
+            v_svy[v_i] = sin(v_a) * v_sp - 0.6
+            v_sc[v_i] = random(10, 16, 0)
+        endfor v_i
+    endif
+    v_tip = 1
+    if v_pcol[v_kid] == 1 then
+        v_tip = -1
+    endif
+    for v_k in (1, v_end_frames, 1)
+        begin_frame(true)
+            call update_flyer
+            if v_k == 1 then
+                if v_mate == 1 then
+                    if v_white_won == 1 then
+                        v_txt = "CHECKMATE 1-0"
+                    else
+                        v_txt = "CHECKMATE 0-1"
+                    endif
+                    v_tc = "gold"
+                else
+                    if v_white_won == 1 then
+                        v_txt = "BLACK RESIGNS"
+                    else
+                        v_txt = "WHITE RESIGNS"
+                    endif
+                    v_tc = "gold"
+                endif
+                call strip_text
+            endif
+            # king's square pulses red
+            if v_k % 12 == 1 and v_k < 100 then
+                v_s = v_ks
+                v_hl = 2
+                if v_k % 24 == 13 then
+                    v_hl = 0
+                endif
+                call draw_sq
+            endif
+            # the king wobbles, then topples
+            if v_k > 20 and v_k <= 70 then
+                v_w = (v_k - 20) / 50
+                v_ang = sin(v_k * 0.9) * 14 * (1 - v_w)
+                if v_k > 50 then
+                    v_ang = v_tip * 90 * min(1, (v_k - 50) / 14) * (1 - 0.15 * sin(min(1, (v_k - 50) / 14) * 3.14159))
+                endif
+                set_sprite_angle(pc, v_ang, v_kid)
+            endif
+            # sparks
+            if v_mate == 1 and v_k <= 70 then
+                set_layer(5)
+                clear_layer(5)
+                for v_i in (0, v_ns - 1, 1)
+                    v_spx[v_i] = v_spx[v_i] + v_svx[v_i]
+                    v_spy[v_i] = v_spy[v_i] + v_svy[v_i]
+                    v_svy[v_i] = v_svy[v_i] + 0.05
+                    v_svx[v_i] = v_svx[v_i] * 0.97
+                    v_br = 100 - v_k * 1.4
+                    if v_br > 5 and v_spy[v_i] < 56 then
+                        mplot(v_spx[v_i], v_spy[v_i], v_sc[v_i], v_br)
+                    endif
+                endfor v_i
+                if v_k == 70 then
+                    clear_layer(5)
+                endif
+                set_layer(0)
+            endif
+        end_frame
+    endfor v_k
+    if v_fl_id >= 0 then
+        hide_sprite(pc, v_fl_id)
+        v_fl_id = -1
+    endif
+    for v_i in (0, 31, 1)
+        reset_sprite_transform(pc, v_i)
+        hide_sprite(pc, v_i)
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call shuffle_games
+    for v_gi in (0, v_games - 1, 1)
+        v_g = v_order[v_gi]
+        call play_game
+        v_last_game = v_g
+    endfor v_gi
+endwhile

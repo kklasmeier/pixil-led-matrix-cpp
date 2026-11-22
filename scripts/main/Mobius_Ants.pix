@@ -1,0 +1,223 @@
+# Mobius Ants - ants marching on a one-sided strip
+#
+# A Mobius strip (a loop of ribbon with a half twist) tumbles slowly in
+# space, and a line of red ants marches along the middle of it, in the
+# spirit of M. C. Escher's print. Follow one ant: after one lap it is on
+# what looks like the "other side" of the ribbon, and after a second lap it
+# is back where it started - the strip only has one side. Ants on the part
+# of the ribbon facing away from you are hidden behind it.
+#
+# The ribbon is coloured by which way it faces you (green-cyan on one face,
+# purple-blue on the other; kept away from red so the ants stand out), so you can watch the colours swap as the twist goes past.
+#
+# How it is built:
+#   - The ribbon is 180 thin cross-strips (draw_line). Instead of sorting
+#     them by depth every frame, each strip is drawn on one of 24 drawing
+#     layers chosen by its depth: layers stack front-to-back by number, so
+#     the nearest strips always end up on top.
+#   - Each ant is a tiny head-thorax-abdomen of points, lifted a hair off
+#     the ribbon along its surface direction. Because the strip flips over
+#     once per lap, so does the ant.
+
+fps(85)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_strips = 180         # cross-strips along the ribbon
+v_half_w = 0.42        # half the ribbon width (loop radius = 1)
+v_ants = 5
+v_ant_speed = 0.006    # radians per frame along the loop
+v_size = 21            # pixels per unit
+v_layers = 24          # depth layers used for sorting
+v_spin = 0.004         # tumble speed
+
+create_array(v_ua, v_ants, numeric)
+for v_i in (0, v_ants - 1, 1)
+    v_ua[v_i] = v_i * 12.566 / v_ants
+endfor v_i
+
+v_yaw = 0
+v_pitch = 0.5
+v_frame = 0
+v_hue_a = 34
+v_hue_b = 70
+
+# point on the strip (v_mu, v_mv) -> world (v_wx, v_wy, v_wz)
+def strip_point {
+    v_c2 = cos(v_mu / 2)
+    v_s2 = sin(v_mu / 2)
+    v_rr = 1 + v_mv * v_c2
+    v_wx = v_rr * cos(v_mu)
+    v_wy = v_rr * sin(v_mu)
+    v_wz = v_mv * v_s2
+}
+
+# surface direction at (v_mu, 0): d/du x d/dv  -> (v_nx, v_ny, v_nz), unit
+def strip_normal {
+    v_c2 = cos(v_mu / 2)
+    v_s2 = sin(v_mu / 2)
+    v_cu = cos(v_mu)
+    v_su = sin(v_mu)
+    # at v = 0: Pu = (-sin u, cos u, 0), Pv = (c2 cos u, c2 sin u, s2)
+    v_pux = 0 - v_su
+    v_puy = v_cu
+    v_pvx = v_c2 * v_cu
+    v_pvy = v_c2 * v_su
+    v_pvz = v_s2
+    v_nx = v_puy * v_pvz
+    v_ny = 0 - v_pux * v_pvz
+    v_nz = v_pux * v_pvy - v_puy * v_pvx
+    v_nn = sqrt(v_nx * v_nx + v_ny * v_ny + v_nz * v_nz) + 0.000001
+    v_nx = v_nx / v_nn
+    v_ny = v_ny / v_nn
+    v_nz = v_nz / v_nn
+}
+
+# rotate (v_wx, v_wy, v_wz) by the tumble and project -> v_sx, v_sy, v_dep
+def view {
+    v_ax = v_wx * v_cy0 + v_wz * v_sy0
+    v_az = v_wz * v_cy0 - v_wx * v_sy0
+    v_ay = v_wy * v_cp0 - v_az * v_sp0
+    v_dep = v_wy * v_sp0 + v_az * v_cp0
+    v_f = v_size * 6 / (6 - v_dep)
+    v_sx = 31.5 + v_ax * v_f
+    v_sy = 31.5 + v_ay * v_f
+}
+
+# rotate a direction only -> (v_rnx, v_rny, v_rnz); v_rnz > 0 faces the viewer
+def view_dir {
+    v_bx = v_nx * v_cy0 + v_nz * v_sy0
+    v_bz = v_nz * v_cy0 - v_nx * v_sy0
+    v_rnx = v_bx
+    v_rny = v_ny * v_cp0 - v_bz * v_sp0
+    v_rnz = v_ny * v_sp0 + v_bz * v_cp0
+}
+
+def layer_for_depth {
+    v_lay = 1 + floor((v_dep + 1.6) / 3.2 * v_layers)
+    v_lay = min(max(v_lay, 1), v_layers)
+}
+
+def draw_strip {
+    for v_i in (0, v_strips - 1, 1)
+        v_mu = v_i * 6.2832 / v_strips
+        # surface direction and lighting
+        call strip_normal
+        call view_dir
+        v_face = 1
+        if v_rnz < 0 then
+            v_face = -1
+        endif
+        v_lit = abs(v_rnx * -0.35 + v_rny * -0.5 + v_rnz * 0.8)
+        v_b = 18 + 72 * v_lit
+        # a faint band every few strips helps the eye follow the twist
+        if v_i % 10 == 0 then
+            v_b = v_b * 0.6
+        endif
+        if v_face > 0 then
+            v_col = v_hue_a
+        else
+            v_col = v_hue_b
+        endif
+        # the two edge points of this cross-strip
+        v_mv = 0 - v_half_w
+        call strip_point
+        call view
+        v_x1 = v_sx
+        v_y1 = v_sy
+        v_d1 = v_dep
+        v_mv = v_half_w
+        call strip_point
+        call view
+        v_dep = (v_dep + v_d1) / 2
+        call layer_for_depth
+        set_layer(v_lay)
+        draw_line(v_x1, v_y1, v_sx, v_sy, v_col, v_b)
+        # a second line one pixel over fills the pinholes between strips
+        if abs(v_sx - v_x1) > abs(v_sy - v_y1) then
+            draw_line(v_x1, v_y1 + 1, v_sx, v_sy + 1, v_col, v_b)
+        else
+            draw_line(v_x1 + 1, v_y1, v_sx + 1, v_sy, v_col, v_b)
+        endif
+        # bright rims along both edges
+        mplot(v_x1, v_y1, v_col, min(v_b + 25, 100))
+        mplot(v_sx, v_sy, v_col, min(v_b + 25, 100))
+    endfor v_i
+}
+
+def draw_ants {
+    for v_a in (0, v_ants - 1, 1)
+        v_mu = v_ua[v_a]
+        call strip_normal
+        call view_dir
+        # only visible while the face it walks on points toward us
+        if v_rnz > 0.05 then
+            v_lift = 0.03
+            v_mv = 0
+            call strip_point
+            v_cx0 = v_wx + v_nx * v_lift
+            v_cy0w = v_wy + v_ny * v_lift
+            v_cz0 = v_wz + v_nz * v_lift
+            # tangent along the loop for head / abdomen
+            v_tgx = 0 - sin(v_mu)
+            v_tgy = cos(v_mu)
+            v_wx = v_cx0
+            v_wy = v_cy0w
+            v_wz = v_cz0
+            call view
+            v_bx0 = v_sx
+            v_by0 = v_sy
+            call layer_for_depth
+            set_layer(min(v_lay + 1, v_layers))
+            v_wx = v_cx0 + v_tgx * 0.1
+            v_wy = v_cy0w + v_tgy * 0.1
+            v_wz = v_cz0
+            call view
+            v_hx = v_sx
+            v_hy = v_sy
+            v_wx = v_cx0 - v_tgx * 0.12
+            v_wy = v_cy0w - v_tgy * 0.12
+            v_wz = v_cz0
+            call view
+            # abdomen (2 px), thorax, head
+            mplot(v_sx, v_sy, red, 100)
+            mplot((v_sx + v_bx0) / 2, (v_sy + v_by0) / 2, red, 100)
+            mplot(v_bx0, v_by0, red, 85)
+            mplot(v_hx, v_hy, orange, 100)
+            # legs flick with the step
+            if (v_frame + v_a * 7) % 12 < 6 then
+                mplot(v_bx0 + 1, v_by0, maroon, 60)
+                mplot(v_bx0 - 1, v_by0, maroon, 60)
+            else
+                mplot(v_bx0, v_by0 + 1, maroon, 60)
+                mplot(v_bx0, v_by0 - 1, maroon, 60)
+            endif
+        endif
+    endfor v_a
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_yaw = v_yaw + v_spin
+    v_pitch = 0.55 + 0.45 * sin(v_frame * 0.0023)
+    v_cy0 = cos(v_yaw)
+    v_sy0 = sin(v_yaw)
+    v_cp0 = cos(v_pitch)
+    v_sp0 = sin(v_pitch)
+    for v_a in (0, v_ants - 1, 1)
+        v_ua[v_a] = v_ua[v_a] + v_ant_speed
+        if v_ua[v_a] > 12.566 then
+            v_ua[v_a] = v_ua[v_a] - 12.566
+        endif
+    endfor v_a
+    # slowly drifting colours
+    v_hue_a = 34 + 14 * sin(v_frame * 0.0011)
+    v_hue_b = 70 + 9 * sin(v_frame * 0.0013 + 1)
+
+    begin_frame
+        call draw_strip
+        call draw_ants
+        set_layer(0)
+    end_frame
+    v_frame = v_frame + 1
+endwhile

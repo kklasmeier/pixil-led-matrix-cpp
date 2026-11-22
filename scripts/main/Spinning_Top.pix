@@ -1,0 +1,349 @@
+# Spinning Top - a toy top spins down, wobbles and topples
+#
+# A painted top drops onto the table spinning fast. While the spin is strong
+# it stands almost upright ("sleeping") and its stripes blur into solid
+# colour. As friction slows it, it leans further, its axis circles around
+# faster and faster (precession), and it starts to nod up and down
+# (nutation) while the tip wanders across the table. When the spin is too
+# slow to hold it up, it topples onto its side, bounces, rolls round on its
+# rim to a stop, and a new top with new colours is launched.
+#
+# How it is built: one field_program (formula mode) ray-casts the top for
+# every pixel. The top is a cone, a flattened dome and a stem, all with
+# closed-form (quadratic) hit tests in the top's own tilted, turning frame.
+# Each part is shaded by its surface direction against a lamp, the painted
+# stripes turn with the spin and blur out when it spins fast, and the top
+# casts a soft shadow on the table. Colour and brightness are packed into
+# one number: colour index + brightness / 100.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_spin_decay = 0.99915 # spin kept per frame (closer to 1 = spins longer)
+v_fall_at = 0.22       # topples when the spin drops below this fraction
+v_zoom = 0.27          # world units per pixel (smaller = bigger top)
+
+# ---------------- Top shape (in the top's own frame, tip at 0) ----------------
+v_h1 = 5               # cone height
+v_rad = 5.5            # body radius
+v_k = v_rad / v_h1     # cone slope
+v_k2 = v_k * v_k
+v_ry = 1.8             # dome height
+v_es = v_rad / v_ry    # dome squash
+v_rs = 0.75            # stem radius
+v_ytop = v_h1 + v_ry + 2.4
+v_rad2 = v_rad * v_rad
+v_rs2 = v_rs * v_rs
+
+# ---------------- Per-frame values for the field ----------------
+v_o0x = 0
+v_o0y = 0
+v_o0z = 0
+v_rlx = 0
+v_rly = 0
+v_rlz = 0
+v_ulx = 0
+v_uly = 0
+v_ulz = 0
+v_dlx = 0
+v_dly = 0
+v_dlz = 1
+v_llx = 0
+v_lly = 1
+v_llz = 0
+v_psi = 0
+v_blur = 0
+v_hue_a = 0
+v_hue_b = 50
+v_hue_c = 70
+# world (for the floor and shadow)
+v_w0x = 0
+v_w0y = 0
+v_w0z = 0
+v_wrx = 1
+v_wry = 0
+v_wrz = 0
+v_wux = 0
+v_wuy = 1
+v_wuz = 0
+v_wdx = 0
+v_wdy = -0.4
+v_wdz = 0.9
+v_tx = 0
+v_tz = 0
+v_shx = 0
+v_shz = 0
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program top {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        v_gx = grid_x - 31.5
+        v_gy = grid_y - 31.5
+        v_ox = v_o0x + v_gx * v_rlx - v_gy * v_ulx
+        v_oy = v_o0y + v_gx * v_rly - v_gy * v_uly
+        v_oz = v_o0z + v_gx * v_rlz - v_gy * v_ulz
+        v_ca = v_dlx * v_dlx + v_dlz * v_dlz - v_k2 * v_dly * v_dly
+        v_cb = 2 * (v_ox * v_dlx + v_oz * v_dlz - v_k2 * v_oy * v_dly)
+        v_cc = v_ox * v_ox + v_oz * v_oz - v_k2 * v_oy * v_oy
+        v_cd = v_cb * v_cb - 4 * v_ca * v_cc
+        v_csq = sqrt(max(v_cd, 0))
+        v_ct1 = (0 - v_cb - v_csq) / (2 * v_ca)
+        v_ct2 = (0 - v_cb + v_csq) / (2 * v_ca)
+        v_cy1 = v_oy + v_ct1 * v_dly
+        v_cy2 = v_oy + v_ct2 * v_dly
+        v_cv1 = where(v_cd > 0, where(v_cy1 > 0, where(v_cy1 < v_h1, where(v_ct1 > 0, 1, 0), 0), 0), 0)
+        v_cv2 = where(v_cd > 0, where(v_cy2 > 0, where(v_cy2 < v_h1, where(v_ct2 > 0, 1, 0), 0), 0), 0)
+        v_tcone = min(where(v_cv1 > 0, v_ct1, 999), where(v_cv2 > 0, v_ct2, 999))
+        v_eoy = (v_oy - v_h1) * v_es
+        v_edy = v_dly * v_es
+        v_ea = v_dlx * v_dlx + v_edy * v_edy + v_dlz * v_dlz
+        v_eb = 2 * (v_ox * v_dlx + v_eoy * v_edy + v_oz * v_dlz)
+        v_ec = v_ox * v_ox + v_eoy * v_eoy + v_oz * v_oz - v_rad2
+        v_ed = v_eb * v_eb - 4 * v_ea * v_ec
+        v_et = (0 - v_eb - sqrt(max(v_ed, 0))) / (2 * v_ea)
+        v_ey = v_oy + v_et * v_dly
+        v_tdome = where(v_ed > 0, where(v_ey >= v_h1, v_et, 999), 999)
+        v_sa = v_dlx * v_dlx + v_dlz * v_dlz
+        v_sb = 2 * (v_ox * v_dlx + v_oz * v_dlz)
+        v_sc = v_ox * v_ox + v_oz * v_oz - v_rs2
+        v_sd = v_sb * v_sb - 4 * v_sa * v_sc
+        v_st = (0 - v_sb - sqrt(max(v_sd, 0))) / (2 * max(v_sa, 0.000001))
+        v_sy = v_oy + v_st * v_dly
+        v_tstem = where(v_sd > 0, where(v_sy > v_h1, where(v_sy < v_ytop, v_st, 999), 999), 999)
+        v_pt = (v_ytop - v_oy) / where(abs(v_dly) < 0.00001, 0.00001, v_dly)
+        v_px = v_ox + v_pt * v_dlx
+        v_pz = v_oz + v_pt * v_dlz
+        v_tcap = where(v_px * v_px + v_pz * v_pz < v_rs2, where(v_pt > 0, v_pt, 999), 999)
+        v_tb = min(min(v_tcone, v_tdome), min(v_tstem, v_tcap))
+        v_part = where(v_tb == v_tcone, 0, where(v_tb == v_tdome, 1, where(v_tb == v_tstem, 2, 3)))
+        v_hx = v_ox + v_tb * v_dlx
+        v_hy = v_oy + v_tb * v_dly
+        v_hz = v_oz + v_tb * v_dlz
+        v_nx = where(v_part == 0, v_hx, where(v_part == 1, v_hx / v_rad2, where(v_part == 2, v_hx, 0)))
+        v_ny = where(v_part == 0, 0 - v_k2 * v_hy, where(v_part == 1, (v_hy - v_h1) / (v_ry * v_ry), where(v_part == 2, 0, 1)))
+        v_nz = where(v_part == 0, v_hz, where(v_part == 1, v_hz / v_rad2, where(v_part == 2, v_hz, 0)))
+        v_nl = sqrt(v_nx * v_nx + v_ny * v_ny + v_nz * v_nz) + 0.000001
+        v_dif = max((v_nx * v_llx + v_ny * v_lly + v_nz * v_llz) / v_nl, 0)
+        v_ang = atan2(v_hz, v_hx) + v_psi
+        v_strp = sin(v_ang * 3) * (1 - v_blur)
+        v_ring = sin(sqrt(v_hx * v_hx + v_hz * v_hz) * 2.2)
+        v_bhue = where(v_part == 0, where(v_strp > 0, v_hue_a, v_hue_b), where(v_part == 1, where(v_ring * (1 - v_blur * 0.5) > 0, v_hue_c, where(v_strp > 0, v_hue_a, v_hue_b)), 12))
+        v_bbri = (18 + 80 * v_dif) * where(v_part >= 2, 1.1, 1)
+        v_ft = (0 - v_w0y - v_gx * v_wry + v_gy * v_wuy) / v_wdy
+        v_fx = v_w0x + v_gx * v_wrx - v_gy * v_wux + v_ft * v_wdx
+        v_fz = v_w0z + v_gx * v_wrz - v_gy * v_wuz + v_ft * v_wdz
+        v_sgx = v_shx - v_tx
+        v_sgz = v_shz - v_tz
+        v_sl2 = v_sgx * v_sgx + v_sgz * v_sgz + 0.0001
+        v_su = clamp(((v_fx - v_tx) * v_sgx + (v_fz - v_tz) * v_sgz) / v_sl2, 0, 1)
+        v_sdx = v_fx - v_tx - v_su * v_sgx
+        v_sdz = v_fz - v_tz - v_su * v_sgz
+        v_sdist = sqrt(v_sdx * v_sdx + v_sdz * v_sdz)
+        v_shad = clamp((5 - v_sdist) / 3, 0, 1) * (0.4 + 0.6 * v_su)
+        v_fr = sqrt(v_fx * v_fx + v_fz * v_fz)
+        v_floor = (16 + 3 * sin(v_fx * 1.7 + sin(v_fz * 0.3) * 2)) * clamp(1.4 - v_fr / 26, 0, 1) * (1 - 0.8 * v_shad)
+        v_hit = where(v_tb < 998, 1, 0)
+        v_hue = where(v_hit > 0, v_bhue, 7)
+        v_bri = where(v_hit > 0, v_bbri, v_floor)
+        v_out = floor(clamp(v_hue, 0, 99)) + clamp(v_bri, 0, 99) / 100
+    }
+    plot_if v_sum - floor(v_sum) > 0.012
+    color floor(v_sum)
+    opacity (v_sum - floor(v_sum)) * 100
+}
+
+# ---------------- Camera (fixed) ----------------
+v_elev = 0.36
+v_wdx = 0
+v_wdy = 0 - sin(v_elev)
+v_wdz = cos(v_elev)
+v_wrx = v_zoom
+v_wry = 0
+v_wrz = 0
+v_wux = 0
+v_wuy = cos(v_elev) * v_zoom
+v_wuz = sin(v_elev) * v_zoom
+# look-at point a little above the table, camera pulled back along -d
+v_lookx = 0
+v_looky = 4.5
+v_lookz = 0
+v_w0x = v_lookx - 60 * v_wdx
+v_w0y = v_looky - 60 * v_wdy
+v_w0z = v_lookz - 60 * v_wdz
+# lamp direction (toward the lamp)
+v_lx = -0.45
+v_ly = 0.8
+v_lz = -0.4
+v_ll = sqrt(v_lx * v_lx + v_ly * v_ly + v_lz * v_lz)
+v_lx = v_lx / v_ll
+v_ly = v_ly / v_ll
+v_lz = v_lz / v_ll
+
+# ---------------- Top state ----------------
+v_om0 = 1.0
+v_om = 1.0             # spin rate (fraction of a fresh spin = v_om / v_om0)
+v_th = 0.08            # lean from upright (radians)
+v_thd = 0              # lean speed while falling
+v_ph = 0               # direction of lean (precession angle)
+v_phd = 0
+v_tipy = 0             # tip height (for the drop-in)
+v_tipvy = 0
+v_mode = 0             # 0 dropping in, 1 spinning, 2 falling, 3 lying, 4 gone
+v_timer = 0
+v_t = 0
+v_nut = 0
+
+def new_top {
+    v_hue_a = random(0, 99, 0)
+    v_hue_b = (v_hue_a + random(35, 65, 0)) % 100
+    v_hue_c = (v_hue_a + random(15, 30, 0)) % 100
+    v_om0 = random(0.9, 1.1, 2)
+    v_om = v_om0
+    v_th = random(0.04, 0.12, 2)
+    v_thd = 0
+    v_ph = random(0, 6.28, 2)
+    v_phd = 0
+    v_tx = random(-2, 2, 1)
+    v_tz = random(-2, 2, 1)
+    v_tipy = 16
+    v_tipvy = 0
+    v_mode = 0
+    v_timer = 0
+    v_nut = 0
+}
+
+# build the top's frame and hand everything to the field
+def set_frame {
+    v_st = sin(v_th)
+    v_ct = cos(v_th)
+    v_sp = sin(v_ph)
+    v_cp = cos(v_ph)
+    # axis a, side b (horizontal), X = a x b
+    v_ax = v_st * v_cp
+    v_ay = v_ct
+    v_az = v_st * v_sp
+    v_bx = 0 - v_sp
+    v_by = 0
+    v_bz = v_cp
+    v_xx = v_ay * v_bz - v_az * v_by
+    v_xy = v_az * v_bx - v_ax * v_bz
+    v_xz = v_ax * v_by - v_ay * v_bx
+    # camera vectors in the top frame: (dot X, dot a, dot b)
+    v_ox0 = v_w0x - v_tx
+    v_oy0 = v_w0y - v_tipy
+    v_oz0 = v_w0z - v_tz
+    v_o0x = v_ox0 * v_xx + v_oy0 * v_xy + v_oz0 * v_xz
+    v_o0y = v_ox0 * v_ax + v_oy0 * v_ay + v_oz0 * v_az
+    v_o0z = v_ox0 * v_bx + v_oy0 * v_by + v_oz0 * v_bz
+    v_rlx = v_wrx * v_xx + v_wry * v_xy + v_wrz * v_xz
+    v_rly = v_wrx * v_ax + v_wry * v_ay + v_wrz * v_az
+    v_rlz = v_wrx * v_bx + v_wry * v_by + v_wrz * v_bz
+    v_ulx = v_wux * v_xx + v_wuy * v_xy + v_wuz * v_xz
+    v_uly = v_wux * v_ax + v_wuy * v_ay + v_wuz * v_az
+    v_ulz = v_wux * v_bx + v_wuy * v_by + v_wuz * v_bz
+    v_dlx = v_wdx * v_xx + v_wdy * v_xy + v_wdz * v_xz
+    v_dly = v_wdx * v_ax + v_wdy * v_ay + v_wdz * v_az
+    v_dlz = v_wdx * v_bx + v_wdy * v_by + v_wdz * v_bz
+    v_llx = v_lx * v_xx + v_ly * v_xy + v_lz * v_xz
+    v_lly = v_lx * v_ax + v_ly * v_ay + v_lz * v_az
+    v_llz = v_lx * v_bx + v_ly * v_by + v_lz * v_bz
+    # shadow: the top's axis cast along the lamp direction onto the table
+    v_topx = v_tx + v_ax * v_ytop * 0.75
+    v_topy = v_tipy + v_ay * v_ytop * 0.75
+    v_topz = v_tz + v_az * v_ytop * 0.75
+    v_shx = v_topx - v_lx * v_topy / v_ly
+    v_shz = v_topz - v_lz * v_topy / v_ly
+}
+
+# ---------------- Main loop ----------------
+call new_top
+v_rest_th = atan(v_h1 / v_rad)
+while true then
+    v_t = v_t + 1
+    v_s = v_om / v_om0
+    if v_mode == 0 then
+        # dropping in, already spinning
+        v_tipvy = v_tipvy - 0.05
+        v_tipy = v_tipy + v_tipvy
+        if v_tipy <= 0 then
+            v_tipy = 0
+            if v_tipvy < -0.3 then
+                v_tipvy = 0 - v_tipvy * 0.3
+            else
+                v_tipvy = 0
+                v_mode = 1
+            endif
+        endif
+        v_ph = v_ph + 0.01
+    elseif v_mode == 1 then
+        v_om = v_om * v_spin_decay
+        # leans more and precesses faster as it slows; nodding grows too
+        v_lean = 0.07 + 0.55 * (1 - v_s) * (1 - v_s)
+        v_amp = 0.015 + 0.2 * pow(1 - v_s, 3)
+        v_nut = v_nut + 0.1 + 0.25 * v_s
+        v_th = v_lean + v_amp * (0.5 - 0.5 * cos(v_nut))
+        v_phd = min(0.012 / max(v_s, 0.05), 0.14)
+        v_ph = v_ph + v_phd
+        # the tip skates around in a widening circle
+        v_tx = v_tx + cos(v_ph) * 0.02 * (1.2 - v_s)
+        v_tz = v_tz + sin(v_ph) * 0.02 * (1.2 - v_s)
+        if v_s < v_fall_at then
+            v_mode = 2
+            v_thd = 0.005
+        endif
+    elseif v_mode == 2 then
+        # falling over
+        v_om = v_om * 0.99
+        v_thd = v_thd + 0.0035 * sin(v_th) + 0.0008
+        v_th = v_th + v_thd
+        v_phd = v_phd * 0.985
+        v_ph = v_ph + v_phd
+        if v_th >= v_rest_th then
+            v_th = v_rest_th
+            if v_thd > 0.02 then
+                v_thd = 0 - v_thd * 0.35
+            else
+                v_thd = 0
+                v_mode = 3
+                v_timer = 0
+            endif
+        endif
+    elseif v_mode == 3 then
+        # lying on its side, rolling round on its rim to a stop
+        v_om = v_om * 0.97
+        v_phd = v_phd * 0.985
+        v_ph = v_ph + v_phd
+        v_timer = v_timer + 1
+        if v_timer > 200 then
+            v_mode = 4
+            v_timer = 0
+        endif
+    else
+        # lift away and launch a new one
+        v_tipy = v_tipy + 0.4
+        v_timer = v_timer + 1
+        if v_timer > 40 then
+            call new_top
+        endif
+    endif
+
+    # visible spin: stripes turn, but blur into bands when spinning fast
+    v_psi = v_psi + min(v_om * 0.5, 0.33)
+    if v_psi > 6.2832 then
+        v_psi = v_psi - 6.2832
+    endif
+    v_blur = min(max((v_om * 0.5 - 0.12) / 0.25, 0), 1)
+
+    call set_frame
+    begin_frame
+        field_render(top)
+    end_frame
+endwhile

@@ -1,0 +1,181 @@
+# Liquid Chrome - a mirror sea at sunset
+#
+# An endless, perfectly smooth liquid-metal floor stretches to the horizon
+# and mirrors a sunset sky. Drops keep landing on it: each one sends rings
+# rippling outward in perspective, and the rings bend the reflection of the
+# sky and sun as they pass. A gentle swell keeps the whole surface
+# shimmering, and the camera glides slowly forward over it.
+#
+#   - Near the horizon the surface is almost a perfect mirror; close to the
+#     camera it is darker (like real reflections at a shallow angle).
+#   - Far-off ripples fade out so the horizon stays clean.
+#   - The sun drifts and bobs, and the sky colours shift slowly.
+#
+# How it is built: one field_program (formula mode). Every pixel below the
+# horizon is turned into a point on the floor (perspective). The slope of the
+# water at that point (swell + up to four expanding drop rings, all closed
+# form) tilts the mirror, which moves where on the sky that pixel looks. The
+# sky itself is a colour gradient with soft cloud streaks plus a sun; a
+# highlight on slopes facing the sun makes the rings sparkle. Colour and brightness are packed
+# into one number: colour index + brightness / 100.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_hz = 25              # horizon row
+v_cam_h = 1.4          # camera height above the surface
+v_glide = 0.025        # forward speed
+v_ring_speed = 0.045   # how fast drop rings spread
+v_ring_life = 7        # ring radius at which a drop is recycled
+v_bend = 16            # how strongly ripples bend the reflection
+
+# ---------------- State ----------------
+v_t = 0
+v_camz = 0
+v_sunx = 32
+v_suny = 18
+v_sunr2 = 30
+v_sky_shift = 0
+
+# four drops: position (x, z), ring radius, strength
+v_d0x = 0
+v_d0z = 5
+v_d0r = 0
+v_d0a = 0
+v_d1x = 0
+v_d1z = 5
+v_d1r = 2
+v_d1a = 0
+v_d2x = 0
+v_d2z = 5
+v_d2r = 4
+v_d2a = 0
+v_d3x = 0
+v_d3z = 5
+v_d3r = 6
+v_d3a = 0
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program chrome {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        v_sy = grid_y - v_hz
+        v_below = where(v_sy > 0.5, 1, 0)
+        v_depth = v_cam_h * 32 / max(v_sy, 0.5)
+        v_wx = (grid_x - 31.5) / 32 * v_depth
+        v_wz = v_depth + v_camz
+        v_ax = v_wx - v_d0x
+        v_az = v_wz - v_d0z
+        v_r0 = sqrt(v_ax * v_ax + v_az * v_az) + 0.01
+        v_g0 = v_d0a * cos((v_r0 - v_d0r) * 8) / (1 + (v_r0 - v_d0r) * (v_r0 - v_d0r) * 3) / v_r0
+        v_bx = v_wx - v_d1x
+        v_bz = v_wz - v_d1z
+        v_r1 = sqrt(v_bx * v_bx + v_bz * v_bz) + 0.01
+        v_g1 = v_d1a * cos((v_r1 - v_d1r) * 8) / (1 + (v_r1 - v_d1r) * (v_r1 - v_d1r) * 3) / v_r1
+        v_cx = v_wx - v_d2x
+        v_cz = v_wz - v_d2z
+        v_r2 = sqrt(v_cx * v_cx + v_cz * v_cz) + 0.01
+        v_g2 = v_d2a * cos((v_r2 - v_d2r) * 8) / (1 + (v_r2 - v_d2r) * (v_r2 - v_d2r) * 3) / v_r2
+        v_ex = v_wx - v_d3x
+        v_ez = v_wz - v_d3z
+        v_r3 = sqrt(v_ex * v_ex + v_ez * v_ez) + 0.01
+        v_g3 = v_d3a * cos((v_r3 - v_d3r) * 8) / (1 + (v_r3 - v_d3r) * (v_r3 - v_d3r) * 3) / v_r3
+        v_fade = clamp(1.15 - v_depth / 16, 0, 1)
+        v_slx = (v_g0 * v_ax + v_g1 * v_bx + v_g2 * v_cx + v_g3 * v_ex + 0.1 * cos(v_wx * 2.1 + v_t * 1.7) + 0.06 * cos((v_wx + v_wz) * 2.7 + v_t)) * v_fade
+        v_slz = (v_g0 * v_az + v_g1 * v_bz + v_g2 * v_cz + v_g3 * v_ez + 0.1 * cos(v_wz * 1.6 - v_t * 2.3) + 0.06 * cos((v_wx + v_wz) * 2.7 + v_t)) * v_fade
+        v_px = where(v_below > 0, grid_x + v_slx * v_bend, grid_x)
+        v_py = where(v_below > 0, v_hz - v_sy + v_slz * v_bend, grid_y)
+        v_up = clamp((v_hz - v_py) / v_hz, 0, 1)
+        v_hue_raw = 7 - v_up * 26 + v_sky_shift * sin(v_up * 3)
+        v_hue = where(v_hue_raw < 0, v_hue_raw + 100, v_hue_raw)
+        v_bri_sky = (75 - v_up * 52) * (0.8 + 0.2 * sin(v_py * 0.8 + 1.5 * sin(v_px * 0.11 + v_t * 0.15)))
+        v_sdx = v_px - v_sunx
+        v_sdy = v_py - v_suny
+        v_sd2 = v_sdx * v_sdx + v_sdy * v_sdy
+        v_sun = where(v_sd2 < v_sunr2, 1, 0) * where(v_py < v_hz, 1, 0)
+        v_glow = 30 / (1 + v_sd2 * 0.03)
+        v_mirror = where(v_below > 0, 0.5 + 0.5 * clamp(1 - v_sy / 30, 0, 1), 1)
+        v_spec = where(v_below > 0, clamp(v_slz * 70 + v_slx * 25, 0, 45), 0)
+        v_bri = where(v_sun > 0, 99, min(v_bri_sky + v_glow, 95) * v_mirror + v_spec)
+        v_hue_f = where(v_sun > 0, 13, v_hue)
+        v_haze = where(abs(v_sy) < 0.6, 1, 0)
+        v_out = floor(where(v_haze > 0, 9, v_hue_f)) + clamp(where(v_haze > 0, 85, v_bri), 0, 99) / 100
+    }
+    plot_if v_sum - floor(v_sum) > 0.015
+    color floor(v_sum)
+    opacity (v_sum - floor(v_sum)) * 100
+}
+
+# ---------------- Drops ----------------
+def age_drops {
+    v_d0r = v_d0r + v_ring_speed
+    v_d1r = v_d1r + v_ring_speed
+    v_d2r = v_d2r + v_ring_speed
+    v_d3r = v_d3r + v_ring_speed
+    # rings weaken as they spread
+    v_d0a = v_d0a * 0.996
+    v_d1a = v_d1a * 0.996
+    v_d2a = v_d2a * 0.996
+    v_d3a = v_d3a * 0.996
+}
+
+# A drop whose ring has spread far enough lands again somewhere ahead
+def recycle_drops {
+    if v_d0r > v_ring_life then
+        v_d0x = random(-5, 5, 2)
+        v_d0z = v_camz + random(2, 8, 2)
+        v_d0r = 0
+        v_d0a = random(0.5, 0.85, 2)
+    endif
+    if v_d1r > v_ring_life then
+        v_d1x = random(-5, 5, 2)
+        v_d1z = v_camz + random(2, 8, 2)
+        v_d1r = 0
+        v_d1a = random(0.5, 0.85, 2)
+    endif
+    if v_d2r > v_ring_life then
+        v_d2x = random(-5, 5, 2)
+        v_d2z = v_camz + random(2, 8, 2)
+        v_d2r = 0
+        v_d2a = random(0.5, 0.85, 2)
+    endif
+    if v_d3r > v_ring_life then
+        v_d3x = random(-5, 5, 2)
+        v_d3z = v_camz + random(2, 8, 2)
+        v_d3r = 0
+        v_d3a = random(0.5, 0.85, 2)
+    endif
+}
+
+# start the four drops at staggered ages
+v_d0r = v_ring_life + 1
+v_d1r = v_ring_life + 1
+v_d2r = v_ring_life + 1
+v_d3r = v_ring_life + 1
+call recycle_drops
+v_d1r = 1.8
+v_d2r = 3.6
+v_d3r = 5.4
+
+# ---------------- Main loop ----------------
+while true then
+    v_camz = v_camz + v_glide
+    v_sunx = 32 + 9 * sin(v_t * 0.05)
+    v_suny = v_hz - 6 + 3 * sin(v_t * 0.037)
+    v_sky_shift = 6 * sin(v_t * 0.021)
+    call age_drops
+    call recycle_drops
+
+    begin_frame
+        field_render(chrome)
+    end_frame
+
+    v_t = v_t + 0.033
+endwhile

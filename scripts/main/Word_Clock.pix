@@ -1,0 +1,410 @@
+# Word Clock - the time, spelled out
+#
+# An 11 x 10 grid of letters, like the classic word-clock design. Only the
+# words that tell the time light up: "IT IS TWENTY PAST SEVEN PM". The other
+# letters stay faintly visible. Every five minutes the old words fade out
+# and the new ones type themselves in, letter by letter. Four corner dots
+# count the minutes between the five-minute steps (one dot per minute), and
+# once a minute a soft shimmer sweeps across the lit words.
+#
+#   on the hour:  IT IS SEVEN OCLOCK
+#   5 / 10 past:  FIVE PAST / TEN PAST          (and TO for the second half)
+#   15 / 45:      A QUARTER PAST / A QUARTER TO
+#   20 / 25:      TWENTY PAST / TWENTY FIVE PAST
+#   30:           HALF PAST
+#
+# The lit colour drifts slowly through the day. Letters are only redrawn
+# when they change, so the clock costs almost nothing when it is still.
+
+fps(30)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_unlit = 14           # brightness of the unlit letters
+v_lit = 95             # brightness of the lit letters
+v_fade = 0.06          # fade step per frame
+v_type_gap = 2         # frames between letters when new words type in
+v_time_offset = 0      # minutes added to the real time (for testing)
+
+# ---------------- Letters (generated) ----------------
+create_array(v_letters, 110, string)
+v_letters[0] = "I"
+v_letters[1] = "T"
+v_letters[2] = "L"
+v_letters[3] = "I"
+v_letters[4] = "S"
+v_letters[5] = "A"
+v_letters[6] = "S"
+v_letters[7] = "A"
+v_letters[8] = "M"
+v_letters[9] = "P"
+v_letters[10] = "M"
+v_letters[11] = "A"
+v_letters[12] = "C"
+v_letters[13] = "Q"
+v_letters[14] = "U"
+v_letters[15] = "A"
+v_letters[16] = "R"
+v_letters[17] = "T"
+v_letters[18] = "E"
+v_letters[19] = "R"
+v_letters[20] = "D"
+v_letters[21] = "C"
+v_letters[22] = "T"
+v_letters[23] = "W"
+v_letters[24] = "E"
+v_letters[25] = "N"
+v_letters[26] = "T"
+v_letters[27] = "Y"
+v_letters[28] = "F"
+v_letters[29] = "I"
+v_letters[30] = "V"
+v_letters[31] = "E"
+v_letters[32] = "X"
+v_letters[33] = "H"
+v_letters[34] = "A"
+v_letters[35] = "L"
+v_letters[36] = "F"
+v_letters[37] = "S"
+v_letters[38] = "T"
+v_letters[39] = "E"
+v_letters[40] = "N"
+v_letters[41] = "F"
+v_letters[42] = "T"
+v_letters[43] = "O"
+v_letters[44] = "P"
+v_letters[45] = "A"
+v_letters[46] = "S"
+v_letters[47] = "T"
+v_letters[48] = "E"
+v_letters[49] = "R"
+v_letters[50] = "U"
+v_letters[51] = "N"
+v_letters[52] = "I"
+v_letters[53] = "N"
+v_letters[54] = "E"
+v_letters[55] = "O"
+v_letters[56] = "N"
+v_letters[57] = "E"
+v_letters[58] = "S"
+v_letters[59] = "I"
+v_letters[60] = "X"
+v_letters[61] = "T"
+v_letters[62] = "H"
+v_letters[63] = "R"
+v_letters[64] = "E"
+v_letters[65] = "E"
+v_letters[66] = "F"
+v_letters[67] = "O"
+v_letters[68] = "U"
+v_letters[69] = "R"
+v_letters[70] = "F"
+v_letters[71] = "I"
+v_letters[72] = "V"
+v_letters[73] = "E"
+v_letters[74] = "T"
+v_letters[75] = "W"
+v_letters[76] = "O"
+v_letters[77] = "E"
+v_letters[78] = "I"
+v_letters[79] = "G"
+v_letters[80] = "H"
+v_letters[81] = "T"
+v_letters[82] = "E"
+v_letters[83] = "L"
+v_letters[84] = "E"
+v_letters[85] = "V"
+v_letters[86] = "E"
+v_letters[87] = "N"
+v_letters[88] = "S"
+v_letters[89] = "E"
+v_letters[90] = "V"
+v_letters[91] = "E"
+v_letters[92] = "N"
+v_letters[93] = "T"
+v_letters[94] = "W"
+v_letters[95] = "E"
+v_letters[96] = "L"
+v_letters[97] = "V"
+v_letters[98] = "E"
+v_letters[99] = "T"
+v_letters[100] = "E"
+v_letters[101] = "N"
+v_letters[102] = "S"
+v_letters[103] = "E"
+v_letters[104] = "O"
+v_letters[105] = "C"
+v_letters[106] = "L"
+v_letters[107] = "O"
+v_letters[108] = "C"
+v_letters[109] = "K"
+create_array(v_wrow, 25, numeric)
+create_array(v_wcol, 25, numeric)
+create_array(v_wlen, 25, numeric)
+v_wrow[0] = 0
+v_wcol[0] = 0
+v_wlen[0] = 2   # IT
+v_wrow[1] = 0
+v_wcol[1] = 3
+v_wlen[1] = 2   # IS
+v_wrow[2] = 0
+v_wcol[2] = 7
+v_wlen[2] = 2   # AM
+v_wrow[3] = 0
+v_wcol[3] = 9
+v_wlen[3] = 2   # PM
+v_wrow[4] = 1
+v_wcol[4] = 0
+v_wlen[4] = 1   # A
+v_wrow[5] = 1
+v_wcol[5] = 2
+v_wlen[5] = 7   # QUARTER
+v_wrow[6] = 2
+v_wcol[6] = 0
+v_wlen[6] = 6   # TWENTY
+v_wrow[7] = 2
+v_wcol[7] = 6
+v_wlen[7] = 4   # FIVE
+v_wrow[8] = 3
+v_wcol[8] = 0
+v_wlen[8] = 4   # HALF
+v_wrow[9] = 3
+v_wcol[9] = 5
+v_wlen[9] = 3   # TEN
+v_wrow[10] = 3
+v_wcol[10] = 9
+v_wlen[10] = 2   # TO
+v_wrow[11] = 4
+v_wcol[11] = 0
+v_wlen[11] = 4   # PAST
+v_wrow[12] = 4
+v_wcol[12] = 7
+v_wlen[12] = 4   # NINE
+v_wrow[13] = 5
+v_wcol[13] = 0
+v_wlen[13] = 3   # ONE
+v_wrow[14] = 5
+v_wcol[14] = 3
+v_wlen[14] = 3   # SIX
+v_wrow[15] = 5
+v_wcol[15] = 6
+v_wlen[15] = 5   # THREE
+v_wrow[16] = 6
+v_wcol[16] = 0
+v_wlen[16] = 4   # FOUR
+v_wrow[17] = 6
+v_wcol[17] = 4
+v_wlen[17] = 4   # FIVE
+v_wrow[18] = 6
+v_wcol[18] = 8
+v_wlen[18] = 3   # TWO
+v_wrow[19] = 7
+v_wcol[19] = 0
+v_wlen[19] = 5   # EIGHT
+v_wrow[20] = 7
+v_wcol[20] = 5
+v_wlen[20] = 6   # ELEVEN
+v_wrow[21] = 8
+v_wcol[21] = 0
+v_wlen[21] = 5   # SEVEN
+v_wrow[22] = 8
+v_wcol[22] = 5
+v_wlen[22] = 6   # TWELVE
+v_wrow[23] = 9
+v_wcol[23] = 0
+v_wlen[23] = 3   # TEN
+v_wrow[24] = 9
+v_wcol[24] = 5
+v_wlen[24] = 6   # OCLOCK
+
+# ---------------- State ----------------
+create_array(v_target, 110, numeric)   # 1 = should be lit
+create_array(v_cur, 110, numeric)      # current brightness 0..1
+create_array(v_delay, 110, numeric)    # frames before this letter starts fading in
+for v_i in (0, 109, 1)
+    v_target[v_i] = 0
+    v_cur[v_i] = 0
+    v_delay[v_i] = 0
+endfor v_i
+
+# hour (1-12) -> word index
+create_array(v_hour_word, 13, numeric)
+v_hour_word[1] = 13
+v_hour_word[2] = 18
+v_hour_word[3] = 15
+v_hour_word[4] = 16
+v_hour_word[5] = 17
+v_hour_word[6] = 14
+v_hour_word[7] = 21
+v_hour_word[8] = 19
+v_hour_word[9] = 12
+v_hour_word[10] = 23
+v_hour_word[11] = 20
+v_hour_word[12] = 22
+
+create_array(v_new, 110, numeric)
+create_array(v_shown_b, 110, numeric)   # brightness last drawn (-1 = never)
+create_array(v_shown_c, 110, numeric)   # colour last drawn
+for v_i in (0, 109, 1)
+    v_shown_b[v_i] = -1
+    v_shown_c[v_i] = -2
+endfor v_i
+v_last_extra = -1
+v_cc_dots = -1
+
+def light_word(v_w) {
+    v_base = v_wrow[v_w] * 11 + v_wcol[v_w]
+    for v_k in (0, v_wlen[v_w] - 1, 1)
+        v_new[v_base + v_k] = 1
+    endfor v_k
+}
+
+# work out which letters should be lit for the current time
+def compute_words {
+    v_hh = get_datetime("H")
+    v_mm = get_datetime("mi") + v_time_offset
+    v_hh = (v_hh + floor(v_mm / 60)) % 24
+    v_mm = v_mm % 60
+    v_m5 = floor(v_mm / 5) * 5
+    v_extra = v_mm - v_m5
+    for v_i in (0, 109, 1)
+        v_new[v_i] = 0
+    endfor v_i
+    call light_word(0)
+    call light_word(1)
+    v_show_h = v_hh
+    if v_m5 > 30 then
+        v_show_h = v_hh + 1
+    endif
+    v_h12 = v_show_h % 12
+    if v_h12 == 0 then
+        v_h12 = 12
+    endif
+    if v_show_h % 24 < 12 then
+        call light_word(2)
+    else
+        call light_word(3)
+    endif
+    if v_m5 == 0 then
+        call light_word(24)
+    else
+        if v_m5 == 5 or v_m5 == 55 then
+            call light_word(7)
+        elseif v_m5 == 10 or v_m5 == 50 then
+            call light_word(9)
+        elseif v_m5 == 15 or v_m5 == 45 then
+            call light_word(4)
+            call light_word(5)
+        elseif v_m5 == 20 or v_m5 == 40 then
+            call light_word(6)
+        elseif v_m5 == 25 or v_m5 == 35 then
+            call light_word(6)
+            call light_word(7)
+        else
+            call light_word(8)
+        endif
+        if v_m5 <= 30 then
+            call light_word(11)
+        else
+            call light_word(10)
+        endif
+    endif
+    call light_word(v_hour_word[v_h12])
+}
+
+# compare with what is shown; new letters type in one after another
+def update_targets {
+    v_order = 0
+    for v_i in (0, 109, 1)
+        if v_new[v_i] == 1 and v_target[v_i] == 0 then
+            v_delay[v_i] = 12 + v_order * v_type_gap
+            v_order = v_order + 1
+        endif
+        v_target[v_i] = v_new[v_i]
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+v_frame = 0
+v_last_key = -1
+v_hue = 0
+while true then
+    v_frame = v_frame + 1
+    call compute_words
+    v_key = v_m5 + v_hh * 100
+    if v_key != v_last_key then
+        call update_targets
+        v_last_key = v_key
+    endif
+    # colour drifts through the day (a full turn every 24 hours)
+    v_hue = ((v_hh * 60 + v_mm) / 1440 * 100 + 8) % 100
+    v_sec = get_datetime("s")
+
+    begin_frame(true)
+        for v_i in (0, 109, 1)
+            if v_target[v_i] == 1 then
+                if v_delay[v_i] > 0 then
+                    v_delay[v_i] = v_delay[v_i] - 1
+                else
+                    v_cur[v_i] = min(1, v_cur[v_i] + v_fade)
+                endif
+            else
+                v_cur[v_i] = max(0, v_cur[v_i] - v_fade)
+            endif
+            v_r = floor(v_i / 11)
+            v_c = v_i - v_r * 11
+            v_lv = v_cur[v_i]
+            if v_lv > 0.35 then
+                v_b = v_unlit + (v_lit - v_unlit) * v_lv
+                # once a minute a shimmer sweeps diagonally across the lit words
+                v_wave = (v_sec * 30 + v_frame % 30) - (v_c + v_r) * 30
+                if v_wave > 0 and v_wave < 120 then
+                    v_b = min(100, v_b + 25 * sin(v_wave / 120 * 3.1416))
+                endif
+                v_cc = floor(v_hue)
+            else
+                v_b = v_unlit + (40 - v_unlit) * v_lv
+                v_cc = -1
+            endif
+            v_b = round(v_b)
+            # only touch letters that changed since they were last drawn
+            if v_b != v_shown_b[v_i] or v_cc != v_shown_c[v_i] then
+                v_shown_b[v_i] = v_b
+                v_shown_c[v_i] = v_cc
+                v_x = 5 + v_c * 5
+                v_y = 2 + v_r * 6
+                v_ch = v_letters[v_i]
+                if v_ch == "M" or v_ch == "W" then
+                    v_x = v_x - 1
+                endif
+                draw_rectangle(v_x, v_y, 5, 5, black, 100, true)
+                if v_cc >= 0 then
+                    draw_text(v_x, v_y, v_ch, tiny64_font, 8, v_cc, v_b, NORMAL)
+                else
+                    draw_text(v_x, v_y, v_ch, tiny64_font, 8, dark_gray, v_b, NORMAL)
+                endif
+            endif
+        endfor v_i
+        # minute dots in the corners (one per minute past the five)
+        if v_extra != v_last_extra or v_cc_dots != floor(v_hue) then
+            v_last_extra = v_extra
+            v_cc_dots = floor(v_hue)
+            mplot(0, 0, black, 100)
+            mplot(63, 0, black, 100)
+            mplot(63, 63, black, 100)
+            mplot(0, 63, black, 100)
+            if v_extra >= 1 then
+                mplot(0, 0, v_cc_dots, 80)
+            endif
+            if v_extra >= 2 then
+                mplot(63, 0, v_cc_dots, 80)
+            endif
+            if v_extra >= 3 then
+                mplot(63, 63, v_cc_dots, 80)
+            endif
+            if v_extra >= 4 then
+                mplot(0, 63, v_cc_dots, 80)
+            endif
+        endif
+    end_frame
+endwhile

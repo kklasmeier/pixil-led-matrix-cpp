@@ -2478,6 +2478,45 @@ Pixil scalars (v_time, v_wavelength, etc.) work as in grid_program.
 
 The last assignment in value { } is the field result (e.g. v_height = ...).
 
+### Result visibility and packing (formula mode)
+`plot_if`, `color`, and `opacity` can see:
+- the **last** value-block result (also aliased as `v_sum`, and as `v_iter` unless
+  the result is already named `v_iter`)
+- `grid_x`, `grid_y`
+- Pixil scalars (`v_…`)
+
+They **cannot** see intermediate temps from `value { }`. If you need both a hue
+and a brightness per pixel, pack them into the final result and unpack in the
+render lines:
+
+```text
+    v_out = where(v_hit, v_hue * 1000 + v_shade, -1)
+}
+plot_if v_out >= 0
+color clamp(floor(v_out / 1000), 0, 99)
+opacity clamp(v_out - floor(v_out / 1000) * 1000, 0, 100)
+```
+
+Clamp the packed hue to 0–99: `color` values are rounded to integers, so a raw
+100 is rejected as out of the spectral range.
+
+### Formula gotchas
+- No loops inside `value { }`. Unroll repeated steps (ray-march, etc.).
+- `where(cond, a, b)` evaluates **both** branches for every pixel (steady cost).
+- Field/grid math builtins: `sin cos sqrt pow atan2 abs floor min max clamp where`,
+  plus `escape_iter` / `escape_zoom` / `burning_ship_iter`. There is no `tan`,
+  `exp`, `log`, or `fmod` on this path (those exist in normal Pixil). Write
+  modulo as `x - floor(x / n) * n`.
+- No per-pixel indexing of Pixil arrays inside `value { }`. Keep textures
+  procedural, or pass needed values as scalars.
+- `sites` is required even for pure formulas — use one-element dummy arrays
+  (see `Plasma_Tunnel.pix`, `Field3D_Orb_Test.pix`).
+- `set_layer` applies to `field_render` output; draw sprites / overlays on a
+  higher layer afterward (see `Ocean_Sunset.pix`).
+
+Full-resolution 3D examples: `Raytraced_Spheres.pix`, `Ocean_Sunset.pix`,
+`Raymarch_Shapes.pix`, and `scripts/tests/Field3D_Orb_Test.pix`.
+
 ## Signed rendering (ripples / waves)
 signed true with peak_color / trough_color / intensity_scale draws positive
 values in peak_color and negative in trough_color. Intensity scales with
@@ -2524,8 +2563,10 @@ Render escaped pixels only (interior of the set has v_iter == max_iter):
     color clamp(sin(v_iter * 0.68 + v_stop_idx * 1.7 + v_hue_phase + grid_x * 0.1) * 47 + 52, 1, 99)
     opacity 80
 
-plot_if, color, and opacity expressions may use grid_x, grid_y, v_iter (from the
-value block result), and any v_ scalars (v_hue_phase, v_depth, v_stop_idx, etc.).
+plot_if, color, and opacity expressions may use grid_x, grid_y, the value-block
+result (often named v_iter for escape formulas), and any v_ scalars
+(v_hue_phase, v_depth, v_stop_idx, etc.). Intermediate value-block temps are not
+visible — see Result visibility and packing above.
 
 Guided tour pattern (scripts/main/Mandelbrot_Zoom.pix):
   Store landmark coordinates in v_stop_re[] / v_stop_im[] arrays. For each stop:

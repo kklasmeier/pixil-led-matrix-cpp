@@ -1,0 +1,611 @@
+# Domino Spiral - domino chain reactions seen from above
+#
+# Dozens of dominoes are laid out on the floor in a pattern, then knocked
+# over: the wave runs along the chain, each domino tipping into the next and
+# speeding up as it goes. Seen from above, a standing domino is just a thin
+# edge; as it falls it opens up into its full face, so the wave paints the
+# pattern in colour. Then the chain rewinds and stands back up, gets new
+# colours, and is set off a different way.
+#
+# Layouts (a new one every two runs, never the same twice in a row):
+#   spiral, serpentine rows, sine snake, heart, flower, S double spiral,
+#   zigzag
+# Ways to set it off (runs alternate: one wave, then two waves, then one...):
+#   one wave:  from one end, or from the other end
+#   two waves: from the middle outward both ways, or from both ends at once
+#              so the waves meet in the middle
+#
+# How it works: one domino sprite with 32 cels (8 colours x 4 pip faces),
+# one instance per domino. Each instance is turned (set_sprite_angle) to face
+# along the path and tipped with set_sprite_tilt: about 90 degrees =
+# edge-on (standing), 0 = lying flat. The engine draws an edge-on sprite as a
+# thin sliver of its colour, which is what a standing domino looks like from
+# above. Tilt pivots on the sprite centre, so each domino is moved every frame
+# to keep its foot on the floor. Layouts are curves sampled at equal spacing
+# along their length; the floor has a little perspective.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_max_dom = 80         # most dominoes in one layout
+v_spacing = 4.6        # gap between dominoes along the path
+v_gravity = 0.55       # how quickly a domino tips over
+v_rest_angle = 80      # how far a domino ends up tipped (90 = flat)
+v_runs_per_layout = 2  # runs before the layout changes
+
+define_sprite(domino, 5, 9)
+    sprite_cel(0)
+        draw_rectangle(0, 0, 5, 9, red, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(1)
+        draw_rectangle(0, 0, 5, 9, red, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(2)
+        draw_rectangle(0, 0, 5, 9, red, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(3)
+        draw_rectangle(0, 0, 5, 9, red, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(4)
+        draw_rectangle(0, 0, 5, 9, orange, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(5)
+        draw_rectangle(0, 0, 5, 9, orange, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(6)
+        draw_rectangle(0, 0, 5, 9, orange, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(7)
+        draw_rectangle(0, 0, 5, 9, orange, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(8)
+        draw_rectangle(0, 0, 5, 9, gold, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(9)
+        draw_rectangle(0, 0, 5, 9, gold, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(10)
+        draw_rectangle(0, 0, 5, 9, gold, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(11)
+        draw_rectangle(0, 0, 5, 9, gold, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(12)
+        draw_rectangle(0, 0, 5, 9, lime, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(13)
+        draw_rectangle(0, 0, 5, 9, lime, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(14)
+        draw_rectangle(0, 0, 5, 9, lime, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(15)
+        draw_rectangle(0, 0, 5, 9, lime, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(16)
+        draw_rectangle(0, 0, 5, 9, spring_green, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(17)
+        draw_rectangle(0, 0, 5, 9, spring_green, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(18)
+        draw_rectangle(0, 0, 5, 9, spring_green, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(19)
+        draw_rectangle(0, 0, 5, 9, spring_green, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(20)
+        draw_rectangle(0, 0, 5, 9, cyan, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(21)
+        draw_rectangle(0, 0, 5, 9, cyan, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(22)
+        draw_rectangle(0, 0, 5, 9, cyan, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(23)
+        draw_rectangle(0, 0, 5, 9, cyan, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(24)
+        draw_rectangle(0, 0, 5, 9, royal_blue, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(25)
+        draw_rectangle(0, 0, 5, 9, royal_blue, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(26)
+        draw_rectangle(0, 0, 5, 9, royal_blue, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(27)
+        draw_rectangle(0, 0, 5, 9, royal_blue, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(28)
+        draw_rectangle(0, 0, 5, 9, magenta, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(2, 2, white, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(29)
+        draw_rectangle(0, 0, 5, 9, magenta, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(2, 2, white, 100)
+        plot(3, 3, white, 100)
+        plot(2, 6, white, 100)
+    sprite_cel(30)
+        draw_rectangle(0, 0, 5, 9, magenta, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 1, white, 100)
+        plot(3, 3, white, 100)
+        plot(1, 5, white, 100)
+        plot(2, 6, white, 100)
+        plot(3, 7, white, 100)
+    sprite_cel(31)
+        draw_rectangle(0, 0, 5, 9, magenta, 70, true)
+        draw_line(0, 4, 4, 4, black, 100)
+        plot(1, 5, white, 100)
+        plot(3, 7, white, 100)
+endsprite
+
+# ---------------- Domino state ----------------
+create_array(v_bx, v_max_dom, numeric)    # foot position on screen
+create_array(v_by, v_max_dom, numeric)
+create_array(v_ux, v_max_dom, numeric)    # fall direction (screen, unit)
+create_array(v_uy, v_max_dom, numeric)
+create_array(v_sc, v_max_dom, numeric)    # perspective scale
+create_array(v_ang, v_max_dom, numeric)   # sprite angle for the fall direction
+create_array(v_phi, v_max_dom, numeric)   # 0 = standing, 90 = flat
+create_array(v_om, v_max_dom, numeric)    # tipping speed
+create_array(v_cel, v_max_dom, numeric)
+create_array(v_dirs, v_max_dom, numeric)  # +1 falls toward the next, -1 toward the previous
+create_array(v_hit, v_max_dom, numeric)   # frame the domino was hit (for the rewind)
+v_n = 0
+v_shown = 0           # instances that have been shown at least once
+
+# floor (u, v) -> screen, with a gentle perspective (v > 0 is nearer)
+def floor_to_screen {
+    v_s = 1 + v_fv * 0.009
+    v_sx = 32 + v_fu * v_s
+    v_sy = 31 + v_fv * 0.78 * v_s
+}
+
+# ---------------- Layouts ----------------
+v_patterns = 7
+create_array(v_pat_names, v_patterns, string)
+v_pat_names[0] = "spiral"
+v_pat_names[1] = "serpentine"
+v_pat_names[2] = "snake"
+v_pat_names[3] = "heart"
+v_pat_names[4] = "flower"
+v_pat_names[5] = "double spiral"
+v_pat_names[6] = "zigzag"
+
+# point on layout v_pat at v_pt (0..1) -> floor (v_fu, v_fv)
+def path_point {
+    if v_pat == 0 then
+        # spiral, outside in
+        v_th = v_pt * 2.3 * 6.2832
+        v_r = 27 - 22 * v_pt
+        v_fu = cos(v_th - 1.5708) * v_r
+        v_fv = 0 - sin(v_th - 1.5708) * v_r
+    elseif v_pat == 1 then
+        # serpentine: 4 rows joined by half-circle turns
+        v_ss = v_pt * 221
+        v_found = 0
+        for v_rk in (0, 3, 1)
+            if v_found == 0 then
+                v_dir = 1
+                if v_rk % 2 == 1 then
+                    v_dir = -1
+                endif
+                v_rowv = -19.5 + 13 * v_rk
+                if v_ss <= 40 then
+                    v_fu = (v_ss - 20) * v_dir
+                    v_fv = v_rowv
+                    v_found = 1
+                else
+                    v_ss = v_ss - 40
+                    if v_rk < 3 then
+                        if v_ss <= 20.4 then
+                            v_aa = v_ss / 6.5
+                            v_fu = 20 * v_dir + 6.5 * sin(v_aa) * v_dir
+                            v_fv = v_rowv + 6.5 - 6.5 * cos(v_aa)
+                            v_found = 1
+                        else
+                            v_ss = v_ss - 20.4
+                        endif
+                    endif
+                endif
+            endif
+        endfor v_rk
+        if v_found == 0 then
+            v_fu = 20
+            v_fv = 19.5
+        endif
+    elseif v_pat == 2 then
+        # sine snake across the floor
+        v_fu = -26 + 52 * v_pt
+        v_fv = 14 * sin(v_pt * 6.2832 * 3)
+    elseif v_pat == 3 then
+        # heart, starting at the top dip
+        v_th = 0.06 + v_pt * (6.2832 - 0.12)
+        v_s3 = sin(v_th)
+        v_fu = 16 * v_s3 * v_s3 * v_s3 * 1.55
+        v_fv = 0 - (13 * cos(v_th) - 5 * cos(2 * v_th) - 2 * cos(3 * v_th) - cos(4 * v_th)) * 1.5 - 3
+    elseif v_pat == 4 then
+        # five-petal flower
+        v_th = v_pt * 6.2832 * 0.96
+        v_r = 18 + 6 * sin(5 * v_th)
+        v_fu = cos(v_th) * v_r
+        v_fv = sin(v_th) * v_r
+    elseif v_pat == 5 then
+        # S-shaped double spiral (symmetric through the centre)
+        v_sg = v_pt * 2 - 1
+        v_sa = abs(v_sg)
+        v_r = 10 * (1 - 0.85 * v_sa)
+        v_ph = 3.1416 + v_sa * 6.2832 * 1.5
+        v_fu = (10 + v_r * cos(v_ph)) * 1.35
+        v_fv = v_r * sin(v_ph) * 1.35
+        if v_sg < 0 then
+            v_fu = 0 - v_fu
+            v_fv = 0 - v_fv
+        endif
+    else
+        # zigzag
+        v_fu = -25 + 50 * v_pt
+        v_fr = v_pt * 4 + 0.25
+        v_fr = v_fr - floor(v_fr)
+        v_fv = 18 * (2 * abs(2 * v_fr - 1) - 1)
+    endif
+}
+
+# sample the layout at equal spacing along its length
+def build_layout {
+    v_n = 0
+    v_len = 0
+    v_next_at = 0
+    v_pt = 0
+    call path_point
+    v_prev_u = v_fu
+    v_prev_v = v_fv
+    for v_k in (0, 2400, 1)
+        v_pt = v_k / 2400
+        call path_point
+        v_len = v_len + sqrt((v_fu - v_prev_u) * (v_fu - v_prev_u) + (v_fv - v_prev_v) * (v_fv - v_prev_v))
+        v_prev_u = v_fu
+        v_prev_v = v_fv
+        if v_len >= v_next_at and v_n < v_max_dom then
+            call floor_to_screen
+            v_bx[v_n] = v_sx
+            v_by[v_n] = v_sy
+            v_sc[v_n] = v_s
+            v_n = v_n + 1
+            v_next_at = v_next_at + v_spacing
+        endif
+    endfor v_k
+}
+
+# ---------------- Set-off modes ----------------
+# 0 = from the start, 1 = from the end, 2 = middle outward, 3 = both ends in
+create_array(v_push, 2, numeric)
+def set_mode {
+    v_mid = floor(v_n / 2)
+    v_npush = 1
+    for v_i in (0, v_n - 1, 1)
+        if v_mode == 0 then
+            v_dirs[v_i] = 1
+        elseif v_mode == 1 then
+            v_dirs[v_i] = -1
+        elseif v_mode == 2 then
+            if v_i >= v_mid then
+                v_dirs[v_i] = 1
+            else
+                v_dirs[v_i] = -1
+            endif
+        else
+            if v_i < v_mid then
+                v_dirs[v_i] = 1
+            else
+                v_dirs[v_i] = -1
+            endif
+        endif
+    endfor v_i
+    if v_mode == 0 then
+        v_push[0] = 0
+    elseif v_mode == 1 then
+        v_push[0] = v_n - 1
+    elseif v_mode == 2 then
+        v_push[0] = v_mid
+        v_push[1] = v_mid - 1
+        v_npush = 2
+    else
+        v_push[0] = 0
+        v_push[1] = v_n - 1
+        v_npush = 2
+    endif
+    # fall directions: along the path toward the domino it will hit
+    for v_i in (0, v_n - 1, 1)
+        if v_dirs[v_i] > 0 then
+            v_j = min(v_i + 1, v_n - 1)
+            v_h = max(v_i - 1, 0)
+        else
+            v_j = max(v_i - 1, 0)
+            v_h = min(v_i + 1, v_n - 1)
+        endif
+        v_dx = v_bx[v_j] - v_bx[v_h]
+        v_dy = v_by[v_j] - v_by[v_h]
+        v_dl = max(sqrt(v_dx * v_dx + v_dy * v_dy), 0.01)
+        v_ux[v_i] = v_dx / v_dl
+        v_uy[v_i] = v_dy / v_dl
+        # sprite "up" (0,-1) turned clockwise by A points along (ux, uy)
+        v_ang[v_i] = degrees(atan2(v_ux[v_i], 0 - v_uy[v_i]))
+    endfor v_i
+}
+
+def place(v_i) {
+    v_p = v_phi[v_i]
+    v_half = 4.5 * v_sc[v_i] * sin(radians(v_p))
+    v_cx = v_bx[v_i] + v_ux[v_i] * v_half
+    v_cy = v_by[v_i] + v_uy[v_i] * v_half
+    # 89 not 90: stays on the front face, so the edge shows the domino's colour
+    set_sprite_tilt(domino, min(89, 90 - v_p), 0, v_i)
+    move_sprite(domino, v_cx, v_cy, v_i, v_cel[v_i])
+}
+
+def new_colours {
+    v_base = random(0, 7, 0)
+    v_stripe = random(3, 9, 0)
+    for v_i in (0, v_n - 1, 1)
+        v_c = (v_base + floor(v_i / v_stripe)) % 8
+        v_cel[v_i] = v_c * 4 + random(0, 3, 0)
+    endfor v_i
+}
+
+# apply new angles to every domino (after set_mode)
+def turn_all {
+    for v_i in (0, v_n - 1, 1)
+        set_sprite_angle(domino, v_ang[v_i], v_i)
+        call place(v_i)
+    endfor v_i
+}
+
+# ---------------- Laying out and clearing ----------------
+def lay_out {
+    v_k = 0
+    while v_k < v_n then
+        begin_frame
+            for v_q in (0, 1, 1)
+                if v_k < v_n then
+                    v_phi[v_k] = 0
+                    v_om[v_k] = 0
+                    show_sprite(domino, v_bx[v_k], v_by[v_k], v_k, round(v_by[v_k]), v_cel[v_k])
+                    set_sprite_anchor(domino, 1, v_k)
+                    set_sprite_scale(domino, v_sc[v_k], v_k)
+                    set_sprite_angle(domino, v_ang[v_k], v_k)
+                    call place(v_k)
+                    v_k = v_k + 1
+                endif
+            endfor v_q
+        end_frame
+    endwhile
+    v_shown = max(v_shown, v_n)
+}
+
+def clear_out {
+    v_k = 0
+    while v_k < v_n then
+        begin_frame
+            for v_q in (0, 2, 1)
+                if v_k < v_n then
+                    hide_sprite(domino, v_k)
+                    v_k = v_k + 1
+                endif
+            endfor v_q
+        end_frame
+    endwhile
+}
+
+# ---------------- One run ----------------
+def run_chain {
+    for v_i in (0, v_n - 1, 1)
+        v_om[v_i] = 0
+        v_hit[v_i] = 0
+    endfor v_i
+    for v_q in (0, v_npush - 1, 1)
+        v_om[v_push[v_q]] = 2.5
+    endfor v_q
+    v_tick = 0
+    v_done = 0
+    v_settle = 0
+    while v_done == 0 then
+        v_tick = v_tick + 1
+        begin_frame
+            v_moving = 0
+            for v_i in (0, v_n - 1, 1)
+                if v_om[v_i] > 0 then
+                    v_moving = 1
+                    if v_hit[v_i] == 0 then
+                        v_hit[v_i] = v_tick
+                    endif
+                    v_p = v_phi[v_i] + v_om[v_i]
+                    v_om[v_i] = v_om[v_i] + v_gravity * (0.25 + sin(radians(v_p)))
+                    if v_p >= v_rest_angle then
+                        v_p = v_rest_angle
+                        v_om[v_i] = 0
+                    endif
+                    v_phi[v_i] = v_p
+                    call place(v_i)
+                    # tipping far enough to hit the next domino
+                    v_nx = v_i + v_dirs[v_i]
+                    if v_p > 28 and v_nx >= 0 and v_nx < v_n then
+                        if v_phi[v_nx] == 0 and v_om[v_nx] == 0 then
+                            v_om[v_nx] = min(v_om[v_i] * 0.55, 9)
+                        endif
+                    endif
+                endif
+            endfor v_i
+        end_frame
+        if v_moving == 0 then
+            v_settle = v_settle + 1
+            if v_settle > 90 then
+                v_done = 1
+            endif
+        endif
+    endwhile
+    v_last_tick = v_tick
+}
+
+# stand back up: the last to fall rises first, like running the film backward
+def rewind {
+    v_rise = 16
+    v_pace = 0.4
+    v_total = round(v_last_tick * v_pace) + v_rise + 1
+    for v_k in (0, v_total, 1)
+        begin_frame
+            for v_i in (0, v_n - 1, 1)
+                v_q = v_k - (v_last_tick - v_hit[v_i]) * v_pace
+                if v_q >= 0 and v_q <= v_rise + 1 then
+                    v_phi[v_i] = max(0, v_rest_angle * (1 - v_q / v_rise))
+                    call place(v_i)
+                endif
+            endfor v_i
+        end_frame
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+v_pat = random(0, v_patterns - 1, 0)
+v_mode = random(0, 3, 0)
+v_double = 0
+if v_mode >= 2 then
+    v_double = 1
+endif
+while true then
+    call build_layout
+    call new_colours
+    call set_mode
+    call lay_out
+    for v_run in (1, v_runs_per_layout, 1)
+        rest(1.0)
+        call run_chain
+        rest(2.0)
+        call rewind
+        # next run: new colours and a different way to set it off
+        # alternate: a single wave, then two waves at once, then single...
+        v_double = 1 - v_double
+        if v_double == 1 then
+            v_mode = random(2, 3, 0)
+        else
+            v_mode = random(0, 1, 0)
+        endif
+        call new_colours
+        call set_mode
+        if v_run < v_runs_per_layout then
+            call turn_all
+        endif
+    endfor v_run
+    call clear_out
+    rest(0.5)
+    v_old_pat = v_pat
+    while v_pat == v_old_pat then
+        v_pat = random(0, v_patterns - 1, 0)
+    endwhile
+endwhile

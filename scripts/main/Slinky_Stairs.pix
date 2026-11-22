@@ -1,0 +1,323 @@
+# Slinky on the Stairs - a rainbow slinky walks down an endless staircase
+#
+# A rainbow slinky walks down the stairs the way a real one does: an arch
+# of coils pours off the top of one stack and piles onto the step below.
+# When the old stack runs out, the tail lifts off, whips up and over the
+# new stack and lands on the next step down, already starting the next
+# arch - so the spring flips end over end without ever stopping. The camera
+# glides down the stairs with it.
+#
+# How it is built:
+#   - The camera is orthographic, so every face of the staircase is a flat
+#     parallelogram on screen. Each one is filled with lines, far faces
+#     first, so nearer faces cover farther ones (only the 6 steps that can
+#     be on screen are drawn).
+#   - Each coil is a circle in 3D, which always looks like an ellipse on the
+#     screen: one draw_ellipse per coil, sized and turned to match how the
+#     coil is tipped toward the camera.
+#   - The spring is a chain of coils: a stack, an arch (a smooth curve) and
+#     a second stack. Coils slide along the chain from one stack to the
+#     other; in the whip, the arch swings around the top of the new stack.
+
+fps(80)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_coils = 26           # coils in the slinky
+v_arch = 11            # coils in the arch
+v_arch_h = 2.6         # how high the arch rises above its ends
+v_transfer_frames = 95 # frames to pour the stack over (per step)
+v_whip_frames = 40     # frames for the tail to whip over
+v_whip_accel = 1.5     # > 1: the whip starts slow and snaps over
+v_curl = 0.5           # how much the spring curls in at the top of the whip
+v_pitch = 0.34         # height of one coil in a stack
+v_coil_r = 2.1         # coil radius
+v_sd = 6               # step depth
+v_sh = 3.4             # step height
+v_hw = 7               # half the width of the stairs
+v_zoom = 0.3           # world units per pixel
+
+# ---------------- Camera ----------------
+v_yaw = -0.62
+v_elev = 0.42
+v_dx = sin(v_yaw) * cos(v_elev)
+v_dy = 0 - sin(v_elev)
+v_dz = cos(v_yaw) * cos(v_elev)
+v_rx = cos(v_yaw)
+v_ry = 0
+v_rz = 0 - sin(v_yaw)
+# up = d x right
+v_ux = v_dy * v_rz - v_dz * v_ry
+v_uy = v_dz * v_rx - v_dx * v_rz
+v_uz = v_dx * v_ry - v_dy * v_rx
+v_camx = 0
+v_camy = 0
+v_camz = 0
+
+# ---------------- Stairs ----------------
+# Each face is filled with lines from far to near (painter's order), so the
+# nearer faces cover the farther ones. Lines run along x or y at a fixed
+# sideways position z, so the carpet runner can be its own colour.
+
+# fill the face P + a*E1 + b*E2 (a, b in 0..1) with lines along E2, stepping
+# along E1. Uses v_fpx/v_fpy/v_fpz, v_e1x.., v_e2x.., colours v_fc_carpet /
+# v_fc_edge, brightness v_fb.
+def fill_face {
+    # how many lines: about 2.2 per pixel of the E1 edge on screen (no gaps)
+    v_lsx = (v_e1x * v_rx + v_e1y * v_ry + v_e1z * v_rz) / v_zoom
+    v_lsy = (v_e1x * v_ux + v_e1y * v_uy + v_e1z * v_uz) / v_zoom
+    v_nl = ceil(sqrt(v_lsx * v_lsx + v_lsy * v_lsy) * 2.2) + 1
+    v_px = v_fpx
+    v_py = v_fpy
+    v_pz = v_fpz
+    call project
+    v_ax0 = v_sx
+    v_ay0 = v_sy
+    v_e2sx = (v_e2x * v_rx + v_e2y * v_ry + v_e2z * v_rz) / v_zoom
+    v_e2sy = 0 - (v_e2x * v_ux + v_e2y * v_uy + v_e2z * v_uz) / v_zoom
+    v_e1sx = v_lsx
+    v_e1sy = 0 - v_lsy
+    for v_li in (0, v_nl, 1)
+        v_fa = v_li / v_nl
+        v_lx0 = v_ax0 + v_e1sx * v_fa
+        v_ly0 = v_ay0 + v_e1sy * v_fa
+        # sideways position of this line decides carpet / wood
+        v_zz = v_fpz + v_e1z * v_fa
+        if abs(v_zz) < v_hw * 0.62 then
+            draw_line(v_lx0, v_ly0, v_lx0 + v_e2sx, v_ly0 + v_e2sy, v_fc_carpet, v_fb)
+        else
+            draw_line(v_lx0, v_ly0, v_lx0 + v_e2sx, v_ly0 + v_e2sy, v_fc_edge, v_fb)
+        endif
+    endfor v_li
+}
+
+def draw_stairs {
+    # back wall
+    draw_rectangle(0, 0, 64, 64, navy, 14, true)
+    for v_k in (v_step - 2, v_step + 3, 1)
+        v_x0 = v_k * v_sd
+        v_x1 = v_x0 + v_sd
+        v_yt = 0 - v_k * v_sh
+        # top of the step: lines along x, stepping across the width
+        v_fpx = v_x0
+        v_fpy = v_yt
+        v_fpz = 0 - v_hw
+        v_e1x = 0
+        v_e1y = 0
+        v_e1z = v_hw * 2
+        v_e2x = v_sd
+        v_e2y = 0
+        v_e2z = 0
+        v_fc_carpet = 97
+        v_fc_edge = 9
+        v_fb = 34
+        call fill_face
+        # riser (the step's front face): lines down, stepping across
+        v_fpx = v_x1
+        v_fpy = v_yt
+        v_e2x = 0
+        v_e2y = 0 - v_sh
+        v_fb = 20
+        call fill_face
+        # bright edge where the top meets the riser
+        v_px = v_x1
+        v_py = v_yt
+        v_pz = 0 - v_hw
+        call project
+        v_ex0 = v_sx
+        v_ey0 = v_sy
+        v_pz = v_hw
+        call project
+        draw_line(v_ex0, v_ey0, v_sx, v_sy, 12, 50)
+        # near side of the stairs: lines straight down, stepping along x
+        v_fpx = v_x0
+        v_fpy = v_yt
+        v_fpz = 0 - v_hw
+        v_e1x = v_sd
+        v_e1y = 0
+        v_e1z = 0
+        v_e2x = 0
+        v_e2y = -40
+        v_e2z = 0
+        v_fc_carpet = 7
+        v_fc_edge = 7
+        v_fb = 12
+        call fill_face
+    endfor v_k
+}
+
+# ---------------- Slinky ----------------
+# The slinky is a chain of coils, numbered along the spring. At any moment
+# it is: a stack on the step it is leaving (S1), an arch of v_arch coils,
+# and a stack growing on the next step down (S2).
+#   Transfer: coils pour off the top of S1, through the arch, onto S2.
+#   Whip:     when S1 runs out, the arch pivots on top of S2 and its free
+#             tail swings up and over, down onto the step after that.
+# The landed tail is the start of the next transfer, with S2 as the new S1,
+# so the spring flips end over end forever and never stands fully stacked.
+v_step = 0             # step holding S1
+v_phase = 0            # 0 = transfer, 1 = whip
+v_t = 0                # frames into the current phase
+v_flip = 0             # which end of the spring leads (flips every step)
+v_cycle_t = 0
+
+# project world point (v_px, v_py, v_pz) -> screen (v_sx, v_sy), depth v_dep
+def project {
+    v_qx = v_px - v_camx
+    v_qy = v_py - v_camy
+    v_qz = v_pz - v_camz
+    v_sx = 31.5 + (v_qx * v_rx + v_qy * v_ry + v_qz * v_rz) / v_zoom
+    v_sy = 31.5 - (v_qx * v_ux + v_qy * v_uy + v_qz * v_uz) / v_zoom
+    v_dep = v_qx * v_dx + v_qy * v_dy + v_qz * v_dz
+}
+
+# draw coil v_j with centre (v_px, v_py, v_pz) and axis (v_nx, v_ny, v_nz)
+def draw_coil {
+    call project
+    v_major = v_coil_r / v_zoom
+    v_nd = abs(v_nx * v_dx + v_ny * v_dy + v_nz * v_dz)
+    v_minor = max(v_major * v_nd, 0.6)
+    # the short axis points along the coil's axis as seen on screen
+    v_nsx = v_nx * v_rx + v_ny * v_ry + v_nz * v_rz
+    v_nsy = 0 - (v_nx * v_ux + v_ny * v_uy + v_nz * v_uz)
+    v_rot = degrees(atan2(v_nsy, v_nsx))
+    v_col = (v_hue0 + v_j * 4) % 100
+    v_b = min(max(75 - v_dep * 1.2, 30), 100)
+    draw_ellipse(v_sx, v_sy, v_minor, v_major, v_col, v_b, false, v_rot)
+}
+
+
+# point on the arch at s (0..1) between v_a0x/y (free side) and v_a3x/y
+# (pivot side, top of S2) -> (v_px, v_py), axis (v_nx, v_ny)
+def arch_point {
+    v_is = 1 - v_bs
+    v_b0 = v_is * v_is * v_is
+    v_b1 = 3 * v_is * v_is * v_bs
+    v_b2 = 3 * v_is * v_bs * v_bs
+    v_b3 = v_bs * v_bs * v_bs
+    v_px = v_b0 * v_a0x + v_b1 * v_a1x + v_b2 * v_a2x + v_b3 * v_a3x
+    v_py = v_b0 * v_a0y + v_b1 * v_a1y + v_b2 * v_a2y + v_b3 * v_a3y
+    v_pz = 0
+    # tangent = the coil's axis
+    v_d0 = 3 * v_is * v_is
+    v_d1 = 6 * v_is * v_bs
+    v_d2 = 3 * v_bs * v_bs
+    v_nx = v_d0 * (v_a1x - v_a0x) + v_d1 * (v_a2x - v_a1x) + v_d2 * (v_a3x - v_a2x)
+    v_ny = v_d0 * (v_a1y - v_a0y) + v_d1 * (v_a2y - v_a1y) + v_d2 * (v_a3y - v_a2y)
+    v_nz = 0
+    v_nl = max(sqrt(v_nx * v_nx + v_ny * v_ny), 0.0001)
+    v_nx = v_nx / v_nl
+    v_ny = v_ny / v_nl
+}
+
+# arch control points from the two ends (v_a0 = free/S1 side, v_a3 = S2 top)
+def set_arch {
+    v_a1x = v_a0x + (v_a3x - v_a0x) * 0.2
+    v_a1y = v_a0y + v_arch_h * 0.9
+    v_a2x = v_a3x - (v_a3x - v_a0x) * 0.05
+    v_a2y = v_a3y + v_arch_h
+}
+
+# draw chain coil v_ci at its place
+def place_coil {
+    if v_ci < v_m then
+        # still in S1
+        v_px = v_s1x
+        v_py = v_s1y + (v_ci + 0.5) * v_pitch
+        v_pz = 0
+        v_nx = 0
+        v_ny = 1
+        v_nz = 0
+    elseif v_ci < v_m + v_arch then
+        v_bs = (v_ci - v_m) / v_arch
+        call arch_point
+    else
+        # in S2: the first coil to arrive is at the bottom
+        v_px = v_s2x
+        v_py = v_s2y + (v_coils - 1 - v_ci + 0.5) * v_pitch
+        v_pz = 0
+        v_nx = 0
+        v_ny = 1
+        v_nz = 0
+    endif
+    # colour follows the physical coil, so the rainbow stays on the spring
+    if v_flip == 0 then
+        v_j = v_ci
+    else
+        v_j = v_coils - 1 - v_ci
+    endif
+    call draw_coil
+}
+
+v_hue0 = 0
+v_body = v_coils - v_arch
+
+# ---------------- Main loop ----------------
+while true then
+    v_s1x = (v_step + 0.5) * v_sd
+    v_s1y = 0 - v_step * v_sh
+    v_s2x = v_s1x + v_sd
+    v_s2y = v_s1y - v_sh
+    v_s3x = v_s2x + v_sd
+    v_s3y = v_s2y - v_sh
+    if v_phase == 0 then
+        # transfer: f coils have reached S2, m are left in S1
+        v_u = v_t / v_transfer_frames
+        v_f = v_body * v_u
+        v_m = v_body - v_f
+        v_a0x = v_s1x
+        v_a0y = v_s1y + v_m * v_pitch
+        v_a3x = v_s2x
+        v_a3y = v_s2y + v_f * v_pitch
+        v_cyc = v_u * v_transfer_frames / (v_transfer_frames + v_whip_frames)
+    else
+        # whip: the free tail swings over the top of S2 onto the next step
+        v_m = 0
+        v_f = v_body
+        v_a3x = v_s2x
+        v_a3y = v_s2y + v_body * v_pitch
+        v_w = pow(v_t / v_whip_frames, v_whip_accel)
+        v_r0x = v_s1x - v_a3x
+        v_r0y = v_s1y - v_a3y
+        v_r1x = v_s3x - v_a3x
+        v_r1y = v_s3y - v_a3y
+        v_ph0 = atan2(v_r0y, v_r0x)
+        if v_ph0 < 0 then
+            v_ph0 = v_ph0 + 6.2832
+        endif
+        v_ph1 = atan2(v_r1y, v_r1x)
+        v_phw = v_ph0 + (v_ph1 - v_ph0) * v_w
+        v_rad0 = sqrt(v_r0x * v_r0x + v_r0y * v_r0y)
+        v_rad1 = sqrt(v_r1x * v_r1x + v_r1y * v_r1y)
+        # the spring curls as it goes over, so the tail swings in closer at the top
+        v_radw = (v_rad0 + (v_rad1 - v_rad0) * v_w) * (1 - v_curl * sin(v_w * 3.1416))
+        v_a0x = v_a3x + cos(v_phw) * v_radw
+        v_a0y = v_a3y + sin(v_phw) * v_radw
+        v_cyc = (v_transfer_frames + v_t) / (v_transfer_frames + v_whip_frames)
+    endif
+    call set_arch
+
+    # camera glides one step per cycle
+    v_camx = v_s1x + v_sd * (0.5 + v_cyc)
+    v_camy = v_s1y - v_sh * (0.5 + v_cyc) + 3.5
+    v_camz = 0
+
+    begin_frame
+        call draw_stairs
+        for v_ci in (0, v_coils - 1, 1)
+            call place_coil
+        endfor v_ci
+    end_frame
+
+    v_t = v_t + 1
+    if v_phase == 0 and v_t >= v_transfer_frames then
+        v_phase = 1
+        v_t = 0
+    elseif v_phase == 1 and v_t >= v_whip_frames then
+        # the tail has landed: S2 becomes S1, the spring's other end leads
+        v_phase = 0
+        v_t = 0
+        v_step = v_step + 1
+        v_flip = 1 - v_flip
+    endif
+endwhile

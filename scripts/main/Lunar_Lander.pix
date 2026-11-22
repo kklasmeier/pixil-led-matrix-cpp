@@ -1,0 +1,537 @@
+# Lunar Lander Autopilot - a little lander flies itself down to a pad
+#
+# A lander drops in over jagged lunar terrain with real gravity and thrust.
+# The autopilot picks one of the landing pads, climbs over any peaks in the
+# way, tilts to steer (the main engine is the only thruster, so it must
+# lean to move sideways), kills its speed and settles onto the pad, kicking
+# up a cloud of dust as it touches down.
+#
+# Not every landing goes to plan: now and then the engine sputters and
+# flames out, or the lander comes in too fast or too far off the pad, and
+# it ends in an explosion with flying debris and a scorch mark.
+# Then new terrain is generated and the next lander comes in.
+#
+# Static scenery (stars, Earth, terrain) sits on layer 0 and is drawn once
+# per landing; the lander, flame and particles are on layer 2.
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_crash_chance = 0.25  # chance that a landing will go wrong
+v_g = 0.010            # lunar gravity (pixels per frame^2)
+v_tmax = 0.028         # full engine thrust
+v_fuel_burn = 0.9      # fuel used per frame at full thrust (tank = 100)
+
+# ---------------- Lander sprite ----------------
+define_sprite(lander, 9, 9)
+    sprite_cel(0)
+        plot(3, 0, silver, 80)
+        plot(4, 0, silver, 100)
+        plot(5, 0, silver, 80)
+        plot(2, 1, silver, 70)
+        plot(3, 1, white, 100)
+        plot(4, 1, cyan, 90)
+        plot(5, 1, white, 100)
+        plot(6, 1, silver, 70)
+        plot(2, 2, gray, 80)
+        plot(3, 2, silver, 90)
+        plot(4, 2, silver, 100)
+        plot(5, 2, silver, 90)
+        plot(6, 2, gray, 80)
+        plot(1, 3, gold, 70)
+        plot(2, 3, gold, 100)
+        plot(3, 3, gold, 90)
+        plot(4, 3, yellow, 100)
+        plot(5, 3, gold, 90)
+        plot(6, 3, gold, 100)
+        plot(7, 3, gold, 70)
+        plot(1, 4, bronze, 80)
+        plot(2, 4, gold, 80)
+        plot(3, 4, bronze, 90)
+        plot(4, 4, gold, 70)
+        plot(5, 4, bronze, 90)
+        plot(6, 4, gold, 80)
+        plot(7, 4, bronze, 80)
+        plot(1, 5, gray, 90)
+        plot(3, 5, dark_gray, 90)
+        plot(4, 5, gray, 100)
+        plot(5, 5, dark_gray, 90)
+        plot(7, 5, gray, 90)
+        plot(0, 6, gray, 90)
+        plot(3, 6, dark_gray, 80)
+        plot(5, 6, dark_gray, 80)
+        plot(8, 6, gray, 90)
+        plot(0, 7, gray, 90)
+        plot(8, 7, gray, 90)
+        plot(0, 8, silver, 100)
+        plot(1, 8, silver, 60)
+        plot(7, 8, silver, 60)
+        plot(8, 8, silver, 100)
+endsprite
+set_sprite_anchor(lander, 1, 0)
+
+# ---------------- Terrain ----------------
+create_array(v_ty, 65, numeric)      # surface y for each column
+create_array(v_pad_l, 2, numeric)
+create_array(v_pad_r, 2, numeric)
+create_array(v_pad_y, 2, numeric)
+
+def make_terrain {
+    # midpoint displacement
+    v_ty[0] = random(36, 54, 1)
+    v_ty[64] = random(36, 54, 1)
+    v_step = 64
+    v_rough = 13
+    while v_step > 1 then
+        v_hs = v_step / 2
+        for v_i in (v_hs, 64, v_step)
+            v_ty[v_i] = (v_ty[v_i - v_hs] + v_ty[v_i + v_hs]) / 2 + random(-v_rough, v_rough, 2)
+        endfor v_i
+        v_rough = v_rough * 0.55
+        v_step = v_hs
+    endwhile
+    for v_i in (0, 64, 1)
+        v_ty[v_i] = max(26, min(60, v_ty[v_i]))
+    endfor v_i
+    # two flat landing pads, one on each half
+    for v_p in (0, 1, 1)
+        v_w = random(11, 13, 0)
+        v_l = random(3 + v_p * 32, 23 + v_p * 32, 0)
+        v_l = min(v_l, 63 - v_w)
+        v_sum = 0
+        for v_i in (v_l, v_l + v_w, 1)
+            v_sum = v_sum + v_ty[v_i]
+        endfor v_i
+        v_h = floor(v_sum / (v_w + 1))
+        for v_i in (v_l, v_l + v_w, 1)
+            v_ty[v_i] = v_h
+        endfor v_i
+        v_pad_l[v_p] = v_l
+        v_pad_r[v_p] = v_l + v_w
+        v_pad_y[v_p] = v_h
+    endfor v_p
+}
+
+# stars, Earth and the ground, on layer 0 (inside a frame)
+v_earth_x = 0
+def draw_scenery {
+    for v_i in (1, 45, 1)
+        v_sx = random(0, 63, 0)
+        v_sy = random(0, 40, 0)
+        if v_sy < v_ty[v_sx] - 2 then
+            mplot(v_sx, v_sy, white, random(8, 45, 0))
+        endif
+    endfor v_i
+    # Earth, a lit crescent
+    v_ex = random(8, 56, 0)
+    v_ey = random(6, 12, 0)
+    draw_circle(v_ex, v_ey, 4, ocean_blue, 70, true)
+    mplot(v_ex - 1, v_ey - 2, green, 50)
+    mplot(v_ex - 2, v_ey, forest_green, 55)
+    mplot(v_ex + 1, v_ey + 1, white, 45)
+    draw_circle(v_ex + 2, v_ey - 1, 4, black, 100, true)
+    # ground: grey regolith, lighter on the surface
+    for v_x in (0, 63, 1)
+        v_top = floor(v_ty[v_x])
+        draw_line(v_x, v_top, v_x, 63, gray, 22)
+        draw_line(v_x, v_top + 3, v_x, 63, dark_gray, 30)
+        mplot(v_x, v_top, silver, 55)
+        mplot(v_x, v_top + 1, gray, 45)
+    endfor v_x
+    # a few craters
+    for v_i in (1, 5, 1)
+        v_cx = random(2, 61, 0)
+        v_cy = floor(v_ty[v_cx]) + random(4, 12, 0)
+        if v_cy < 62 then
+            draw_ellipse(v_cx, v_cy, 2, 1, dark_gray, 45, false, 0)
+        endif
+    endfor v_i
+    # pads
+    for v_p in (0, 1, 1)
+        draw_line(v_pad_l[v_p], v_pad_y[v_p], v_pad_r[v_p], v_pad_y[v_p], white, 75)
+        draw_line(v_pad_l[v_p], v_pad_y[v_p] + 1, v_pad_r[v_p], v_pad_y[v_p] + 1, gray, 55)
+    endfor v_p
+}
+
+# ---------------- Particles ----------------
+v_np = 140
+create_array(v_qx, v_np, numeric)
+create_array(v_qy, v_np, numeric)
+create_array(v_qvx, v_np, numeric)
+create_array(v_qvy, v_np, numeric)
+create_array(v_ql, v_np, numeric)     # life left (frames), 0 = free
+create_array(v_qt, v_np, numeric)     # 0 exhaust, 1 dust, 2 debris, 3 smoke
+v_qnext = 0
+# spawn at v_nx, v_ny with velocity v_nvx, v_nvy, type v_nt, life v_nl
+def spawn {
+    v_qx[v_qnext] = v_nx
+    v_qy[v_qnext] = v_ny
+    v_qvx[v_qnext] = v_nvx
+    v_qvy[v_qnext] = v_nvy
+    v_qt[v_qnext] = v_nt
+    v_ql[v_qnext] = v_nl
+    v_qnext = (v_qnext + 1) % v_np
+}
+
+def ground_at {
+    v_gx = max(0, min(64, floor(v_ax)))
+    v_gy = v_ty[v_gx]
+}
+
+def update_particles {
+    for v_i in (0, v_np - 1, 1)
+        if v_ql[v_i] > 0 then
+            v_ql[v_i] = v_ql[v_i] - 1
+            v_t = v_qt[v_i]
+            if v_t == 3 then
+                v_qvy[v_i] = v_qvy[v_i] - 0.004
+                v_qvx[v_i] = v_qvx[v_i] * 0.98
+            elseif v_t != 0 then
+                v_qvy[v_i] = v_qvy[v_i] + v_g * 1.5
+            endif
+            v_qx[v_i] = v_qx[v_i] + v_qvx[v_i]
+            v_qy[v_i] = v_qy[v_i] + v_qvy[v_i]
+            v_ax = v_qx[v_i]
+            call ground_at
+            if v_qy[v_i] >= v_gy and v_t != 3 then
+                v_qy[v_i] = v_gy - 0.5
+                if v_t == 0 then
+                    # exhaust hitting the ground becomes dust thrown sideways
+                    v_qt[v_i] = 1
+                    v_qvx[v_i] = random(0.6, 1.6, 2) * (random(0, 1, 0) * 2 - 1)
+                    v_qvy[v_i] = -random(0.05, 0.35, 2)
+                    v_ql[v_i] = random(18, 40, 0)
+                else
+                    v_qvy[v_i] = -v_qvy[v_i] * 0.3
+                    v_qvx[v_i] = v_qvx[v_i] * 0.6
+                endif
+            endif
+            if v_qx[v_i] >= 0 and v_qx[v_i] < 64 and v_qy[v_i] >= 0 and v_qy[v_i] < 64 then
+                v_l = v_ql[v_i]
+                if v_t == 0 then
+                    if v_l > 7 then
+                        mplot(v_qx[v_i], v_qy[v_i], yellow, 90)
+                    elseif v_l > 4 then
+                        mplot(v_qx[v_i], v_qy[v_i], orange, 75)
+                    else
+                        mplot(v_qx[v_i], v_qy[v_i], red, 50)
+                    endif
+                elseif v_t == 1 then
+                    mplot(v_qx[v_i], v_qy[v_i], tan, min(60, v_l * 2.5))
+                elseif v_t == 2 then
+                    if v_l > 50 then
+                        mplot(v_qx[v_i], v_qy[v_i], orange, 90)
+                    else
+                        mplot(v_qx[v_i], v_qy[v_i], gray, min(70, v_l * 2))
+                    endif
+                else
+                    mplot(v_qx[v_i], v_qy[v_i], dark_gray, min(55, v_l))
+                endif
+            endif
+        endif
+    endfor v_i
+}
+
+def clear_particles {
+    for v_i in (0, v_np - 1, 1)
+        v_ql[v_i] = 0
+    endfor v_i
+}
+
+# ---------------- One landing ----------------
+def new_round {
+    call make_terrain
+    call clear_particles
+    begin_frame
+        call draw_scenery
+    end_frame
+    v_side = random(0, 1, 0)
+    if v_side == 0 then
+        v_x = random(4, 14, 1)
+        v_vx = random(0.25, 0.6, 2)
+    else
+        v_x = random(50, 60, 1)
+        v_vx = -random(0.25, 0.6, 2)
+    endif
+    v_y = -4
+    v_vy = random(0.15, 0.35, 2)
+    v_ang = 0
+    v_thrust = 0
+    v_fuel = 100
+    v_pad = random(0, 1, 0)
+    v_xt = (v_pad_l[v_pad] + v_pad_r[v_pad]) / 2
+    v_yt = v_pad_y[v_pad]
+    v_doom = 0
+    if random(0, 1, 3) < v_crash_chance then
+        v_doom = random(1, 3, 0)
+    endif
+    v_doom_h = random(14, 24, 0)
+    v_miss = 10
+    if v_xt > 32 then
+        v_miss = -10
+    endif
+    v_sputter = 0
+    v_state = 0            # 0 flying, 1 landed, 2 crashed
+    v_timer = 0
+    v_frame = 0
+    set_layer(2)
+    set_sprite_angle(lander, 0, 0)
+    show_sprite(lander, v_x, v_y, 0, 1, 0)
+    set_layer(0)
+}
+
+# ---- autopilot: sets v_thrust and the wanted tilt ----
+def autopilot {
+    v_dx = v_xt - v_x
+    v_feet = v_y + 4
+    v_hp = v_yt - v_feet
+    # highest ground between here and the pad (plus where the lander is)
+    v_a = floor(min(v_x, v_xt)) - 5
+    v_b = floor(max(v_x, v_xt)) + 5
+    v_peak = 99
+    for v_i in (max(0, v_a), min(64, v_b), 1)
+        v_peak = min(v_peak, v_ty[v_i])
+    endfor v_i
+    v_safe = v_peak - 9
+    # horizontal speed wanted: head for the pad, slow down on the way in
+    v_vxd = max(-0.75, min(0.75, v_dx * 0.03))
+    if abs(v_dx) < 4 then
+        v_vxd = v_dx * 0.07
+    endif
+    if abs(v_dx) > 3 then
+        if v_feet > v_safe then
+            v_vyd = -0.3
+        else
+            v_vyd = min(0.55, (v_safe - v_feet) * 0.03)
+        endif
+    else
+        v_vyd = min(0.65, 0.1 + v_hp * 0.022)
+        if abs(v_dx) > 1.2 and v_hp < 7 then
+            v_vyd = 0.02
+        endif
+    endif
+    if v_doom == 2 then
+        # comes in too hot
+        v_vyd = v_vyd + 0.55
+    endif
+    if v_doom == 3 and v_hp < 22 then
+        # misjudges the pad: drifts off the side and sets down on the rocks
+        v_vxd = max(-0.5, min(0.5, (v_dx + v_miss) * 0.05))
+        v_ax = v_x
+        call ground_at
+        v_vyd = min(0.5, 0.12 + (v_gy - v_feet) * 0.02)
+    endif
+    v_axd = (v_vxd - v_vx) * 0.05
+    v_ayd = (v_vyd - v_vy) * 0.07
+    v_tc = max(0.002, v_g - v_ayd)
+    v_ts = v_axd
+    v_angd = atan(v_ts / v_tc) * 57.2958
+    v_lim = 38
+    if v_hp < 6 and abs(v_dx) < 3 then
+        v_lim = 4
+    endif
+    v_angd = max(-v_lim, min(v_lim, v_angd))
+    v_thrust = min(v_tmax, sqrt(v_ts * v_ts + v_tc * v_tc))
+    # only push when the nose points roughly the right way
+    if abs(v_ang - v_angd) > 25 then
+        v_thrust = v_thrust * 0.3
+    endif
+}
+
+# ---------------- Main loop ----------------
+call new_round
+while true then
+    v_frame = v_frame + 1
+    if v_state == 0 then
+        call autopilot
+        # engine trouble
+        if v_doom == 1 and v_yt - (v_y + 4) < v_doom_h then
+            v_sputter = v_sputter + 1
+            if v_sputter > 25 or random(0, 1, 2) < 0.5 then
+                v_thrust = 0
+            endif
+        endif
+        if v_fuel <= 0 then
+            v_thrust = 0
+        endif
+        v_fuel = v_fuel - v_thrust / v_tmax * v_fuel_burn * 0.2
+        # turn toward the wanted tilt
+        v_ang = v_ang + max(-2.5, min(2.5, v_angd - v_ang))
+        v_ra = v_ang * 0.0174533
+        v_ux = sin(v_ra)
+        v_uy = -cos(v_ra)
+        v_vx = v_vx + v_ux * v_thrust
+        v_vy = v_vy + v_uy * v_thrust + v_g
+        v_x = v_x + v_vx
+        v_y = v_y + v_vy
+        v_x = max(4, min(59, v_x))
+        # exhaust
+        if v_thrust > 0.003 then
+            for v_k in (1, 1 + floor(v_thrust / v_tmax * 2.5), 1)
+                v_nx = v_x - v_ux * 4 + random(-0.6, 0.6, 2)
+                v_ny = v_y - v_uy * 4 + random(-0.3, 0.3, 2)
+                v_sp = random(1.0, 1.8, 2) * (0.5 + v_thrust / v_tmax)
+                v_nvx = v_vx - v_ux * v_sp + random(-0.25, 0.25, 2)
+                v_nvy = v_vy - v_uy * v_sp + random(-0.1, 0.1, 2)
+                v_nt = 0
+                v_nl = random(6, 11, 0)
+                call spawn
+            endfor v_k
+        endif
+        # touchdown? check both feet
+        v_ca = cos(v_ra)
+        v_sa = sin(v_ra)
+        v_flx = v_x - 4 * v_ca - 4 * v_sa
+        v_fly = v_y - 4 * v_sa + 4 * v_ca
+        v_frx = v_x + 4 * v_ca - 4 * v_sa
+        v_fry = v_y + 4 * v_sa + 4 * v_ca
+        v_ax = v_flx
+        call ground_at
+        v_hitl = 0
+        if v_fly >= v_gy then
+            v_hitl = 1
+        endif
+        v_ax = v_frx
+        call ground_at
+        v_hitr = 0
+        if v_fry >= v_gy then
+            v_hitr = 1
+        endif
+        v_ax = v_x
+        call ground_at
+        v_hitc = 0
+        if v_y + 2 >= v_gy then
+            v_hitc = 1
+        endif
+        if v_hitl + v_hitr + v_hitc > 0 then
+            v_onpad = 0
+            if v_flx >= v_pad_l[v_pad] - 1.5 and v_frx <= v_pad_r[v_pad] + 1.5 then
+                v_onpad = 1
+            endif
+            if v_onpad == 1 and v_vy < 0.42 and abs(v_vx) < 0.3 and abs(v_ang) < 10 then
+                v_state = 1
+                v_y = v_yt - 4
+                v_ang = 0
+                v_timer = 0
+                # touchdown dust
+                for v_k in (1, 26, 1)
+                    v_nx = v_x + random(-3, 3, 1)
+                    v_ny = v_yt - 0.5
+                    v_nvx = random(0.4, 1.5, 2) * (random(0, 1, 0) * 2 - 1)
+                    v_nvy = -random(0.05, 0.4, 2)
+                    v_nt = 1
+                    v_nl = random(25, 55, 0)
+                    call spawn
+                endfor v_k
+            else
+                v_state = 2
+                v_timer = 0
+                hide_sprite(lander, 0)
+                for v_k in (1, 46, 1)
+                    v_a = random(3.3, 6.1, 2)
+                    v_sp = random(0.4, 1.9, 2)
+                    v_nx = v_x
+                    v_ny = v_y
+                    v_nvx = cos(v_a) * v_sp + v_vx * 0.3
+                    v_nvy = sin(v_a) * v_sp
+                    v_nt = 2
+                    v_nl = random(40, 90, 0)
+                    call spawn
+                endfor v_k
+                v_bx = v_x
+                v_by = min(v_y + 2, v_gy)
+            endif
+        endif
+    else
+        v_timer = v_timer + 1
+        v_thrust = 0
+    endif
+
+    begin_frame(true)
+        set_layer(2)
+        clear_layer(2)
+        # pad beacons
+        for v_p in (0, 1, 1)
+            if (v_frame + v_p * 20) % 40 < 20 then
+                v_bc = "red"
+                if v_p == v_pad then
+                    v_bc = "lime"
+                endif
+                mplot(v_pad_l[v_p], v_pad_y[v_p] - 1, v_bc, 100)
+                mplot(v_pad_r[v_p], v_pad_y[v_p] - 1, v_bc, 100)
+            endif
+        endfor v_p
+        # engine flame core
+        if v_state == 0 and v_thrust > 0.003 then
+            v_fl = 1 + v_thrust / v_tmax * random(2, 4, 1)
+            draw_line(v_x - v_ux * 4.5, v_y - v_uy * 4.5, v_x - v_ux * (4.5 + v_fl), v_y - v_uy * (4.5 + v_fl), yellow, 100)
+            mplot(v_x - v_ux * 4.5, v_y - v_uy * 4.5, white, 100)
+        endif
+        call update_particles
+        # fuel gauge
+        draw_rectangle(1, 1, 22, 3, dark_gray, 40, false)
+        if v_fuel > 0 then
+            v_fc = "lime"
+            if v_fuel < 30 then
+                v_fc = "orange"
+            endif
+            draw_line(2, 2, 2 + max(0, v_fuel) * 0.2, 2, v_fc, 80)
+        endif
+        if v_state == 0 then
+            move_sprite(lander, v_x, v_y, 0, 0)
+            set_sprite_angle(lander, v_ang, 0)
+        elseif v_state == 1 then
+            move_sprite(lander, v_x, v_y, 0, 0)
+            set_sprite_angle(lander, 0, 0)
+            if v_timer > 30 then
+                draw_text(32, 8, "THE EAGLE", tiny64_font, 8, white, 90, NORMAL, CENTER)
+                draw_text(32, 15, "HAS LANDED", tiny64_font, 8, white, 90, NORMAL, CENTER)
+            endif
+        else
+            # explosion: expanding fireball, then smoke
+            if v_timer < 22 then
+                v_r = v_timer * 0.45
+                draw_circle(v_bx, v_by, v_r + 1, red, max(0, 80 - v_timer * 3), true)
+                draw_circle(v_bx, v_by, v_r * 0.7, orange, max(0, 100 - v_timer * 4), true)
+                draw_circle(v_bx, v_by, v_r * 0.35, yellow, max(0, 100 - v_timer * 5), true)
+            endif
+            if v_timer < 60 and v_timer % 3 == 0 then
+                v_nx = v_bx + random(-2, 2, 1)
+                v_ny = v_by - 1
+                v_nvx = random(-0.15, 0.15, 2)
+                v_nvy = -random(0.1, 0.3, 2)
+                v_nt = 3
+                v_nl = random(50, 80, 0)
+                call spawn
+            endif
+            if v_timer == 18 then
+                # scorch mark on the ground
+                set_layer(0)
+                for v_k in (-4, 4, 1)
+                    v_ax = v_bx + v_k
+                    call ground_at
+                    mplot(v_bx + v_k, v_gy, dark_gray, 50)
+                    mplot(v_bx + v_k, v_gy + 1, black, 100)
+                endfor v_k
+                set_layer(2)
+            endif
+            if v_timer > 40 then
+                draw_text(32, 10, "LOST CONTACT", tiny64_font, 8, red, 80, NORMAL, CENTER)
+            endif
+        endif
+        set_layer(0)
+    end_frame
+
+    if (v_state == 1 and v_timer > 200) or (v_state == 2 and v_timer > 190) then
+        hide_sprite(lander, 0)
+        begin_frame(true)
+            clear_layer(2)
+        end_frame
+        call new_round
+    endif
+    if v_state == 0 and (v_y > 70 or v_frame > 3000) then
+        hide_sprite(lander, 0)
+        call new_round
+    endif
+endwhile

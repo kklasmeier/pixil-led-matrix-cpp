@@ -1,0 +1,815 @@
+# Split-Flap Clock - a railway-station flip clock
+#
+# Hours and minutes on big flap cards, seconds on small ones underneath, and
+# the date below. When a digit changes, the top half of the old card falls
+# toward you on its hinge, turns edge-on, and the bottom half of the new card
+# swings down into place, just like a mechanical split-flap display. The leaf
+# starts slowly and speeds up as it falls. When several digits change at once
+# (10:59 -> 11:00) they flip one after another, right to left.
+#
+# How it works: every card half is a sprite (one cel per digit, plus a
+# blank). The falling leaf is a sprite instance turned with set_sprite_tilt.
+# Tilt pivots around the sprite's centre, so the leaf is moved every frame to
+# keep its hinge edge fixed on the split line. Nearly no CPU is needed.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_24h = 0              # 1 = 24-hour clock, 0 = 12-hour (blank leading zero)
+v_flip_frames = 20     # frames for one big flip
+v_flip_frames_small = 14
+v_cascade = 5          # frames between digits that flip together
+v_date_color = "gold"
+
+# ---------------- Card art (generated) ----------------
+# Each card is split in two halves: *_top shows the upper half of a digit,
+# *_bot the lower half. Cel 0-9 = digits, cel 10 = blank card.
+define_sprite(big_top, 13, 12)
+    sprite_cel(0)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(3, 5, 5, 5, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(3, 6, 5, 6, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(3, 7, 5, 7, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(3, 8, 5, 8, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(3, 9, 5, 9, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(3, 10, 5, 10, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(3, 11, 5, 11, white, 95)
+        draw_line(7, 11, 9, 11, white, 95)
+    sprite_cel(1)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(7, 2, 8, 2, white, 95)
+        draw_line(7, 3, 9, 3, white, 95)
+        draw_line(7, 4, 9, 4, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(7, 11, 9, 11, white, 95)
+    sprite_cel(2)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(3)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(4)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 5, 2, white, 95)
+        draw_line(7, 2, 8, 2, white, 95)
+        draw_line(3, 3, 5, 3, white, 95)
+        draw_line(7, 3, 9, 3, white, 95)
+        draw_line(3, 4, 5, 4, white, 95)
+        draw_line(7, 4, 9, 4, white, 95)
+        draw_line(3, 5, 5, 5, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(3, 6, 5, 6, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(3, 7, 5, 7, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(3, 8, 5, 8, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(3, 9, 5, 9, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(3, 10, 5, 10, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(5)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(3, 5, 5, 5, white, 95)
+        draw_line(3, 6, 5, 6, white, 95)
+        draw_line(3, 7, 5, 7, white, 95)
+        draw_line(3, 8, 5, 8, white, 95)
+        draw_line(3, 9, 5, 9, white, 95)
+        draw_line(3, 10, 5, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(6)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(3, 5, 5, 5, white, 95)
+        draw_line(3, 6, 5, 6, white, 95)
+        draw_line(3, 7, 5, 7, white, 95)
+        draw_line(3, 8, 5, 8, white, 95)
+        draw_line(3, 9, 5, 9, white, 95)
+        draw_line(3, 10, 5, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(7)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(7, 11, 9, 11, white, 95)
+    sprite_cel(8)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(3, 5, 5, 5, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(3, 6, 5, 6, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(3, 7, 5, 7, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(3, 8, 5, 8, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(3, 9, 5, 9, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(3, 10, 5, 10, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(9)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+        draw_line(4, 2, 8, 2, white, 95)
+        draw_line(3, 3, 9, 3, white, 95)
+        draw_line(3, 4, 9, 4, white, 95)
+        draw_line(3, 5, 5, 5, white, 95)
+        draw_line(7, 5, 9, 5, white, 95)
+        draw_line(3, 6, 5, 6, white, 95)
+        draw_line(7, 6, 9, 6, white, 95)
+        draw_line(3, 7, 5, 7, white, 95)
+        draw_line(7, 7, 9, 7, white, 95)
+        draw_line(3, 8, 5, 8, white, 95)
+        draw_line(7, 8, 9, 8, white, 95)
+        draw_line(3, 9, 5, 9, white, 95)
+        draw_line(7, 9, 9, 9, white, 95)
+        draw_line(3, 10, 5, 10, white, 95)
+        draw_line(7, 10, 9, 10, white, 95)
+        draw_line(3, 11, 9, 11, white, 95)
+    sprite_cel(10)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(12, 0, black, 100)
+endsprite
+
+define_sprite(big_bot, 13, 12)
+    sprite_cel(0)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 5, 0, white, 85)
+        draw_line(7, 0, 9, 0, white, 85)
+        draw_line(3, 1, 5, 1, white, 85)
+        draw_line(7, 1, 9, 1, white, 85)
+        draw_line(3, 2, 5, 2, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(3, 3, 5, 3, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(3, 4, 5, 4, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(3, 6, 5, 6, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(1)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(7, 0, 9, 0, white, 85)
+        draw_line(7, 1, 9, 1, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(7, 7, 9, 7, white, 85)
+        draw_line(7, 8, 9, 8, white, 85)
+        draw_line(7, 9, 8, 9, white, 85)
+    sprite_cel(2)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(3, 2, 5, 2, white, 85)
+        draw_line(3, 3, 5, 3, white, 85)
+        draw_line(3, 4, 5, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+        draw_line(3, 6, 5, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(3)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(4)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(7, 7, 9, 7, white, 85)
+        draw_line(7, 8, 9, 8, white, 85)
+        draw_line(7, 9, 8, 9, white, 85)
+    sprite_cel(5)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(6)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(3, 2, 5, 2, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(3, 3, 5, 3, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(3, 4, 5, 4, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(3, 6, 5, 6, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(7)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(7, 0, 9, 0, white, 85)
+        draw_line(7, 1, 9, 1, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(7, 7, 9, 7, white, 85)
+        draw_line(7, 8, 9, 8, white, 85)
+        draw_line(7, 9, 8, 9, white, 85)
+    sprite_cel(8)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(3, 2, 5, 2, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(3, 3, 5, 3, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(3, 4, 5, 4, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(3, 6, 5, 6, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(9)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+        draw_line(3, 0, 9, 0, white, 85)
+        draw_line(3, 1, 9, 1, white, 85)
+        draw_line(7, 2, 9, 2, white, 85)
+        draw_line(7, 3, 9, 3, white, 85)
+        draw_line(7, 4, 9, 4, white, 85)
+        draw_line(7, 5, 9, 5, white, 85)
+        draw_line(7, 6, 9, 6, white, 85)
+        draw_line(3, 7, 9, 7, white, 85)
+        draw_line(3, 8, 9, 8, white, 85)
+        draw_line(4, 9, 8, 9, white, 85)
+    sprite_cel(10)
+        draw_rectangle(0, 0, 13, 12, dark_gray, 40, true)
+        plot(0, 11, black, 100)
+        plot(12, 11, black, 100)
+endsprite
+
+define_sprite(small_top, 9, 7)
+    sprite_cel(0)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(2, 3, 3, 3, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(2, 4, 3, 4, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(2, 5, 3, 5, white, 95)
+        draw_line(5, 5, 6, 5, white, 95)
+        draw_line(2, 6, 3, 6, white, 95)
+        draw_line(5, 6, 6, 6, white, 95)
+    sprite_cel(1)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        plot(5, 1, white, 95)
+        draw_line(5, 2, 6, 2, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(5, 5, 6, 5, white, 95)
+        draw_line(5, 6, 6, 6, white, 95)
+    sprite_cel(2)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(3)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(4)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        plot(3, 1, white, 95)
+        plot(5, 1, white, 95)
+        draw_line(2, 2, 3, 2, white, 95)
+        draw_line(5, 2, 6, 2, white, 95)
+        draw_line(2, 3, 3, 3, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(2, 4, 3, 4, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(5)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(2, 3, 3, 3, white, 95)
+        draw_line(2, 4, 3, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(6)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(2, 3, 3, 3, white, 95)
+        draw_line(2, 4, 3, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(7)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(5, 5, 6, 5, white, 95)
+        draw_line(5, 6, 6, 6, white, 95)
+    sprite_cel(8)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(2, 3, 3, 3, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(2, 4, 3, 4, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(9)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+        draw_line(3, 1, 5, 1, white, 95)
+        draw_line(2, 2, 6, 2, white, 95)
+        draw_line(2, 3, 3, 3, white, 95)
+        draw_line(5, 3, 6, 3, white, 95)
+        draw_line(2, 4, 3, 4, white, 95)
+        draw_line(5, 4, 6, 4, white, 95)
+        draw_line(2, 5, 6, 5, white, 95)
+        draw_line(2, 6, 6, 6, white, 95)
+    sprite_cel(10)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 55, true)
+        plot(0, 0, black, 100)
+        plot(8, 0, black, 100)
+endsprite
+
+define_sprite(small_bot, 9, 7)
+    sprite_cel(0)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(2, 1, 3, 1, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(2, 2, 3, 2, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(2, 3, 3, 3, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(1)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(5, 4, 6, 4, white, 85)
+        plot(5, 5, white, 85)
+    sprite_cel(2)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(2, 1, 3, 1, white, 85)
+        draw_line(2, 2, 3, 2, white, 85)
+        draw_line(2, 3, 3, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(3)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(4)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(5, 4, 6, 4, white, 85)
+        plot(5, 5, white, 85)
+    sprite_cel(5)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(6)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(2, 1, 3, 1, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(2, 2, 3, 2, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(2, 3, 3, 3, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(7)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(5, 4, 6, 4, white, 85)
+        plot(5, 5, white, 85)
+    sprite_cel(8)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(2, 1, 3, 1, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(2, 2, 3, 2, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(2, 3, 3, 3, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(9)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+        draw_line(2, 0, 3, 0, white, 85)
+        draw_line(5, 0, 6, 0, white, 85)
+        draw_line(5, 1, 6, 1, white, 85)
+        draw_line(5, 2, 6, 2, white, 85)
+        draw_line(5, 3, 6, 3, white, 85)
+        draw_line(2, 4, 6, 4, white, 85)
+        draw_line(3, 5, 5, 5, white, 85)
+    sprite_cel(10)
+        draw_rectangle(0, 0, 9, 7, dark_gray, 40, true)
+        plot(0, 6, black, 100)
+        plot(8, 6, black, 100)
+endsprite
+
+# ---------------- Layout ----------------
+# slots 0-3: big HH:MM cards, slots 4-5: small seconds cards
+v_slots = 6
+create_array(v_sx0, v_slots, numeric)
+create_array(v_sy0, v_slots, numeric)
+create_array(v_cur, v_slots, numeric)
+create_array(v_new, v_slots, numeric)
+create_array(v_tick, v_slots, numeric)
+v_sx0[0] = 3
+v_sx0[1] = 17
+v_sx0[2] = 34
+v_sx0[3] = 48
+v_sx0[4] = 22
+v_sx0[5] = 33
+for v_p in (0, 3, 1)
+    v_sy0[v_p] = 5
+endfor v_p
+v_sy0[4] = 35
+v_sy0[5] = 35
+
+v_big_w = 13
+v_big_hh = 12
+v_small_w = 9
+v_small_hh = 7
+
+# ---------------- Time ----------------
+def read_time {
+    if v_24h == 1 then
+        v_hr = get_datetime("H")
+    else
+        v_hr = get_datetime("h")
+    endif
+    v_mn = get_datetime("mi")
+    v_sc = get_datetime("s")
+    v_new[0] = floor(v_hr / 10)
+    if v_new[0] == 0 and v_24h == 0 then
+        v_new[0] = 10
+    endif
+    v_new[1] = v_hr % 10
+    v_new[2] = floor(v_mn / 10)
+    v_new[3] = v_mn % 10
+    v_new[4] = floor(v_sc / 10)
+    v_new[5] = v_sc % 10
+}
+
+# put slot v_p's two still halves on screen (top = v_t_cel, bottom = v_b_cel)
+def place_still {
+    v_x = v_sx0[v_p]
+    v_y = v_sy0[v_p]
+    v_it = v_p * 4
+    if v_p < 4 then
+        move_sprite(big_top, v_x, v_y, v_it, v_t_cel)
+        move_sprite(big_bot, v_x, v_y + v_big_hh + 1, v_it + 1, v_b_cel)
+    else
+        move_sprite(small_top, v_x, v_y, v_it, v_t_cel)
+        move_sprite(small_bot, v_x, v_y + v_small_hh + 1, v_it + 1, v_b_cel)
+    endif
+}
+
+def show_slot {
+    v_x = v_sx0[v_p]
+    v_y = v_sy0[v_p]
+    v_it = v_p * 4
+    v_d = v_cur[v_p]
+    if v_p < 4 then
+        show_sprite(big_top, v_x, v_y, v_it, 0, v_d)
+        show_sprite(big_bot, v_x, v_y + v_big_hh + 1, v_it + 1, 0, v_d)
+        set_sprite_anchor(big_top, 1, v_it + 2)
+        set_sprite_anchor(big_bot, 1, v_it + 3)
+    else
+        show_sprite(small_top, v_x, v_y, v_it, 0, v_d)
+        show_sprite(small_bot, v_x, v_y + v_small_hh + 1, v_it + 1, 0, v_d)
+        set_sprite_anchor(small_top, 1, v_it + 2)
+        set_sprite_anchor(small_bot, 1, v_it + 3)
+    endif
+}
+
+# advance the flap animation of slot v_p by one frame
+def animate_slot {
+    v_t = v_tick[v_p]
+    v_x = v_sx0[v_p]
+    v_y = v_sy0[v_p]
+    v_it = v_p * 4
+    v_old = v_cur[v_p]
+    v_nw = v_new[v_p]
+    if v_p < 4 then
+        v_w = v_big_w
+        v_hh = v_big_hh
+        v_len = v_flip_frames
+    else
+        v_w = v_small_w
+        v_hh = v_small_hh
+        v_len = v_flip_frames_small
+    endif
+    v_u = min(v_t / v_len, 1)
+    # gravity: the leaf starts slowly and speeds up
+    v_th = 180 * pow(v_u, 1.6)
+    v_cos = abs(cos(radians(v_th)))
+    v_cx = v_x + v_w / 2
+    v_hinge = v_y + v_hh
+    if v_t == 0 then
+        # new top half appears behind the falling leaf
+        v_t_cel = v_nw
+        v_b_cel = v_old
+        call place_still
+        if v_p < 4 then
+            show_sprite(big_top, v_cx, v_hinge - v_hh / 2, v_it + 2, 5, v_old)
+        else
+            show_sprite(small_top, v_cx, v_hinge - v_hh / 2, v_it + 2, 5, v_old)
+        endif
+    endif
+    if v_th < 90 then
+        # old top half falls toward the viewer, hinged on its bottom edge
+        v_cy = v_hinge - v_hh * v_cos / 2
+        if v_p < 4 then
+            set_sprite_tilt(big_top, 0 - v_th, 0, v_it + 2)
+            move_sprite(big_top, v_cx, v_cy, v_it + 2, v_old)
+        else
+            set_sprite_tilt(small_top, 0 - v_th, 0, v_it + 2)
+            move_sprite(small_top, v_cx, v_cy, v_it + 2, v_old)
+        endif
+    else
+        # new bottom half swings down from edge-on to flat
+        v_cy = v_hinge + 1 + v_hh * v_cos / 2
+        if v_p < 4 then
+            hide_sprite(big_top, v_it + 2)
+            if v_flap_b_on[v_p] == 0 then
+                show_sprite(big_bot, v_cx, v_cy, v_it + 3, 5, v_nw)
+                v_flap_b_on[v_p] = 1
+            endif
+            set_sprite_tilt(big_bot, 180 - v_th, 0, v_it + 3)
+            move_sprite(big_bot, v_cx, v_cy, v_it + 3, v_nw)
+        else
+            hide_sprite(small_top, v_it + 2)
+            if v_flap_b_on[v_p] == 0 then
+                show_sprite(small_bot, v_cx, v_cy, v_it + 3, 5, v_nw)
+                v_flap_b_on[v_p] = 1
+            endif
+            set_sprite_tilt(small_bot, 180 - v_th, 0, v_it + 3)
+            move_sprite(small_bot, v_cx, v_cy, v_it + 3, v_nw)
+        endif
+    endif
+    if v_u >= 1 then
+        # landed: settle the still halves, hide the leaf
+        v_cur[v_p] = v_nw
+        v_t_cel = v_nw
+        v_b_cel = v_nw
+        call place_still
+        if v_p < 4 then
+            hide_sprite(big_bot, v_it + 3)
+        else
+            hide_sprite(small_bot, v_it + 3)
+        endif
+        v_flap_b_on[v_p] = 0
+        v_tick[v_p] = v_idle
+    else
+        v_tick[v_p] = v_t + 1
+    endif
+}
+
+create_array(v_flap_b_on, v_slots, numeric)
+v_idle = -999          # v_tick value of a card that is not flipping
+
+# ---------------- Start ----------------
+call read_time
+for v_p in (0, v_slots - 1, 1)
+    v_cur[v_p] = v_new[v_p]
+    v_tick[v_p] = v_idle
+    v_flap_b_on[v_p] = 0
+    call show_slot
+endfor v_p
+
+# ---------------- Main loop ----------------
+v_frame = 0
+while true then
+    call read_time
+    # start flips; when several digits change together they cascade right to left
+    v_lag = 0
+    for v_q in (0, v_slots - 1, 1)
+        v_p = v_slots - 1 - v_q
+        if v_tick[v_p] == v_idle and v_new[v_p] != v_cur[v_p] then
+            v_tick[v_p] = 0 - v_lag
+            v_lag = v_lag + v_cascade
+        endif
+    endfor v_q
+
+    begin_frame
+        for v_p in (0, v_slots - 1, 1)
+            if v_tick[v_p] >= 0 then
+                call animate_slot
+            elseif v_tick[v_p] > v_idle then
+                # waiting for its turn in a cascade
+                v_tick[v_p] = v_tick[v_p] + 1
+            endif
+        endfor v_p
+        # colon blinks with the seconds
+        if v_sc % 2 == 0 then
+            draw_rectangle(31, 11, 2, 2, white, 80, true)
+            draw_rectangle(31, 20, 2, 2, white, 80, true)
+        else
+            draw_rectangle(31, 11, 2, 2, white, 25, true)
+            draw_rectangle(31, 20, 2, 2, white, 25, true)
+        endif
+        draw_text(32, 55, get_datetime("ddd mmm d"), tiny64_font, 8, v_date_color, 60, NORMAL, CENTER)
+    end_frame
+    v_frame = v_frame + 1
+endwhile

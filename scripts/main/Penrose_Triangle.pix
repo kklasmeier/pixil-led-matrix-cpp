@@ -1,0 +1,263 @@
+# Penrose Triangle - the impossible triangle, built for real
+#
+# Three square beams turn slowly in space. Most of the time you can plainly
+# see what they are: an open, bent shape that does not close. Every so often
+# the camera drifts to one exact viewpoint, and at that moment the two loose
+# ends line up perfectly and the shape snaps into the famous "impossible
+# triangle" (the Penrose tribar). It holds there for a while, glows when it
+# locks, then turns away again and gives the trick away.
+#
+# How it works: the three beams run along the x, y and z axes, one after
+# another (like the Penrose sculpture in Perth). Seen straight along the
+# (1, 1, 1) diagonal, the end of the last beam lands exactly on the start of
+# the first. Every pixel casts a ray at the three boxes (the "slab" test, all
+# closed-form) in one field_program, keeps the nearest hit, and shades it by
+# which way that face points. Colour and brightness are packed into one
+# number: colour index + brightness / 100.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_len = 4              # beam length (corner to corner)
+v_wid = 1              # beam thickness
+v_zoom = 0.115         # world units per pixel (smaller = bigger)
+v_cycle = 2400         # frames per cycle: wander, lock in, hold, leave (~40 s)
+v_hold = 480           # frames held at the impossible view (~8 s)
+v_ease = 200           # frames to ease into / out of it
+v_roll = 1.5708        # turns the picture so the triangle stands on its base
+
+# ---------------- Geometry ----------------
+# beam 1: along x, beam 2: along y, beam 3: along z
+v_h = v_wid / 2
+v_b1x0 = v_h
+v_b1x1 = v_len + v_h
+v_b1y0 = 0 - v_h
+v_b1y1 = v_h
+v_b1z0 = 0 - v_h
+v_b1z1 = v_h
+v_b2x0 = v_len - v_h
+v_b2x1 = v_len + v_h
+v_b2y0 = 0 - v_h
+v_b2y1 = v_len + v_h
+v_b2z0 = 0 - v_h
+v_b2z1 = v_h
+v_b3x0 = v_len - v_h
+v_b3x1 = v_len + v_h
+v_b3y0 = v_len - v_h
+v_b3y1 = v_len + v_h
+v_b3z0 = 0 - v_h
+v_b3z1 = v_len + v_h
+# pivot: the average of the three beam centres. Seen along (1,1,1) it sits
+# right in the middle of the triangle, so the camera orbits the shape itself.
+v_cx = v_len * 5 / 6
+v_cy = v_len / 2
+v_cz = v_len / 6
+
+# ---------------- Camera (updated every frame) ----------------
+v_c0x = 0
+v_c0y = 0
+v_c0z = 0
+v_rxs = 0
+v_rys = 0
+v_rzs = 0
+v_uxs = 0
+v_uys = 0
+v_uzs = 0
+v_ifx = 1
+v_ify = 1
+v_ifz = 1
+v_sh0 = 50
+v_sh1 = 50
+v_sh2 = 50
+v_hu0 = 0
+v_hu1 = 0
+v_hu2 = 0
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program penrose {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        v_gx = grid_x - 31.5
+        v_gy = grid_y - 31.5
+        v_ox = v_c0x + v_gx * v_rxs - v_gy * v_uxs
+        v_oy = v_c0y + v_gx * v_rys - v_gy * v_uys
+        v_oz = v_c0z + v_gx * v_rzs - v_gy * v_uzs
+        v_x1a = (v_b1x0 - v_ox) * v_ifx
+        v_x1b = (v_b1x1 - v_ox) * v_ifx
+        v_x1n = min(v_x1a, v_x1b)
+        v_x1f = max(v_x1a, v_x1b)
+        v_y1a = (v_b1y0 - v_oy) * v_ify
+        v_y1b = (v_b1y1 - v_oy) * v_ify
+        v_y1n = min(v_y1a, v_y1b)
+        v_y1f = max(v_y1a, v_y1b)
+        v_z1a = (v_b1z0 - v_oz) * v_ifz
+        v_z1b = (v_b1z1 - v_oz) * v_ifz
+        v_z1n = min(v_z1a, v_z1b)
+        v_z1f = max(v_z1a, v_z1b)
+        v_n1 = max(max(v_x1n, v_y1n), v_z1n)
+        v_f1 = min(min(v_x1f, v_y1f), v_z1f)
+        v_t1 = where(v_n1 < v_f1, v_n1, 999)
+        v_k1 = where(v_x1n >= v_n1, 0, where(v_y1n >= v_n1, 1, 2))
+        v_x2a = (v_b2x0 - v_ox) * v_ifx
+        v_x2b = (v_b2x1 - v_ox) * v_ifx
+        v_x2n = min(v_x2a, v_x2b)
+        v_x2f = max(v_x2a, v_x2b)
+        v_y2a = (v_b2y0 - v_oy) * v_ify
+        v_y2b = (v_b2y1 - v_oy) * v_ify
+        v_y2n = min(v_y2a, v_y2b)
+        v_y2f = max(v_y2a, v_y2b)
+        v_z2a = (v_b2z0 - v_oz) * v_ifz
+        v_z2b = (v_b2z1 - v_oz) * v_ifz
+        v_z2n = min(v_z2a, v_z2b)
+        v_z2f = max(v_z2a, v_z2b)
+        v_n2 = max(max(v_x2n, v_y2n), v_z2n)
+        v_f2 = min(min(v_x2f, v_y2f), v_z2f)
+        v_t2 = where(v_n2 < v_f2, v_n2, 999)
+        v_k2 = where(v_x2n >= v_n2, 0, where(v_y2n >= v_n2, 1, 2))
+        v_x3a = (v_b3x0 - v_ox) * v_ifx
+        v_x3b = (v_b3x1 - v_ox) * v_ifx
+        v_x3n = min(v_x3a, v_x3b)
+        v_x3f = max(v_x3a, v_x3b)
+        v_y3a = (v_b3y0 - v_oy) * v_ify
+        v_y3b = (v_b3y1 - v_oy) * v_ify
+        v_y3n = min(v_y3a, v_y3b)
+        v_y3f = max(v_y3a, v_y3b)
+        v_z3a = (v_b3z0 - v_oz) * v_ifz
+        v_z3b = (v_b3z1 - v_oz) * v_ifz
+        v_z3n = min(v_z3a, v_z3b)
+        v_z3f = max(v_z3a, v_z3b)
+        v_n3 = max(max(v_x3n, v_y3n), v_z3n)
+        v_f3 = min(min(v_x3f, v_y3f), v_z3f)
+        v_t3 = where(v_n3 < v_f3, v_n3, 999)
+        v_k3 = where(v_x3n >= v_n3, 0, where(v_y3n >= v_n3, 1, 2))
+        v_t = min(min(v_t1, v_t2), v_t3)
+        v_k = where(v_t1 == v_t, v_k1, where(v_t2 == v_t, v_k2, v_k3))
+        v_bri = where(v_k == 0, v_sh0, where(v_k == 1, v_sh1, v_sh2))
+        v_hue = where(v_k == 0, v_hu0, where(v_k == 1, v_hu1, v_hu2))
+        v_out = where(v_t < 998, floor(v_hue) + clamp(v_bri, 1, 99) / 100, 0)
+    }
+    plot_if v_sum > 0
+    color floor(v_sum)
+    opacity (v_sum - floor(v_sum)) * 100
+}
+
+# ---------------- Camera path ----------------
+# The impossible view looks along the (1, 1, 1) diagonal.
+v_magic_yaw = atan2(1, 1)
+v_magic_pitch = asin(1 / sqrt(3))
+v_light_x = 0.3
+v_light_y = 0.8
+v_light_z = 0.5
+v_ll = sqrt(v_light_x * v_light_x + v_light_y * v_light_y + v_light_z * v_light_z)
+v_light_x = v_light_x / v_ll
+v_light_y = v_light_y / v_ll
+v_light_z = v_light_z / v_ll
+
+v_frame = random(0, v_cycle, 0)
+v_t = random(0, 500, 1)
+v_hue = random(0, 99, 0)
+
+while true then
+    # how far from the magic view: 1 = wandering freely, 0 = locked in
+    v_in = v_frame % v_cycle
+    v_lock_start = v_cycle - v_hold - v_ease * 2
+    if v_in < v_lock_start then
+        v_wt = 1
+    elseif v_in < v_lock_start + v_ease then
+        v_q = (v_in - v_lock_start) / v_ease
+        v_wt = 1 - v_q * v_q * (3 - 2 * v_q)
+    elseif v_in < v_lock_start + v_ease + v_hold then
+        v_wt = 0
+    else
+        v_q = (v_in - v_lock_start - v_ease - v_hold) / v_ease
+        v_wt = v_q * v_q * (3 - 2 * v_q)
+    endif
+
+    # free wandering: a full swing around the object plus a gentle bob
+    v_yaw = v_magic_yaw + v_wt * (2.4 * sin(v_t * 0.21) + 0.7 * sin(v_t * 0.53))
+    v_pitch = v_magic_pitch + v_wt * (0.55 * sin(v_t * 0.17 + 1))
+
+    # camera basis: f = view direction (camera -> object)
+    v_fx = 0 - cos(v_pitch) * sin(v_yaw)
+    v_fy = 0 - sin(v_pitch)
+    v_fz = 0 - cos(v_pitch) * cos(v_yaw)
+    # right = f x (0,1,0), up = right x f
+    v_rx = 0 - v_fz
+    v_ry = 0
+    v_rz = v_fx
+    v_rl = sqrt(v_rx * v_rx + v_rz * v_rz)
+    v_rx = v_rx / v_rl
+    v_rz = v_rz / v_rl
+    v_ux = v_ry * v_fz - v_rz * v_fy
+    v_uy = v_rz * v_fx - v_rx * v_fz
+    v_uz = v_rx * v_fy - v_ry * v_fx
+    # roll the picture
+    v_cr = cos(v_roll)
+    v_sr = sin(v_roll)
+    v_r2x = v_rx * v_cr + v_ux * v_sr
+    v_r2y = v_ry * v_cr + v_uy * v_sr
+    v_r2z = v_rz * v_cr + v_uz * v_sr
+    v_u2x = v_ux * v_cr - v_rx * v_sr
+    v_u2y = v_uy * v_cr - v_ry * v_sr
+    v_u2z = v_uz * v_cr - v_rz * v_sr
+
+    v_c0x = v_cx - 30 * v_fx
+    v_c0y = v_cy - 30 * v_fy
+    v_c0z = v_cz - 30 * v_fz
+    v_rxs = v_r2x * v_zoom
+    v_rys = v_r2y * v_zoom
+    v_rzs = v_r2z * v_zoom
+    v_uxs = v_u2x * v_zoom
+    v_uys = v_u2y * v_zoom
+    v_uzs = v_u2z * v_zoom
+    # 1 / direction for the slab test (never divide by zero)
+    v_gx2 = v_fx
+    v_gy2 = v_fy
+    v_gz2 = v_fz
+    if abs(v_gx2) < 0.0001 then
+        v_gx2 = 0.0001
+    endif
+    if abs(v_gy2) < 0.0001 then
+        v_gy2 = 0.0001
+    endif
+    if abs(v_gz2) < 0.0001 then
+        v_gz2 = 0.0001
+    endif
+    v_ifx = 1 / v_gx2
+    v_ify = 1 / v_gy2
+    v_ifz = 1 / v_gz2
+
+    # face shading: the visible face on each axis points against the view
+    v_glow = 0
+    if v_wt == 0 then
+        # a soft pulse while the illusion holds
+        v_glow = 14 * (0.5 + 0.5 * sin((v_in - v_lock_start - v_ease) * 0.05))
+    endif
+    v_sx = 0 - v_fx / max(abs(v_fx), 0.000001)
+    v_sy = 0 - v_fy / max(abs(v_fy), 0.000001)
+    v_sz = 0 - v_fz / max(abs(v_fz), 0.000001)
+    v_sh0 = (0.25 + 0.75 * max(0, v_sx * v_light_x)) * 85 + v_glow
+    v_sh1 = (0.25 + 0.75 * max(0, v_sy * v_light_y)) * 85 + v_glow
+    v_sh2 = (0.25 + 0.75 * max(0, v_sz * v_light_z)) * 85 + v_glow
+    v_hu0 = v_hue
+    v_hu1 = (v_hue + 4) % 100
+    v_hu2 = (v_hue + 8) % 100
+
+    begin_frame
+        field_render(penrose)
+    end_frame
+
+    v_frame = v_frame + 1
+    v_t = v_t + 0.033
+    v_hue = v_hue + 0.01
+    if v_hue >= 100 then
+        v_hue = v_hue - 100
+    endif
+endwhile

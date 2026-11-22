@@ -1,0 +1,396 @@
+# Curveball Pong - Pong down a 3D tunnel
+#
+# Two AI players face each other at the two ends of a glowing tunnel: the
+# near paddle (blue, see-through, right in front of you) and the far paddle
+# (red, small in the distance). The ball flies down the tunnel and back,
+# bouncing off the walls. A player who swipes the paddle as the ball hits
+# puts spin on it, and the ball curves on its way down the tunnel.
+#
+#   - A bright frame slides along the tunnel walls at the ball's depth, and
+#     the ball casts a shadow on the floor, so you can always tell how far
+#     away it is.
+#   - Every return speeds the ball up a little.
+#   - A miss flashes the tunnel in the scorer's colour. First to 7 wins the
+#     game, the tunnel celebrates, and a new game starts.
+#
+# How it works: everything is plain 3D maths with a perspective divide; the
+# tunnel's cross-sections project to rectangles, so the walls, depth frames
+# and paddles are draw_rectangle / draw_line calls. The AIs track the ball
+# with a reaction delay and a top speed, and sometimes misjudge a curve.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_half = 4             # tunnel half-width / half-height
+v_far = 26             # tunnel length
+v_eye = 6.5            # distance from the eye to the near end
+v_pad_w = 1.5          # paddle half-width
+v_pad_h = 1.1          # paddle half-height
+v_ball_r = 0.6
+v_start_speed = 0.32   # ball speed down the tunnel at the start of a rally
+v_speed_up = 1.06      # speed-up per return
+v_curve = 0.006        # how strongly spin bends the ball
+v_win = 7
+
+v_focal = v_eye * 31.5 / v_half
+
+# ---------------- Game state ----------------
+v_bx = 0
+v_by = 0
+v_bz = 13
+v_bvx = 0
+v_bvy = 0
+v_bvz = 0
+v_spx = 0
+v_spy = 0
+v_p1x = 0
+v_p1y = 0
+v_p1vx = 0
+v_p1vy = 0
+v_p2x = 0
+v_p2y = 0
+v_p2vx = 0
+v_p2vy = 0
+v_score1 = 0
+v_score2 = 0
+v_flash = 0
+v_flash_col = 0
+v_pause = 60
+v_serve_to = 1
+v_celebrate = 0
+v_frame = 0
+# AI skill: top speed and how far ahead they look
+v_ai1_speed = 0.16
+v_ai2_speed = 0.15
+v_aim1x = 0
+v_aim1y = 0
+v_aim2x = 0
+v_aim2y = 0
+
+# project (v_px, v_py, v_pz) -> (v_sx, v_sy), scale v_f
+def project {
+    v_f = v_focal / (v_pz + v_eye)
+    v_sx = 31.5 + v_px * v_f
+    v_sy = 31.5 + v_py * v_f
+}
+
+# rectangle (cross-section) at depth v_pz with half-size (v_hx, v_hy) around
+# (v_cx, v_cy), colour v_rc, brightness v_rb
+def depth_rect {
+    v_f = v_focal / (v_pz + v_eye)
+    v_x0 = 31.5 + (v_cx - v_hx) * v_f
+    v_y0 = 31.5 + (v_cy - v_hy) * v_f
+    v_w = v_hx * 2 * v_f
+    v_h = v_hy * 2 * v_f
+    draw_rectangle(v_x0, v_y0, v_w, v_h, v_rc, v_rb, false)
+}
+
+def serve {
+    v_bx = random(-1, 1, 2)
+    v_by = random(-1, 1, 2)
+    v_bz = v_far / 2
+    v_ang = random(0, 6.28, 2)
+    v_bvx = cos(v_ang) * 0.05
+    v_bvy = sin(v_ang) * 0.05
+    v_bvz = v_start_speed * v_serve_to
+    v_spx = 0
+    v_spy = 0
+    v_aim1x = 0
+    v_aim1y = 0
+    v_aim2x = 0
+    v_aim2y = 0
+    call new_errors
+}
+
+# ---------------- Drawing ----------------
+def draw_tunnel {
+    v_tb = 40
+    v_tc = 40
+    if v_flash > 0 then
+        v_tb = 40 + v_flash * 2
+        v_tc = v_flash_col
+    endif
+    if v_celebrate > 0 then
+        v_tc = (v_frame * 2) % 100
+        v_tb = 45
+    endif
+    # depth frames along the tunnel
+    v_cx = 0
+    v_cy = 0
+    v_hx = v_half
+    v_hy = v_half
+    for v_k in (0, 6, 1)
+        v_pz = v_k * v_far / 6
+        v_rc = v_tc
+        v_rb = v_tb * (1 - v_k * 0.09)
+        call depth_rect
+    endfor v_k
+    # the four long corner lines
+    v_pz = 0
+    v_px = 0 - v_half
+    v_py = 0 - v_half
+    call project
+    v_ax = v_sx
+    v_ay = v_sy
+    v_pz = v_far
+    call project
+    draw_line(v_ax, v_ay, v_sx, v_sy, v_tc, v_tb)
+    v_pz = 0
+    v_px = v_half
+    call project
+    v_ax = v_sx
+    v_ay = v_sy
+    v_pz = v_far
+    call project
+    draw_line(v_ax, v_ay, v_sx, v_sy, v_tc, v_tb)
+    v_pz = 0
+    v_py = v_half
+    call project
+    v_ax = v_sx
+    v_ay = v_sy
+    v_pz = v_far
+    call project
+    draw_line(v_ax, v_ay, v_sx, v_sy, v_tc, v_tb)
+    v_pz = 0
+    v_px = 0 - v_half
+    call project
+    v_ax = v_sx
+    v_ay = v_sy
+    v_pz = v_far
+    call project
+    draw_line(v_ax, v_ay, v_sx, v_sy, v_tc, v_tb)
+}
+
+def draw_scene {
+    call draw_tunnel
+    # far paddle (red, solid)
+    v_cx = v_p2x
+    v_cy = v_p2y
+    v_hx = v_pad_w
+    v_hy = v_pad_h
+    v_pz = v_far
+    v_f = v_focal / (v_pz + v_eye)
+    draw_rectangle(31.5 + (v_cx - v_hx) * v_f, 31.5 + (v_cy - v_hy) * v_f, v_hx * 2 * v_f + 1, v_hy * 2 * v_f + 1, red, 80, true)
+    # the ball's shadow on the floor
+    v_px = v_bx
+    v_py = v_half
+    v_pz = v_bz
+    call project
+    draw_ellipse(v_sx, v_sy, max(v_ball_r * v_f * 1.2, 0.6), max(v_ball_r * v_f * 0.35, 0.5), black, 100, true)
+    draw_ellipse(v_sx, v_sy, max(v_ball_r * v_f * 1.2, 0.6), max(v_ball_r * v_f * 0.35, 0.5), dark_gray, 40, false)
+    # depth frame at the ball
+    v_cx = 0
+    v_cy = 0
+    v_hx = v_half
+    v_hy = v_half
+    v_pz = v_bz
+    v_rc = "white"
+    v_rb = 55
+    call depth_rect
+    # the ball
+    v_px = v_bx
+    v_py = v_by
+    v_pz = v_bz
+    call project
+    v_rad = max(v_ball_r * v_f, 0.6)
+    draw_circle(v_sx, v_sy, v_rad, white, 100, true)
+    if v_rad > 1.5 then
+        mplot(v_sx - v_rad * 0.35, v_sy - v_rad * 0.35, sky_blue, 60)
+    endif
+    # near paddle (blue, see-through: outline and a cross)
+    v_pz = 0
+    v_f = v_focal / v_eye
+    v_x0 = 31.5 + (v_p1x - v_pad_w) * v_f
+    v_y0 = 31.5 + (v_p1y - v_pad_h) * v_f
+    v_w = v_pad_w * 2 * v_f
+    v_h = v_pad_h * 2 * v_f
+    draw_rectangle(v_x0, v_y0, v_w, v_h, sky_blue, 85, false)
+    draw_rectangle(v_x0 + 1, v_y0 + 1, v_w - 2, v_h - 2, blue, 40, false)
+    v_mx = 31.5 + v_p1x * v_f
+    v_my = 31.5 + v_p1y * v_f
+    draw_line(v_mx - 3, v_my, v_mx + 3, v_my, sky_blue, 45)
+    draw_line(v_mx, v_my - 3, v_mx, v_my + 3, sky_blue, 45)
+    # scores
+    draw_text(2, 1, v_score1, tiny64_font, 8, sky_blue, 70, NORMAL)
+    draw_text(58, 1, v_score2, tiny64_font, 8, red, 70, NORMAL)
+}
+
+# ---------------- AI ----------------
+# Each player guesses where the ball will reach its end (straight-line guess,
+# so curves fool it), with an error that grows as the ball gets faster. When
+# the ball gets close, it commits to its last guess and stops re-reading the
+# ball - a late curve can then slip past it.
+v_commit = 6           # distance from its end at which a player commits
+v_guess1x = 0
+v_guess1y = 0
+v_guess2x = 0
+v_guess2y = 0
+v_err1x = 0
+v_err1y = 0
+v_err2x = 0
+v_err2y = 0
+
+def new_errors {
+    v_e = 0.25 + abs(v_bvz) * 2.2
+    v_err1x = random(0 - v_e, v_e, 2)
+    v_err1y = random(0 - v_e, v_e, 2)
+    v_err2x = random(0 - v_e, v_e, 2)
+    v_err2y = random(0 - v_e, v_e, 2)
+}
+
+def run_ai {
+    # near player
+    if v_bvz < 0 then
+        if v_bz > v_commit then
+            v_tt = v_bz / max(0 - v_bvz, 0.01)
+            v_guess1x = v_bx + v_bvx * v_tt + v_err1x
+            v_guess1y = v_by + v_bvy * v_tt + v_err1y
+        endif
+    else
+        v_guess1x = v_guess1x * 0.98
+        v_guess1y = v_guess1y * 0.98
+    endif
+    v_gx = min(max(v_guess1x + v_aim1x, 0 - v_half + v_pad_w), v_half - v_pad_w)
+    v_gy = min(max(v_guess1y + v_aim1y, 0 - v_half + v_pad_h), v_half - v_pad_h)
+    v_ox = v_p1x
+    v_oy = v_p1y
+    v_p1x = v_p1x + min(max((v_gx - v_p1x) * 0.2, 0 - v_ai1_speed), v_ai1_speed)
+    v_p1y = v_p1y + min(max((v_gy - v_p1y) * 0.2, 0 - v_ai1_speed), v_ai1_speed)
+    v_p1vx = v_p1x - v_ox
+    v_p1vy = v_p1y - v_oy
+    # far player
+    if v_bvz > 0 then
+        if v_far - v_bz > v_commit then
+            v_tt = (v_far - v_bz) / max(v_bvz, 0.01)
+            v_guess2x = v_bx + v_bvx * v_tt + v_err2x
+            v_guess2y = v_by + v_bvy * v_tt + v_err2y
+        endif
+    else
+        v_guess2x = v_guess2x * 0.98
+        v_guess2y = v_guess2y * 0.98
+    endif
+    v_gx = min(max(v_guess2x + v_aim2x, 0 - v_half + v_pad_w), v_half - v_pad_w)
+    v_gy = min(max(v_guess2y + v_aim2y, 0 - v_half + v_pad_h), v_half - v_pad_h)
+    v_ox = v_p2x
+    v_oy = v_p2y
+    v_p2x = v_p2x + min(max((v_gx - v_p2x) * 0.2, 0 - v_ai2_speed), v_ai2_speed)
+    v_p2y = v_p2y + min(max((v_gy - v_p2y) * 0.2, 0 - v_ai2_speed), v_ai2_speed)
+    v_p2vx = v_p2x - v_ox
+    v_p2vy = v_p2y - v_oy
+}
+
+# v_who = 1 (near player) or 2 (far player) scores
+def point_to {
+    if v_who == 1 then
+        v_score1 = v_score1 + 1
+        v_flash_col = 60
+        v_serve_to = 1
+    else
+        v_score2 = v_score2 + 1
+        v_flash_col = 0
+        v_serve_to = -1
+    endif
+    v_flash = 30
+    v_pause = 70
+}
+
+# ---------------- Main loop ----------------
+call serve
+v_pause = 90
+while true then
+    v_frame = v_frame + 1
+    if v_flash > 0 then
+        v_flash = v_flash - 1
+    endif
+    if v_celebrate > 0 then
+        v_celebrate = v_celebrate - 1
+        if v_celebrate == 0 then
+            v_score1 = 0
+            v_score2 = 0
+            v_pause = 60
+        endif
+    elseif v_pause > 0 then
+        v_pause = v_pause - 1
+        if v_pause == 0 then
+            call serve
+        endif
+    else
+        # spin bends the flight, and slowly wears off
+        v_bvx = v_bvx + v_spx * v_curve
+        v_bvy = v_bvy + v_spy * v_curve
+        v_spx = v_spx * 0.992
+        v_spy = v_spy * 0.992
+        v_bx = v_bx + v_bvx
+        v_by = v_by + v_bvy
+        v_bz = v_bz + v_bvz
+        # walls
+        v_lim = v_half - v_ball_r
+        if v_bx > v_lim then
+            v_bx = v_lim
+            v_bvx = 0 - abs(v_bvx)
+            v_spx = v_spx * 0.6
+        elseif v_bx < 0 - v_lim then
+            v_bx = 0 - v_lim
+            v_bvx = abs(v_bvx)
+            v_spx = v_spx * 0.6
+        endif
+        if v_by > v_lim then
+            v_by = v_lim
+            v_bvy = 0 - abs(v_bvy)
+            v_spy = v_spy * 0.6
+        elseif v_by < 0 - v_lim then
+            v_by = 0 - v_lim
+            v_bvy = abs(v_bvy)
+            v_spy = v_spy * 0.6
+        endif
+        # near end
+        if v_bz <= 0 then
+            if abs(v_bx - v_p1x) < v_pad_w + v_ball_r and abs(v_by - v_p1y) < v_pad_h + v_ball_r then
+                v_bz = 0
+                v_bvz = abs(v_bvz) * v_speed_up
+                # where it hit the paddle steers it; swiping adds spin
+                v_bvx = v_bvx * 0.5 + (v_bx - v_p1x) * 0.05
+                v_bvy = v_bvy * 0.5 + (v_by - v_p1y) * 0.05
+                v_spx = v_p1vx * 9
+                v_spy = v_p1vy * 9
+                # pick an offset to swipe with on the next return
+                call new_errors
+                v_aim2x = random(-0.7, 0.7, 2)
+                v_aim2y = random(-0.5, 0.5, 2)
+                v_aim1x = 0
+                v_aim1y = 0
+            else
+                v_who = 2
+                call point_to
+            endif
+        endif
+        # far end
+        if v_bz >= v_far then
+            if abs(v_bx - v_p2x) < v_pad_w + v_ball_r and abs(v_by - v_p2y) < v_pad_h + v_ball_r then
+                v_bz = v_far
+                v_bvz = 0 - abs(v_bvz) * v_speed_up
+                v_bvx = v_bvx * 0.5 + (v_bx - v_p2x) * 0.05
+                v_bvy = v_bvy * 0.5 + (v_by - v_p2y) * 0.05
+                v_spx = v_p2vx * 9
+                v_spy = v_p2vy * 9
+                call new_errors
+                v_aim1x = random(-0.7, 0.7, 2)
+                v_aim1y = random(-0.5, 0.5, 2)
+                v_aim2x = 0
+                v_aim2y = 0
+            else
+                v_who = 1
+                call point_to
+            endif
+        endif
+        if v_score1 >= v_win or v_score2 >= v_win then
+            v_celebrate = 200
+        endif
+    endif
+    call run_ai
+
+    begin_frame
+        call draw_scene
+    end_frame
+endwhile

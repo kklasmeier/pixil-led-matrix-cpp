@@ -1,0 +1,393 @@
+# Snow Globe - a little winter scene under glass
+#
+# A glass snow globe on a wooden base holds a tiny cottage with a lit window
+# and a pine tree with a star on top. Every so often an unseen hand picks it
+# up, each time a little differently (never the same way twice in a row):
+#   - a classic shake: snow thrown up, a gentle swirl, then it drifts down;
+#   - a whirlpool: a twist sets the snow circling the scene for a long time;
+#   - a turnover: the globe is turned upside down and back, so the snow
+#     streams up to the top, round the glass and back down;
+#   - a gentle tap: only some of the snow lifts, a light flurry;
+#   - a blizzard: three hard shakes in a row, a thick, long snowfall;
+#   - a slosh: the globe is rocked side to side and the snow sways with it.
+# Then the flakes settle on the ground and on the cottage roof again.
+#
+#   - Flakes come in different sizes, so they sink at different speeds and
+#     drift with a gentle wobble.
+#   - Flakes move in 3D inside the sphere: ones behind the cottage pass
+#     behind it, ones in front pass in front, and nearer flakes are
+#     brighter.
+#   - Settled snow piles up where it lands and is kicked loose by the next
+#     shake.
+#   - The glass has a rim and a moving glint, and the cottage window
+#     flickers like firelight.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_flakes = 250
+v_gcx = 32             # globe centre on screen
+v_gcy = 27
+v_grad = 23            # globe radius
+v_ground = 15          # ground level (below the centre)
+v_shake_min = 1200     # frames between shakes (min)
+v_shake_max = 1800     # ... and max
+v_gravity = 0.0013     # sinking speed gain per frame (lower = slower snowfall)
+v_drag = 0.985         # water drag (closer to 1 = longer swirl)
+
+# ---------------- Flakes ----------------
+create_array(v_fx, v_flakes, numeric)
+create_array(v_fy, v_flakes, numeric)
+create_array(v_fz, v_flakes, numeric)
+create_array(v_vx, v_flakes, numeric)
+create_array(v_vy, v_flakes, numeric)
+create_array(v_vz, v_flakes, numeric)
+create_array(v_set, v_flakes, numeric)   # 1 = settled
+create_array(v_fb, v_flakes, numeric)    # base brightness
+create_array(v_fg, v_flakes, numeric)    # how fast this flake sinks (size)
+
+# every flake starts settled on the ground
+for v_i in (0, v_flakes - 1, 1)
+    v_ang = random(0, 6.28, 2)
+    v_rr = sqrt(random(0, 1, 3)) * 15
+    v_fx[v_i] = cos(v_ang) * v_rr
+    v_fz[v_i] = sin(v_ang) * v_rr * 0.6
+    v_fy[v_i] = v_ground - 0.5
+    v_vx[v_i] = 0
+    v_vy[v_i] = 0
+    v_vz[v_i] = 0
+    v_set[v_i] = 1
+    v_fb[v_i] = random(65, 100, 0)
+    v_fg[v_i] = random(0.35, 1.6, 2)
+endfor v_i
+
+v_swirl = 0
+v_shake = 0
+v_shake_timer = 60
+v_ox = 0               # globe offset while rocking
+v_frame = 0
+
+# roof line of the cottage (in globe coordinates): peak above the door
+v_house_x = -6
+v_roof_peak = 2
+v_roof_half = 7
+
+# throw snow around: up to v_kup upward, v_kside sideways, v_ktwist around
+# the vertical axis; only a fraction v_kfrac of the flakes is hit
+def shake_kick {
+    for v_i in (0, v_flakes - 1, 1)
+        if random(0, 1, 2) < v_kfrac then
+            v_set[v_i] = 0
+            v_vx[v_i] = v_vx[v_i] + random(0 - v_kside, v_kside, 2) - v_fz[v_i] * v_ktwist
+            v_vy[v_i] = v_vy[v_i] + random(0 - v_kup, -0.1, 2)
+            v_vz[v_i] = v_vz[v_i] + random(0 - v_kside * 0.8, v_kside * 0.8, 2) + v_fx[v_i] * v_ktwist
+        endif
+    endfor v_i
+}
+
+# set every flake loose (used when the globe is tipped over)
+def loosen_all {
+    for v_i in (0, v_flakes - 1, 1)
+        v_set[v_i] = 0
+    endfor v_i
+}
+
+def move_flakes {
+    v_wc = cos(v_swirl * 0.004)
+    v_ws = sin(v_swirl * 0.004)
+    v_lim = v_grad - 1.5
+    v_lim2 = v_lim * v_lim
+    for v_i in (0, v_flakes - 1, 1)
+        if v_set[v_i] == 0 then
+            v_x = v_fx[v_i]
+            v_y = v_fy[v_i]
+            v_z = v_fz[v_i]
+            # drag, sinking and a gentle wobble
+            v_ux = (v_vx[v_i] + random(-0.012, 0.012, 3)) * v_drag + v_gravity * v_gmul * v_fg[v_i] * v_gvx
+            v_uz = (v_vz[v_i] + random(-0.012, 0.012, 3)) * v_drag
+            v_uy = v_vy[v_i] * v_drag + v_gravity * v_gmul * v_fg[v_i] * v_gvy
+            v_x = v_x + v_ux
+            v_y = v_y + v_uy
+            v_z = v_z + v_uz
+            # the whirlpool turns the water around the vertical axis
+            v_nx = v_x * v_wc - v_z * v_ws
+            v_z = v_x * v_ws + v_z * v_wc
+            v_x = v_nx
+            # stay inside the glass
+            v_r2 = v_x * v_x + v_y * v_y + v_z * v_z
+            if v_r2 > v_lim2 then
+                v_r = sqrt(v_r2)
+                v_x = v_x / v_r * v_lim
+                v_y = v_y / v_r * v_lim
+                v_z = v_z / v_r * v_lim
+                v_ux = v_ux * -0.3
+                v_uy = v_uy * -0.3
+                v_uz = v_uz * -0.3
+            endif
+            # never sink into the snow bowl
+            if v_y > v_ground - 0.5 then
+                v_y = v_ground - 0.5
+                v_uy = min(v_uy, 0)
+            endif
+            # land on the ground
+            if v_y >= v_ground - 0.5 and v_gvy > 0.6 and v_tipped == 0 then
+                v_y = v_ground - 0.5
+                v_set[v_i] = 1
+            endif
+            # land on the cottage roof (only flakes near the cottage's depth)
+            if abs(v_z) < 3 and abs(v_x - v_house_x) < v_roof_half and v_uy > 0 and v_gvy > 0.6 and v_tipped == 0 then
+                v_roofy = v_roof_peak + abs(v_x - v_house_x) * 0.85
+                if v_y >= v_roofy - 0.6 and v_y <= v_roofy + 1 then
+                    v_y = v_roofy - 0.6
+                    v_set[v_i] = 1
+                endif
+            endif
+            v_fx[v_i] = v_x
+            v_fy[v_i] = v_y
+            v_fz[v_i] = v_z
+            v_vx[v_i] = v_ux
+            v_vy[v_i] = v_uy
+            v_vz[v_i] = v_uz
+        endif
+    endfor v_i
+}
+
+# draw flakes on one side of the scene: v_side = -1 behind, 1 in front
+def draw_flakes {
+    for v_i in (0, v_flakes - 1, 1)
+        v_z = v_fz[v_i]
+        if (v_side < 0 and v_z < 0) or (v_side > 0 and v_z >= 0) then
+            v_b = v_fb[v_i] * (0.55 + 0.45 * (v_z + v_grad) / (2 * v_grad))
+            if v_set[v_i] == 1 then
+                v_b = v_b * 0.85
+            endif
+            mplot(v_gcx + v_ox + v_fx[v_i], v_gcy + v_fy[v_i], white, v_b)
+        endif
+    endfor v_i
+}
+
+def draw_base {
+    # wooden base, wider at the bottom, with a gold band
+    for v_r in (0, 9, 1)
+        v_w = 17 + v_r * 0.7
+        draw_line(v_gcx + v_ox * 0.3 - v_w, v_gcy + v_grad - 2 + v_r, v_gcx + v_ox * 0.3 + v_w, v_gcy + v_grad - 2 + v_r, wood_brown, 30 + v_r * 2)
+    endfor v_r
+    draw_line(v_gcx + v_ox * 0.3 - 17, v_gcy + v_grad - 1, v_gcx + v_ox * 0.3 + 17, v_gcy + v_grad - 1, gold, 70)
+    draw_line(v_gcx + v_ox * 0.3 - 22, v_gcy + v_grad + 6, v_gcx + v_ox * 0.3 + 22, v_gcy + v_grad + 6, gold, 45)
+}
+
+def draw_water {
+    draw_circle(v_gcx + v_ox, v_gcy, v_grad - 0.5, navy, 22, true)
+}
+
+def draw_scene {
+    v_cx = v_gcx + v_ox
+    # snow bowl: everything below the ground line inside the globe
+    for v_y in (v_ground, v_grad - 1, 1)
+        v_hw = sqrt(max(v_grad * v_grad - v_y * v_y, 0)) - 0.5
+        draw_line(v_cx - v_hw, v_gcy + v_y, v_cx + v_hw, v_gcy + v_y, white, 55 - (v_y - v_ground) * 3)
+    endfor v_y
+    # pine tree
+    v_tx = v_cx + 9
+    v_ty = v_gcy + v_ground
+    draw_rectangle(v_tx - 1, v_ty - 3, 2, 3, wood_brown, 60, true)
+    for v_layer in (0, 2, 1)
+        v_base_y = v_ty - 3 - v_layer * 4
+        v_half = 6 - v_layer * 1.5
+        for v_r in (0, 5, 1)
+            v_hw = v_half * (1 - v_r / 6)
+            draw_line(v_tx - v_hw, v_base_y - v_r, v_tx + v_hw, v_base_y - v_r, forest_green, 55 + v_r * 4)
+        endfor v_r
+    endfor v_layer
+    v_star = 70 + 30 * sin(v_frame * 0.1)
+    mplot(v_tx, v_ty - 19, gold, v_star)
+    mplot(v_tx - 1, v_ty - 19, yellow, v_star * 0.5)
+    mplot(v_tx + 1, v_ty - 19, yellow, v_star * 0.5)
+    mplot(v_tx, v_ty - 20, yellow, v_star * 0.5)
+    # cottage
+    v_hx = v_cx + v_house_x
+    v_hy = v_gcy + v_ground
+    draw_rectangle(v_hx - 5, v_hy - 7, 11, 7, tan, 55, true)
+    # roof
+    for v_r in (0, 6, 1)
+        v_hw = v_roof_half - v_r * 1.15
+        draw_line(v_hx - v_hw, v_gcy + v_roof_peak + 6 - v_r, v_hx + v_hw, v_gcy + v_roof_peak + 6 - v_r, crimson, 60)
+    endfor v_r
+    # chimney
+    draw_rectangle(v_hx + 2, v_gcy + v_roof_peak + 1, 2, 3, dark_gray, 60, true)
+    # door and flickering window
+    draw_rectangle(v_hx - 3, v_hy - 4, 2, 4, wood_brown, 50, true)
+    v_fire = 70 + 20 * sin(v_frame * 0.31) + 10 * sin(v_frame * 0.77)
+    draw_rectangle(v_hx + 1, v_hy - 5, 3, 2, gold, v_fire, true)
+}
+
+def draw_glass {
+    v_cx = v_gcx + v_ox
+    draw_circle(v_cx, v_gcy, v_grad, light_gray, 30, false)
+    # glint: a short bright arc on the upper left that slides a little
+    v_g0 = 3.6 + 0.15 * sin(v_frame * 0.01) + v_ox * 0.03
+    for v_k in (0, 7, 1)
+        v_a = v_g0 + v_k * 0.07
+        v_r = v_grad - 3
+        mplot(v_cx + cos(v_a) * v_r, v_gcy + sin(v_a) * v_r, white, 75 - v_k * 6)
+    endfor v_k
+    mplot(v_cx - 12, v_gcy - 15, white, 60)
+}
+
+# ---------------- Shake kinds ----------------
+# 0 classic shake    1 whirlpool    2 turnover    3 gentle tap
+# 4 blizzard         5 slosh (rocked side to side)
+v_kinds = 6
+v_mode = -1
+v_ev = 0               # frames into the current shake
+v_ev_len = 0           # how long it lasts
+v_gvx = 0              # gravity direction (normally straight down)
+v_gvy = 1
+v_gmul = 1
+v_swirl_keep = 0.996   # how slowly the whirlpool unwinds
+v_kup = 3
+v_kside = 1
+v_ktwist = 0
+v_kfrac = 1
+v_tipped = 0           # 1 while the globe is turned over (snow can't settle)
+
+def start_shake {
+    v_last = v_mode
+    while v_mode == v_last then
+        v_mode = random(0, v_kinds - 1, 0)
+    endwhile
+    v_ev = 0
+    v_spin_dir = 1
+    if random(0, 1, 2) < 0.5 then
+        v_spin_dir = -1
+    endif
+    v_swirl_keep = 0.996
+    if v_mode == 0 then
+        v_ev_len = 90
+        v_swirl = random(5, 9, 1) * v_spin_dir
+    elseif v_mode == 1 then
+        v_ev_len = 60
+        v_swirl = random(22, 30, 1) * v_spin_dir
+        v_swirl_keep = 0.9985
+    elseif v_mode == 2 then
+        v_ev_len = 380
+        v_swirl = random(2, 5, 1) * v_spin_dir
+        call loosen_all
+    elseif v_mode == 3 then
+        v_ev_len = 45
+        v_swirl = random(1, 3, 1) * v_spin_dir
+    elseif v_mode == 4 then
+        v_ev_len = 200
+        v_swirl = random(6, 10, 1) * v_spin_dir
+    else
+        v_ev_len = 300
+        v_swirl = random(1, 3, 1) * v_spin_dir
+    endif
+}
+
+# one frame of the current shake: globe rocking (v_ox), kicks, gravity
+def run_shake {
+    v_q = v_ev / v_ev_len
+    v_gvx = 0
+    v_gvy = 1
+    v_gmul = 1
+    if v_mode == 0 then
+        # classic: rock and a few hard shakes
+        v_ox = 3 * sin(v_ev * 0.45) * (1 - v_q)
+        if v_ev % 10 == 0 and v_ev < 50 then
+            v_kup = 3
+            v_kside = 1
+            v_ktwist = 0
+            v_kfrac = 1
+            call shake_kick
+        endif
+    elseif v_mode == 1 then
+        # whirlpool: a twist of the wrist sets the water spinning
+        v_ox = 2 * sin(v_ev * 0.3) * (1 - v_q)
+        if v_ev % 12 == 0 and v_ev < 40 then
+            v_kup = 2
+            v_kside = 0.4
+            v_ktwist = 0.05 * v_spin_dir
+            v_kfrac = 1
+            call shake_kick
+        endif
+    elseif v_mode == 2 then
+        # turnover: gravity turns all the way round (the globe is tipped
+        # upside down and back), so the snow streams round the glass
+        v_th = 6.2832 * v_q
+        v_gvx = sin(v_th) * v_spin_dir
+        v_gvy = cos(v_th)
+        v_gmul = 7
+        v_ox = 2.5 * sin(v_th) * v_spin_dir
+    elseif v_mode == 3 then
+        # gentle tap: a small flurry
+        v_ox = 1.2 * sin(v_ev * 0.6) * (1 - v_q)
+        if v_ev == 5 then
+            v_kup = 1.4
+            v_kside = 0.5
+            v_ktwist = 0
+            v_kfrac = 0.55
+            call shake_kick
+        endif
+    elseif v_mode == 4 then
+        # blizzard: three hard shakes in a row
+        v_ox = 3.5 * sin(v_ev * 0.5) * (1 - v_q * 0.5)
+        if v_ev == 5 or v_ev == 70 or v_ev == 135 then
+            v_kup = 3.4
+            v_kside = 1.3
+            v_ktwist = 0.01 * v_spin_dir
+            v_kfrac = 1
+            call shake_kick
+        endif
+    else
+        # slosh: rocked side to side, the falling snow sways with it
+        v_rock = sin(v_ev * 0.07) * (1 - v_q)
+        v_gvx = v_rock * 0.9
+        v_ox = v_rock * 3
+        if v_ev == 5 then
+            v_kup = 2.6
+            v_kside = 0.6
+            v_ktwist = 0
+            v_kfrac = 1
+            call shake_kick
+        endif
+    endif
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_frame = v_frame + 1
+    v_shake_timer = v_shake_timer - 1
+    if v_shake_timer <= 0 then
+        call start_shake
+        v_shake_timer = random(v_shake_min, v_shake_max, 0)
+    endif
+    v_tipped = 0
+    if v_ev < v_ev_len then
+        call run_shake
+        v_ev = v_ev + 1
+        if v_mode == 2 then
+            v_tipped = 1
+        endif
+    else
+        v_ox = 0
+        v_gvx = 0
+        v_gvy = 1
+        v_gmul = 1
+    endif
+    v_swirl = v_swirl * v_swirl_keep
+
+    call move_flakes
+
+    begin_frame
+        call draw_base
+        call draw_water
+        v_side = -1
+        call draw_flakes
+        call draw_scene
+        v_side = 1
+        call draw_flakes
+        call draw_glass
+    end_frame
+endwhile

@@ -1,0 +1,259 @@
+# Galaxy Collision - two spiral galaxies tear each other apart
+#
+# Two disk galaxies (one blue-white, one gold) fall toward each other,
+# swing past, and gravity pulls long curved tidal tails and bridges of stars
+# out of both disks. After a second, closer pass the two cores merge and the
+# leftover stars settle into a messy cloud. Then a new pair with different
+# tilts and orbits starts over. The camera slowly circles the whole event.
+#
+# How it works (the classic Toomre & Toomre setup, 1972):
+#   - The two galaxy cores are heavy points that attract each other.
+#   - Every star is a light "test particle" pulled by both cores (stars do
+#     not pull on each other), so 300 stars cost little.
+#   - Each disk starts with every star on a circular orbit around its own
+#     core, in its own tilted plane.
+#   - Gravity is "softened" so nothing explodes at close range, and the
+#     integrator is semi-implicit Euler, which keeps orbits stable.
+#   - Stars are drawn with short fading trails; nearer stars are brighter.
+#   - The cores also feel "dynamical friction" when they overlap (a stand-in
+#     for the drag real galaxies feel from each other's stars), so they
+#     sink together and merge.
+#   - The view zooms to keep both galaxies on the panel.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_per_gal = 180        # stars per galaxy (two galaxies)
+v_mass = 30            # core mass
+v_soft2 = 1.2          # gravity softening (squared)
+v_dt = 0.05            # time step per frame
+v_friction = 0.25       # dynamical friction strength (0 = cores never merge)
+v_run_frames = 3000    # frames per collision (~50 s)
+v_trail_ms = 160       # star trail length
+v_orbit_speed = 0.0025 # camera orbit speed
+
+v_n = v_per_gal * 2
+create_array(v_x, v_n, numeric)
+create_array(v_y, v_n, numeric)
+create_array(v_z, v_n, numeric)
+create_array(v_vx, v_n, numeric)
+create_array(v_vy, v_n, numeric)
+create_array(v_vz, v_n, numeric)
+create_array(v_bri, v_n, numeric)
+
+# cores
+v_c1x = 0
+v_c1y = 0
+v_c1z = 0
+v_c1vx = 0
+v_c1vy = 0
+v_c1vz = 0
+v_c2x = 0
+v_c2y = 0
+v_c2z = 0
+v_c2vx = 0
+v_c2vy = 0
+v_c2vz = 0
+
+v_cam = 0
+v_zoom = 1.3
+
+# Fill stars v_first..v_last as a disk around core (v_kx, v_ky, v_kz) moving
+# at (v_kvx, v_kvy, v_kvz). The disk plane is tilted by v_inc around x, then
+# turned by v_node around the vertical axis. v_sense = +1 / -1 spin direction.
+def build_disk {
+    v_ci = cos(v_inc)
+    v_si = sin(v_inc)
+    v_cn = cos(v_node)
+    v_sn = sin(v_node)
+    for v_i in (v_first, v_last, 1)
+        # more stars near the middle, plus a few spiral-arm clumps
+        v_r = 1.6 + pow(random(0, 1, 3), 0.8) * 7.5
+        v_a = random(0, 6.283, 3)
+        if random(0, 1, 2) < 0.55 then
+            v_a = floor(random(0, 1.99, 2)) * 3.1416 + v_r * 0.55 + random(-0.35, 0.35, 2)
+        endif
+        v_v = sqrt(v_mass * v_r * v_r / pow(v_r * v_r + v_soft2, 1.5)) * v_sense
+        # in the disk plane
+        v_px = cos(v_a) * v_r
+        v_py = sin(v_a) * v_r
+        v_qx = 0 - sin(v_a) * v_v
+        v_qy = cos(v_a) * v_v
+        # tilt: disk plane (px, py, 0) -> (px, py*ci, py*si)
+        v_ty = v_py * v_ci
+        v_tz = v_py * v_si
+        v_uy = v_qy * v_ci
+        v_uz = v_qy * v_si
+        # turn around the vertical (y) axis
+        v_x[v_i] = v_kx + v_px * v_cn + v_tz * v_sn
+        v_y[v_i] = v_ky + v_ty
+        v_z[v_i] = v_kz + v_tz * v_cn - v_px * v_sn
+        v_vx[v_i] = v_kvx + v_qx * v_cn + v_uz * v_sn
+        v_vy[v_i] = v_kvy + v_uy
+        v_vz[v_i] = v_kvz + v_uz * v_cn - v_qx * v_sn
+        v_bri[v_i] = random(45, 100, 0)
+    endfor v_i
+}
+
+def new_collision {
+    # Start the cores at the far end (apocentre) of an elliptical orbit that
+    # dips to a close pass of v_peri. Each core gets half the orbit speed.
+    v_sep = random(24, 28, 1)
+    v_peri = random(6.5, 9, 1)
+    v_semi = (v_sep + v_peri) / 2
+    v_vrel = sqrt(2 * v_mass * (2 / v_sep - 1 / v_semi))
+    v_tz = random(-0.3, 0.3, 2)
+    v_c1x = 0 - v_sep / 2
+    v_c1y = 0
+    v_c1z = 0
+    v_c2x = v_sep / 2
+    v_c2y = 0
+    v_c2z = 0
+    v_c1vx = 0
+    v_c1vy = 0 - v_vrel / 2 * cos(v_tz)
+    v_c1vz = 0 - v_vrel / 2 * sin(v_tz)
+    v_c2vx = 0
+    v_c2vy = v_vrel / 2 * cos(v_tz)
+    v_c2vz = v_vrel / 2 * sin(v_tz)
+
+    v_first = 0
+    v_last = v_per_gal - 1
+    v_kx = v_c1x
+    v_ky = v_c1y
+    v_kz = v_c1z
+    v_kvx = v_c1vx
+    v_kvy = v_c1vy
+    v_kvz = v_c1vz
+    v_inc = random(0.2, 1.3, 2)
+    v_node = random(0, 6.28, 2)
+    v_sense = 1
+    call build_disk
+
+    v_first = v_per_gal
+    v_last = v_n - 1
+    v_kx = v_c2x
+    v_ky = v_c2y
+    v_kz = v_c2z
+    v_kvx = v_c2vx
+    v_kvy = v_c2vy
+    v_kvz = v_c2vz
+    v_inc = random(0.2, 1.4, 2)
+    v_node = random(0, 6.28, 2)
+    v_sense = 1
+    if random(0, 1, 2) < 0.4 then
+        v_sense = -1
+    endif
+    call build_disk
+}
+
+def step_cores {
+    v_dx = v_c2x - v_c1x
+    v_dy = v_c2y - v_c1y
+    v_dz = v_c2z - v_c1z
+    v_q = v_dx * v_dx + v_dy * v_dy + v_dz * v_dz + v_soft2
+    v_f = v_mass / (v_q * sqrt(v_q)) * v_dt
+    # dynamical friction: when the galaxies overlap they lose orbital energy,
+    # so after a pass or two the cores sink together and merge
+    v_g = v_friction * v_dt / (v_q + 12)
+    v_rvx = (v_c2vx - v_c1vx) * v_g
+    v_rvy = (v_c2vy - v_c1vy) * v_g
+    v_rvz = (v_c2vz - v_c1vz) * v_g
+    v_c1vx = v_c1vx + v_dx * v_f + v_rvx
+    v_c1vy = v_c1vy + v_dy * v_f + v_rvy
+    v_c1vz = v_c1vz + v_dz * v_f + v_rvz
+    v_c2vx = v_c2vx - v_dx * v_f - v_rvx
+    v_c2vy = v_c2vy - v_dy * v_f - v_rvy
+    v_c2vz = v_c2vz - v_dz * v_f - v_rvz
+    v_c1x = v_c1x + v_c1vx * v_dt
+    v_c1y = v_c1y + v_c1vy * v_dt
+    v_c1z = v_c1z + v_c1vz * v_dt
+    v_c2x = v_c2x + v_c2vx * v_dt
+    v_c2y = v_c2y + v_c2vy * v_dt
+    v_c2z = v_c2z + v_c2vz * v_dt
+}
+
+def step_and_draw {
+    # camera: centre between the cores, zoom so both fit
+    v_mx = (v_c1x + v_c2x) / 2
+    v_my = (v_c1y + v_c2y) / 2
+    v_mz = (v_c1z + v_c2z) / 2
+    v_half = sqrt(pow(v_c2x - v_c1x, 2) + pow(v_c2y - v_c1y, 2) + pow(v_c2z - v_c1z, 2)) / 2
+    v_want = 27 / (v_half + 10)
+    v_zoom = v_zoom + (v_want - v_zoom) * 0.02
+    v_ca = cos(v_cam)
+    v_sa = sin(v_cam)
+    v_ce = cos(0.5)
+    v_se = sin(0.5)
+    for v_i in (0, v_n - 1, 1)
+        v_px = v_x[v_i]
+        v_py = v_y[v_i]
+        v_pz = v_z[v_i]
+        v_ax = v_c1x - v_px
+        v_ay = v_c1y - v_py
+        v_az = v_c1z - v_pz
+        v_q = v_ax * v_ax + v_ay * v_ay + v_az * v_az + v_soft2
+        v_f1 = v_mass / (v_q * sqrt(v_q)) * v_dt
+        v_bx = v_c2x - v_px
+        v_by = v_c2y - v_py
+        v_bz = v_c2z - v_pz
+        v_q = v_bx * v_bx + v_by * v_by + v_bz * v_bz + v_soft2
+        v_f2 = v_mass / (v_q * sqrt(v_q)) * v_dt
+        v_wx = v_vx[v_i] + v_ax * v_f1 + v_bx * v_f2
+        v_wy = v_vy[v_i] + v_ay * v_f1 + v_by * v_f2
+        v_wz = v_vz[v_i] + v_az * v_f1 + v_bz * v_f2
+        v_vx[v_i] = v_wx
+        v_vy[v_i] = v_wy
+        v_vz[v_i] = v_wz
+        v_px = v_px + v_wx * v_dt
+        v_py = v_py + v_wy * v_dt
+        v_pz = v_pz + v_wz * v_dt
+        v_x[v_i] = v_px
+        v_y[v_i] = v_py
+        v_z[v_i] = v_pz
+        # view: orbit around y, tilt down a little
+        v_rx = (v_px - v_mx) * v_ca - (v_pz - v_mz) * v_sa
+        v_rz = (v_px - v_mx) * v_sa + (v_pz - v_mz) * v_ca
+        v_ry = (v_py - v_my) * v_ce - v_rz * v_se
+        v_dep = (v_py - v_my) * v_se + v_rz * v_ce
+        v_f = v_zoom * 60 / (60 - v_dep * v_zoom)
+        v_b = min(max(v_bri[v_i] + v_dep * v_zoom * 1.5, 10), 100)
+        if v_i < v_per_gal then
+            mplot(31.5 + v_rx * v_f, 31.5 + v_ry * v_f, azure, v_b, v_trail_ms, fade)
+        else
+            mplot(31.5 + v_rx * v_f, 31.5 + v_ry * v_f, gold, v_b, v_trail_ms, fade)
+        endif
+    endfor v_i
+    # bright cores
+    call draw_core(v_c1x, v_c1y, v_c1z)
+    call draw_core(v_c2x, v_c2y, v_c2z)
+}
+
+def draw_core(v_kx, v_ky, v_kz) {
+    v_rx = (v_kx - v_mx) * v_ca - (v_kz - v_mz) * v_sa
+    v_rz = (v_kx - v_mx) * v_sa + (v_kz - v_mz) * v_ca
+    v_ry = (v_ky - v_my) * v_ce - v_rz * v_se
+    v_dep = (v_ky - v_my) * v_se + v_rz * v_ce
+    v_f = v_zoom * 60 / (60 - v_dep * v_zoom)
+    v_sx = round(31.5 + v_rx * v_f)
+    v_sy = round(31.5 + v_ry * v_f)
+    mplot(v_sx, v_sy, white, 100, 60, fade)
+    mplot(v_sx + 1, v_sy, white, 70, 60, fade)
+    mplot(v_sx - 1, v_sy, white, 70, 60, fade)
+    mplot(v_sx, v_sy + 1, white, 70, 60, fade)
+    mplot(v_sx, v_sy - 1, white, 70, 60, fade)
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call new_collision
+    v_zoom = 25 / (16 + 11)
+    for v_frame in (1, v_run_frames, 1)
+        v_cam = v_cam + v_orbit_speed
+        call step_cores
+        begin_frame(true)
+            call step_and_draw
+        end_frame
+    endfor v_frame
+    rest(0.6)
+endwhile

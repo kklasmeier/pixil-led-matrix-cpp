@@ -1,0 +1,270 @@
+# Dragon Curve Unfolding - a paper strip folded in half again and again
+#
+# Fold a strip of paper in half, then in half again, ten times. Open every
+# crease out to a right angle and the edge traces the Heighway dragon.
+# This script runs that backwards: it starts with the folded strip and
+# unfolds it one crease at a time. Each unfold swings the second half of
+# the strip 90 degrees around the end of the first, doubling the length and
+# producing the next generation of the fractal. The camera zooms out and
+# turns to keep the growing dragon centred and upright.
+#
+# A colour gradient runs along the strip so you can follow it from end to
+# end. Once the dragon is complete it holds for a moment, folds itself back
+# up crease by crease, and starts again with a new colour scheme.
+#
+# Variations, chosen at random each cycle:
+#   - One dragon
+#   - Four dragons unfolding from the same point, which tile together like
+#     a pinwheel
+#   - Two "twin" dragons back to back, which fit together into a single
+#     shape
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_unfold_frames = 46   # frames for one crease to swing open
+v_hold_frames = 18     # pause between creases
+v_refold_frames = 14   # frames per crease when folding back up
+v_final_hold = 220     # frames to admire the finished dragon
+
+# ---------------- Strip storage ----------------
+v_max = 1025
+create_array(v_px, v_max, numeric)
+create_array(v_py, v_max, numeric)
+
+# copies: angle offsets (degrees) and hue offsets for each copy drawn
+create_array(v_cang, 4, numeric)
+create_array(v_chue, 4, numeric)
+
+v_prev_mode = -1
+def pick_mode {
+    v_mode = random(0, 2, 0)
+    if v_mode == v_prev_mode then
+        v_mode = (v_mode + 1) % 3
+    endif
+    v_prev_mode = v_mode
+    v_h0 = random(0, 99, 0)
+    v_span = random(35, 80, 0)
+    if v_mode == 0 then
+        v_copies = 1
+        v_gens = 10
+    elseif v_mode == 1 then
+        v_copies = 4
+        v_gens = 8
+    else
+        v_copies = 2
+        v_gens = 9
+    endif
+    for v_c in (0, v_copies - 1, 1)
+        v_cang[v_c] = v_c * 360 / v_copies
+        v_chue[v_c] = v_c * 100 / v_copies
+        if v_copies == 1 then
+            v_chue[v_c] = 0
+        endif
+    endfor v_c
+}
+
+# ---- camera fit for v_n segments fully opened, view angle v_tang ----
+# the copies all start at the origin; fit around the origin when there are
+# several, around the bounding box when there is one
+def fit_camera {
+    v_ca = cos(v_tang * 0.0174533)
+    v_sa = sin(v_tang * 0.0174533)
+    v_minx = 999
+    v_maxx = -999
+    v_miny = 999
+    v_maxy = -999
+    v_rmax = 0.5
+    for v_i in (0, v_n, 1)
+        v_x = v_px[v_i] * v_ca - v_py[v_i] * v_sa
+        v_y = v_px[v_i] * v_sa + v_py[v_i] * v_ca
+        v_minx = min(v_minx, v_x)
+        v_maxx = max(v_maxx, v_x)
+        v_miny = min(v_miny, v_y)
+        v_maxy = max(v_maxy, v_y)
+        v_rmax = max(v_rmax, sqrt(v_x * v_x + v_y * v_y))
+    endfor v_i
+    if v_copies == 1 then
+        v_tcx = (v_minx + v_maxx) / 2
+        v_tcy = (v_miny + v_maxy) / 2
+        v_tsc = 56 / max(1, max(v_maxx - v_minx, v_maxy - v_miny))
+    else
+        v_tcx = 0
+        v_tcy = 0
+        v_tsc = 29 / v_rmax
+    endif
+}
+
+# ---- draw the strip: v_n segments, the second half (from v_half) turned by v_th degrees ----
+def draw_strip {
+    v_ct = cos(v_th * 0.0174533)
+    v_st = sin(v_th * 0.0174533)
+    v_pvx = v_px[v_half]
+    v_pvy = v_py[v_half]
+    for v_c in (0, v_copies - 1, 1)
+        v_va = (v_ang + v_cang[v_c]) * 0.0174533
+        v_ca = cos(v_va) * v_sc
+        v_sa = sin(v_va) * v_sc
+        v_occ = v_cang[v_c] * 0.0174533
+        v_oc = cos(v_occ)
+        v_os = sin(v_occ)
+        # camera centre is in view space; copies rotate about the origin
+        v_lx = -1
+        for v_i in (0, v_n, 1)
+            v_x = v_px[v_i]
+            v_y = v_py[v_i]
+            if v_i > v_half then
+                v_dx = v_x - v_pvx
+                v_dy = v_y - v_pvy
+                v_x = v_pvx + v_dx * v_ct - v_dy * v_st
+                v_y = v_pvy + v_dx * v_st + v_dy * v_ct
+            endif
+            v_sx = 32 + v_x * v_ca - v_y * v_sa - v_camx * v_sc
+            v_sy = 32 + v_x * v_sa + v_y * v_ca - v_camy * v_sc
+            if v_i > 0 then
+                v_hue = floor(v_h0 + v_chue[v_c] + v_span * v_i / v_n) % 100
+                v_b = 80
+                if v_i > v_half and v_th < 89.5 then
+                    v_b = 100
+                endif
+                v_ddx = v_sx - v_lx
+                v_ddy = v_sy - v_ly
+                v_len = abs(v_ddx) + abs(v_ddy)
+                if v_len > 5 then
+                    draw_line(v_lx, v_ly, v_sx, v_sy, v_hue, v_b)
+                elseif v_len > 1.3 then
+                    v_k = ceil(v_len / 1.1)
+                    for v_j in (1, v_k, 1)
+                        mplot(v_lx + v_ddx * v_j / v_k, v_ly + v_ddy * v_j / v_k, v_hue, v_b)
+                    endfor v_j
+                else
+                    mplot(v_sx, v_sy, v_hue, v_b)
+                endif
+            endif
+            v_lx = v_sx
+            v_ly = v_sy
+        endfor v_i
+    endfor v_c
+    # the start of the strip (where all copies meet) gets a small white bead
+    if v_copies == 1 then
+        v_sx = 32 + (v_px[0] * cos(v_ang * 0.0174533) - v_py[0] * sin(v_ang * 0.0174533)) * v_sc - v_camx * v_sc
+        v_sy = 32 + (v_px[0] * sin(v_ang * 0.0174533) + v_py[0] * cos(v_ang * 0.0174533)) * v_sc - v_camy * v_sc
+    else
+        v_sx = 32 - v_camx * v_sc
+        v_sy = 32 - v_camy * v_sc
+    endif
+    mplot(v_sx, v_sy, white, 90)
+}
+
+# ---- one frame of an unfold: v_th = crease angle, v_e = camera blend ----
+def render {
+    v_sc = v_sc0 + (v_tsc - v_sc0) * v_e
+    v_ang = v_ang0 + (v_tang - v_ang0) * v_e
+    v_camx = v_cx0 + (v_tcx - v_cx0) * v_e
+    v_camy = v_cy0 + (v_tcy - v_cy0) * v_e
+    begin_frame
+        call draw_strip
+    end_frame
+}
+
+# ---------------- Main loop ----------------
+while true then
+    call pick_mode
+    # generation 0: one segment of folded strip
+    v_px[0] = 0
+    v_py[0] = 0
+    v_px[1] = 1
+    v_py[1] = 0
+    v_n = 1
+    v_half = 1
+    v_th = 90
+    v_tang = 0
+    if v_copies == 2 then
+        v_cang[1] = 180
+    endif
+    call fit_camera
+    v_sc0 = v_tsc
+    v_ang0 = 0
+    v_cx0 = v_tcx
+    v_cy0 = v_tcy
+    v_e = 1
+    for v_k in (1, 30, 1)
+        call render
+    endfor v_k
+
+    # ---- unfold, one crease at a time ----
+    for v_g in (1, v_gens, 1)
+        # the new half is a mirror copy of the old strip, lying folded on top
+        v_half = v_n
+        for v_j in (1, v_n, 1)
+            v_px[v_n + v_j] = v_px[v_n - v_j]
+            v_py[v_n + v_j] = v_py[v_n - v_j]
+        endfor v_j
+        # where the camera has to end up once this crease is open
+        v_sc0 = v_sc
+        v_ang0 = v_ang
+        v_cx0 = v_camx
+        v_cy0 = v_camy
+        v_n = v_n * 2
+        v_ct = cos(1.5708)
+        v_st = sin(1.5708)
+        for v_j in (1, v_half, 1)
+            v_dx = v_px[v_half + v_j] - v_px[v_half]
+            v_dy = v_py[v_half + v_j] - v_py[v_half]
+            v_tmpx = v_px[v_half] - v_dy
+            v_tmpy = v_py[v_half] + v_dx
+            v_px[v_half + v_j] = v_tmpx
+            v_py[v_half + v_j] = v_tmpy
+        endfor v_j
+        v_tang = -45 * v_g
+        if v_copies > 1 then
+            v_tang = -45 * v_g
+        endif
+        call fit_camera
+        # undo: store opened positions are now in the array; animate the
+        # crease from 0 (folded flat) to 90 by rotating back
+        for v_k in (0, v_unfold_frames, 1)
+            v_u = v_k / v_unfold_frames
+            v_e = v_u * v_u * (3 - 2 * v_u)
+            # array holds the opened strip; draw it turned back by (90 - angle)
+            v_th = -90 * (1 - v_e)
+            call render
+        endfor v_k
+        v_th = 0
+        v_half = v_n
+        for v_k in (1, v_hold_frames, 1)
+            call render
+        endfor v_k
+    endfor v_g
+
+    for v_k in (1, v_final_hold, 1)
+        call render
+    endfor v_k
+
+    # ---- fold it back up, crease by crease ----
+    for v_g in (v_gens, 1, -1)
+        v_half = v_n / 2
+        v_sc0 = v_sc
+        v_ang0 = v_ang
+        v_cx0 = v_camx
+        v_cy0 = v_camy
+        v_save = v_n
+        v_n = v_half
+        v_tang = -45 * (v_g - 1)
+        call fit_camera
+        v_n = v_save
+        for v_k in (0, v_refold_frames, 1)
+            v_u = v_k / v_refold_frames
+            v_e = v_u * v_u * (3 - 2 * v_u)
+            v_th = -90 * v_e
+            call render
+        endfor v_k
+        v_n = v_half
+    endfor v_g
+    v_half = v_n
+    v_th = 0
+    for v_k in (1, 30, 1)
+        call render
+    endfor v_k
+endwhile

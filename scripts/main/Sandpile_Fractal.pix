@@ -1,0 +1,244 @@
+# Sandpile Fractal - grains of sand pile up into a fractal
+#
+# Grains of sand are dropped onto the grid one after another. Any cell that
+# holds 4 or more grains topples: it gives one grain to each of its four
+# neighbours, which may make them topple too, in avalanches large and small.
+# Grains that fall off the edge are lost. Out of these simple rules a
+# perfectly symmetric, endlessly detailed fractal grows outward (the
+# "Abelian sandpile", Bak, Tang and Wiesenfeld 1987).
+#
+# Cells are coloured by how many grains they hold (1, 2 or 3); cells that are
+# about to topple flash bright. Each run uses a different setup:
+#   - grains dropped at 1, 2, 3 or 4 points (corners of a square or triangle,
+#     a pair, or the centre),
+#   - an empty floor, or a floor already covered 1 or 2 grains deep, which
+#     grows a very different texture,
+#   - a new colour palette.
+# When the pattern nears the edge, dropping stops, the last avalanches settle,
+# the finished fractal is shown for a few seconds, and the next run starts.
+#
+# How it runs fast: the toppling happens in one grid_program, natively.
+#   q = how many times each cell topples (always floor(h / 4)),
+#   h_new = h + lap(q)  (lap = sum of the 4 neighbours - 4 x the cell), which
+#   takes 4q grains from the cell and gives each neighbour its q.
+#   Both step blocks read the same old values, so q_new is worked out as
+#   floor((h + lap(q)) / 4) - exactly floor(h_new / 4). Every substep is one
+#   full toppling sweep of the whole grid.
+# Once per frame, Pixil adds the new grains at the drop points and empties
+# the outer edge (grains that fall off), then grid_reset hands the arrays
+# back to the grid program.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_size = 64
+v_substeps = 6         # toppling sweeps per frame
+v_hold_frames = 300    # frames to admire the finished fractal (~5 s)
+v_edge_margin = 3      # stop dropping when the pattern gets this close
+v_start_rate = 2       # grains per drop point per frame at the start
+v_speedup_grains = 1500 # grains per drop point before each speed-up
+
+v_cells = v_size * v_size
+create_array(v_h, v_cells)      # grains per cell
+create_array(v_q, v_cells)      # topples this sweep
+
+# per-run settings the grid program reads
+v_c1 = 60
+v_c2 = 66
+v_c3 = 80
+v_chot = 14
+v_s1x = 32
+v_s1y = 32
+v_s2x = -10
+v_s2y = -10
+v_s3x = -10
+v_s3y = -10
+v_s4x = -10
+v_s4y = -10
+
+grid_program sandpile {
+    size v_size
+    cell 1
+    fields v_h, v_q
+    steps v_substeps
+    boundary clamp
+
+    step v_h {
+        v_h_next = at(v_h) + lap(v_q)
+    }
+
+    step v_q {
+        v_q_next = floor((at(v_h) + lap(v_q)) / 4)
+    }
+
+    draw {
+        plot_if at(v_h) > 0.5
+        color where(at(v_h) < 1.5, v_c1, where(at(v_h) < 2.5, v_c2, where(at(v_h) < 3.5, v_c3, v_chot)))
+        opacity where(at(v_h) < 1.5, 30, where(at(v_h) < 2.5, 60, where(at(v_h) < 3.5, 95, 100)))
+    }
+}
+
+# ---------------- Runs ----------------
+v_last_layout = -1
+
+def new_run {
+    # drop points
+    v_layout = random(0, 3, 0)
+    while v_layout == v_last_layout then
+        v_layout = random(0, 3, 0)
+    endwhile
+    v_last_layout = v_layout
+    v_base = random(0, 2, 0)
+    grid_fill(v_h, v_base)
+    grid_fill(v_q, 0)
+    # (a floor of 1 or 2 grains is stable, so q starts at 0)
+    # unused drop points sit off the grid
+    v_s1x = -10
+    v_s1y = -10
+    v_s2x = -10
+    v_s2y = -10
+    v_s3x = -10
+    v_s3y = -10
+    v_s4x = -10
+    v_s4y = -10
+    for v_i in (0, 63, 1)
+        v_h[v_i] = 0
+        v_h[63 * 64 + v_i] = 0
+        v_h[v_i * 64] = 0
+        v_h[v_i * 64 + 63] = 0
+    endfor v_i
+    v_sp = random(7, 12, 0)
+    if v_layout == 0 then
+        v_s1x = 32
+        v_s1y = 32
+        v_nsrc = 1
+    elseif v_layout == 1 then
+        v_s1x = 32 - v_sp
+        v_s1y = 32
+        v_s2x = 32 + v_sp
+        v_s2y = 32
+        v_nsrc = 2
+    elseif v_layout == 2 then
+        v_s1x = 32
+        v_s1y = 32 - v_sp
+        v_s2x = 32 - round(v_sp * 0.87)
+        v_s2y = 32 + round(v_sp / 2)
+        v_s3x = 32 + round(v_sp * 0.87)
+        v_s3y = 32 + round(v_sp / 2)
+        v_nsrc = 3
+    else
+        v_s1x = 32 - v_sp
+        v_s1y = 32 - v_sp
+        v_s2x = 32 + v_sp
+        v_s2y = 32 - v_sp
+        v_s3x = 32 - v_sp
+        v_s3y = 32 + v_sp
+        v_s4x = 32 + v_sp
+        v_s4y = 32 + v_sp
+        v_nsrc = 4
+    endif
+    grid_reset(sandpile)
+    # palette: three steps around the colour wheel, plus a hot colour
+    v_c1 = random(0, 99, 0)
+    v_step = random(10, 30, 0)
+    v_c2 = (v_c1 + v_step) % 100
+    v_c3 = (v_c1 + v_step * 2) % 100
+    v_chot = (v_c1 + 50) % 100
+    v_grains = 0
+    v_done = 0
+    v_hold = 0
+}
+
+# has the pattern reached the edge zone? (checks a ring of cells)
+def check_edge {
+    v_m = v_edge_margin
+    v_hit = 0
+    for v_k in (v_m, 63 - v_m, 4)
+        if v_h[v_m * 64 + v_k] > 0 or v_h[(63 - v_m) * 64 + v_k] > 0 then
+            v_hit = 1
+        endif
+        if v_h[v_k * 64 + v_m] > 0 or v_h[v_k * 64 + 63 - v_m] > 0 then
+            v_hit = 1
+        endif
+    endfor v_k
+    if v_base > 0 then
+        # on a covered floor every cell is non-zero: look for 3s instead
+        v_hit = 0
+        for v_k in (v_m, 63 - v_m, 4)
+            if v_h[v_m * 64 + v_k] >= 3 or v_h[(63 - v_m) * 64 + v_k] >= 3 then
+                v_hit = 1
+            endif
+            if v_h[v_k * 64 + v_m] >= 3 or v_h[v_k * 64 + 63 - v_m] >= 3 then
+                v_hit = 1
+            endif
+        endfor v_k
+    endif
+}
+
+# add v_add grains to drop point (v_px, v_py) and keep q in step with h
+def drop_at {
+    if v_px >= 0 then
+        v_c = v_py * 64 + v_px
+        v_h[v_c] = v_h[v_c] + v_add
+        v_q[v_c] = floor(v_h[v_c] / 4)
+    endif
+}
+
+# grains that reach the outer edge fall off
+def empty_edge {
+    for v_i in (0, 63, 1)
+        v_h[v_i] = 0
+        v_q[v_i] = 0
+        v_h[4032 + v_i] = 0
+        v_q[4032 + v_i] = 0
+        v_h[v_i * 64] = 0
+        v_q[v_i * 64] = 0
+        v_h[v_i * 64 + 63] = 0
+        v_q[v_i * 64 + 63] = 0
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+call new_run
+v_frame = 0
+while true then
+    if v_done == 0 then
+        # grains per drop point this frame: a few at first, more as the pile
+        # grows (each new ring of the fractal needs more grains than the last)
+        v_add = v_start_rate + floor(v_grains / (v_nsrc * v_speedup_grains))
+        v_px = v_s1x
+        v_py = v_s1y
+        call drop_at
+        v_px = v_s2x
+        v_py = v_s2y
+        call drop_at
+        v_px = v_s3x
+        v_py = v_s3y
+        call drop_at
+        v_px = v_s4x
+        v_py = v_s4y
+        call drop_at
+        v_grains = v_grains + v_add * v_nsrc
+    endif
+    call empty_edge
+    grid_reset(sandpile)
+
+    begin_frame
+        grid_step(sandpile)
+    end_frame
+
+    v_frame = v_frame + 1
+    if v_done == 0 and v_frame % 20 == 0 then
+        call check_edge
+        if v_hit == 1 then
+            v_done = 1
+        endif
+    endif
+    if v_done == 1 then
+        v_hold = v_hold + 1
+        if v_hold > v_hold_frames then
+            call new_run
+        endif
+    endif
+endwhile

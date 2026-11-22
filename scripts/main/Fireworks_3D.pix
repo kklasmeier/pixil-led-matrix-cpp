@@ -1,0 +1,581 @@
+# Fireworks 3D - a fireworks show seen from a slowly circling camera
+#
+# Rockets climb from a launch field and burst into true 3D shells. The
+# camera keeps circling the field, so you see each burst from a new side:
+# rings tilt into ellipses and flatten into lines, and shells that burst on
+# the near side open up big and bright right in front of you.
+#
+# Shell types (picked at random, 15 kinds):
+#   peony        - an even sphere of one colour
+#   two-tone     - inner and outer spheres in different colours
+#   ring         - a flat circle in a random tilted plane (best seen in 3D)
+#   double ring  - two rings at right angles, two colours
+#   saturn       - a small sphere wearing a tilted ring
+#   willow       - gold, heavy drag, long drooping trails
+#   crackle      - a white sphere that twinkles as it falls
+#   colour change- stars that slowly shift colour as they fly (chrysanthemum)
+#   palm         - a few thick golden fronds that arc over and droop
+#   crossette    - stars that each split into a cross of four mid-flight
+#   multi-break  - stars that fly out and pop into little shells of their own
+#   strobe       - stars that blink on and off out of step with each other
+#   pinwheel     - spiral arms in a tilted plane, spinning out
+#   waterfall    - a low, wide burst that pours down like a golden curtain
+#   brocade      - a big glittering gold sphere shedding sparks
+# Every couple of minutes there is a finale: a rapid volley of rockets.
+#
+# How it works: a pool of particles with position and velocity in 3D
+# (gravity + air drag), drawn with mplot and fading burnout trails on a
+# preserved frame. Shells use a Fibonacci sphere so the stars are spread
+# evenly. Everything is projected through one perspective camera; a ring of
+# dim marker lights on the ground shows the 3D turn.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_n = 480              # particle pool size
+v_shell_stars = 70     # stars in a normal shell
+v_gravity = 0.012      # downward pull per frame
+v_cam_dist = 46        # camera distance from the launch field
+v_cam_speed = 0.004    # camera orbit speed (radians per frame)
+v_launch_gap = 70      # average frames between rockets
+v_finale_every = 7200  # frames between finales (~2 minutes)
+v_kinds = 15           # number of shell types
+
+# ---------------- Particle pool ----------------
+create_array(v_px, v_n, numeric)
+create_array(v_py, v_n, numeric)
+create_array(v_pz, v_n, numeric)
+create_array(v_vx, v_n, numeric)
+create_array(v_vy, v_n, numeric)
+create_array(v_vz, v_n, numeric)
+create_array(v_life, v_n, numeric)
+create_array(v_max, v_n, numeric)
+create_array(v_col, v_n, numeric)
+create_array(v_drag, v_n, numeric)
+create_array(v_trail, v_n, numeric)
+create_array(v_twinkle, v_n, numeric)  # 0 plain, 1 white crackle, 2 strobe, 3 glitter
+create_array(v_dhue, v_n, numeric)     # colour drift per frame
+create_array(v_split, v_n, numeric)    # frames until the star splits (0 = never)
+create_array(v_stype, v_n, numeric)    # 1 crossette, 2 mini shell
+for v_i in (0, v_n - 1, 1)
+    v_life[v_i] = 0
+endfor v_i
+v_next = 0
+
+# ---------------- Rockets ----------------
+v_rockets = 6
+create_array(v_rx, v_rockets, numeric)
+create_array(v_ry, v_rockets, numeric)
+create_array(v_rz, v_rockets, numeric)
+create_array(v_rvx, v_rockets, numeric)
+create_array(v_rvy, v_rockets, numeric)
+create_array(v_rvz, v_rockets, numeric)
+create_array(v_ron, v_rockets, numeric)
+for v_i in (0, v_rockets - 1, 1)
+    v_ron[v_i] = 0
+endfor v_i
+
+v_cam = random(0, 6.28, 2)
+v_timer = 20
+v_show_clock = random(0, v_finale_every / 2, 0)
+v_finale = 0
+
+# ---------------- Camera ----------------
+def setup_camera {
+    v_ca = cos(v_cam)
+    v_sa = sin(v_cam)
+    v_ce = cos(0.12)
+    v_se = sin(0.12)
+}
+
+# project (v_wx, v_wy, v_wz) -> (v_sx, v_sy), depth v_dep (+ = toward viewer)
+def project {
+    v_tx = v_wx
+    v_ty = v_wy - 14
+    v_tz = v_wz
+    v_qx = v_tx * v_ca - v_tz * v_sa
+    v_qz = v_tx * v_sa + v_tz * v_ca
+    v_qy = v_ty * v_ce - v_qz * v_se
+    v_dep = v_ty * v_se + v_qz * v_ce
+    v_f = 62 / max(v_cam_dist - v_dep, 4)
+    v_sx = 31.5 + v_qx * v_f
+    v_sy = 31.5 - v_qy * v_f
+}
+
+# ---------------- Spawning ----------------
+# Uses globals: burst centre v_ax/v_ay/v_az, velocity v_bx/v_by/v_bz,
+# colour v_c, life v_l, drag v_d, trail ms v_tr, twinkle v_tw, colour drift
+# v_dh, split timer v_sp, split type v_st.
+def add_star {
+    v_px[v_next] = v_ax
+    v_py[v_next] = v_ay
+    v_pz[v_next] = v_az
+    v_vx[v_next] = v_bx
+    v_vy[v_next] = v_by
+    v_vz[v_next] = v_bz
+    v_col[v_next] = v_c
+    v_life[v_next] = v_l
+    v_max[v_next] = v_l
+    v_drag[v_next] = v_d
+    v_trail[v_next] = v_tr
+    v_twinkle[v_next] = v_tw
+    v_dhue[v_next] = v_dh
+    v_split[v_next] = v_sp
+    v_stype[v_next] = v_st
+    v_next = (v_next + 1) % v_n
+}
+
+# Fibonacci sphere direction k of n -> (v_dx, v_dy, v_dz)
+def fib_dir {
+    v_fy = 1 - 2 * (v_fk + 0.5) / v_fn
+    v_fr = sqrt(max(1 - v_fy * v_fy, 0))
+    v_fa = v_fk * 2.39996
+    v_dx = cos(v_fa) * v_fr
+    v_dz = sin(v_fa) * v_fr
+    v_dy = v_fy
+}
+
+# random tilted plane spanned by (v_ux, 0, v_uz) and (v_wx2, v_wy2, v_wz2)
+def random_plane {
+    v_t1 = random(0, 6.28, 2)
+    v_t2 = random(0.3, 1.4, 2)
+    v_ux = cos(v_t1)
+    v_uz = sin(v_t1)
+    v_wx2 = 0 - sin(v_t1) * cos(v_t2)
+    v_wy2 = sin(v_t2)
+    v_wz2 = cos(v_t1) * cos(v_t2)
+}
+
+# defaults for a plain star
+def plain {
+    v_l = 95
+    v_d = 0.985
+    v_tr = 380
+    v_tw = 0
+    v_dh = 0
+    v_sp = 0
+    v_st = 0
+}
+
+# Uses globals: burst centre v_ax, v_ay, v_az
+def burst {
+    v_kind = random(0, v_kinds - 1, 0)
+    v_hue = random(0, 99, 0)
+    v_hue2 = (v_hue + random(30, 70, 0)) % 100
+    v_spd = random(0.32, 0.42, 2)
+    v_count = v_shell_stars
+    call random_plane
+    if v_kind == 0 or v_kind == 1 or v_kind == 4 or v_kind == 5 or v_kind == 11 or v_kind == 14 then
+        # ---- sphere shells ----
+        if v_kind == 14 then
+            v_count = 80
+        endif
+        v_fn = v_count
+        for v_fk in (0, v_count - 1, 1)
+            call fib_dir
+            call plain
+            v_s = v_spd
+            v_c = v_hue
+            if v_kind == 1 and v_fk % 2 == 0 then
+                v_c = v_hue2
+                v_s = v_spd * 0.6
+            elseif v_kind == 4 then
+                v_c = -1
+                v_l = 110
+                v_d = 0.982
+                v_tr = 220
+                v_tw = 1
+            elseif v_kind == 5 then
+                v_l = 120
+                v_tr = 650
+                v_dh = 0 - random(0.3, 0.5, 2)
+            elseif v_kind == 11 then
+                v_l = 115
+                v_tr = 90
+                v_tw = 2
+            elseif v_kind == 14 then
+                v_c = 11
+                v_s = v_spd * 1.1
+                v_l = 160
+                v_d = 0.975
+                v_tr = 900
+                v_tw = 3
+            endif
+            v_bx = v_dx * v_s
+            v_by = v_dy * v_s
+            v_bz = v_dz * v_s
+            call add_star
+        endfor v_fk
+    elseif v_kind == 2 or v_kind == 3 or v_kind == 9 then
+        # ---- rings (single, double at right angles, saturn) ----
+        v_rn = 56
+        for v_k in (0, v_rn - 1, 1)
+            call plain
+            v_l = 100
+            v_d = 0.988
+            v_tr = 300
+            v_ra = v_k * 6.2832 / v_rn
+            v_rc = cos(v_ra) * v_spd
+            v_rs = sin(v_ra) * v_spd
+            v_c = v_hue
+            if v_kind == 3 and v_k % 2 == 1 then
+                # second ring: spanned by the first ring's w axis and its
+                # normal (u x w), so the two rings cross at right angles
+                v_bx = v_wx2 * v_rc - v_uz * v_wy2 * v_rs
+                v_by = v_wy2 * v_rc + (v_uz * v_wx2 - v_ux * v_wz2) * v_rs
+                v_bz = v_wz2 * v_rc + v_ux * v_wy2 * v_rs
+                v_c = v_hue2
+            else
+                v_bx = v_ux * v_rc + v_wx2 * v_rs
+                v_by = v_wy2 * v_rs
+                v_bz = v_uz * v_rc + v_wz2 * v_rs
+            endif
+            call add_star
+        endfor v_k
+        if v_kind == 9 then
+            # the planet: a small, slow sphere
+            v_fn = 30
+            for v_fk in (0, 29, 1)
+                call fib_dir
+                call plain
+                v_c = v_hue2
+                v_bx = v_dx * v_spd * 0.38
+                v_by = v_dy * v_spd * 0.38
+                v_bz = v_dz * v_spd * 0.38
+                call add_star
+            endfor v_fk
+        endif
+    elseif v_kind == 6 then
+        # ---- willow ----
+        v_fn = v_count
+        for v_fk in (0, v_count - 1, 1)
+            call fib_dir
+            call plain
+            v_c = 11
+            v_l = 150
+            v_d = 0.965
+            v_tr = 1100
+            v_bx = v_dx * v_spd * 0.9
+            v_by = v_dy * v_spd * 0.9 + 0.05
+            v_bz = v_dz * v_spd * 0.9
+            call add_star
+        endfor v_fk
+    elseif v_kind == 7 then
+        # ---- palm: a few heavy fronds thrown upward and outward ----
+        v_fronds = random(6, 9, 0)
+        for v_k in (0, v_fronds - 1, 1)
+            v_pa = v_k * 6.2832 / v_fronds + random(-0.2, 0.2, 2)
+            v_pe = random(0.35, 0.75, 2)
+            v_ox = cos(v_pa) * cos(v_pe)
+            v_oz = sin(v_pa) * cos(v_pe)
+            v_oy = sin(v_pe)
+            # each frond: a bright head plus a few followers for a thick trail
+            for v_j in (0, 5, 1)
+                call plain
+                v_c = 12
+                if v_j == 0 then
+                    v_c = v_hue
+                endif
+                v_l = 170 - v_j * 10
+                v_d = 0.983
+                v_tr = 1100
+                v_tw = 3
+                v_ss = v_spd * (1.3 - v_j * 0.05)
+                v_bx = v_ox * v_ss
+                v_by = v_oy * v_ss
+                v_bz = v_oz * v_ss
+                call add_star
+            endfor v_j
+        endfor v_k
+    elseif v_kind == 8 then
+        # ---- crossette: stars that split into a cross ----
+        v_fn = 16
+        for v_fk in (0, 15, 1)
+            call fib_dir
+            call plain
+            v_c = v_hue
+            v_l = 200
+            v_tr = 280
+            v_sp = random(42, 52, 0)
+            v_st = 1
+            v_bx = v_dx * v_spd
+            v_by = v_dy * v_spd
+            v_bz = v_dz * v_spd
+            call add_star
+        endfor v_fk
+    elseif v_kind == 10 then
+        # ---- multi-break: stars that become little shells ----
+        v_fn = 7
+        for v_fk in (0, 6, 1)
+            call fib_dir
+            call plain
+            v_c = 12
+            v_l = 200
+            v_tr = 420
+            v_tw = 3
+            v_sp = random(36, 50, 0)
+            v_st = 2
+            v_bx = v_dx * v_spd * 0.85
+            v_by = v_dy * v_spd * 0.85 + 0.06
+            v_bz = v_dz * v_spd * 0.85
+            call add_star
+        endfor v_fk
+    elseif v_kind == 12 then
+        # ---- pinwheel: spiral arms in a tilted plane ----
+        v_arms = 3
+        for v_k in (0, 59, 1)
+            call plain
+            v_arm = v_k % v_arms
+            v_rf = (floor(v_k / v_arms) + 1) / 20
+            v_ra = v_arm * 6.2832 / v_arms + v_rf * 2.6
+            v_rc = cos(v_ra) * v_spd * v_rf * 1.1
+            v_rs = sin(v_ra) * v_spd * v_rf * 1.1
+            v_c = (v_hue + v_arm * 33) % 100
+            v_l = 105
+            v_d = 0.988
+            v_tr = 450
+            v_bx = v_ux * v_rc + v_wx2 * v_rs
+            v_by = v_wy2 * v_rs
+            v_bz = v_uz * v_rc + v_wz2 * v_rs
+            call add_star
+        endfor v_k
+    else
+        # ---- waterfall: low, wide, pouring down ----
+        for v_k in (0, 69, 1)
+            call plain
+            v_wa = random(0, 6.28, 2)
+            v_wr = random(0.18, 0.4, 2)
+            v_c = 12
+            v_l = 190
+            v_d = 0.97
+            v_tr = 1300
+            v_tw = 3
+            v_bx = cos(v_wa) * v_wr
+            v_by = random(-0.02, 0.1, 2)
+            v_bz = sin(v_wa) * v_wr
+            call add_star
+        endfor v_k
+    endif
+    # bright flash at the burst centre
+    v_wx = v_ax
+    v_wy = v_ay
+    v_wz = v_az
+    call project
+    draw_circle(v_sx, v_sy, max(1, v_f * 1.6), white, 70, true, 140, fade)
+}
+
+# star v_i splits: crossette (4 stars in a cross) or a mini shell
+def split_star {
+    v_ax = v_px[v_i]
+    v_ay = v_py[v_i]
+    v_az = v_pz[v_i]
+    v_hp = v_col[v_i]
+    v_kind2 = v_stype[v_i]
+    v_life[v_i] = 0
+    v_pvx = v_vx[v_i]
+    v_pvy = v_vy[v_i]
+    v_pvz = v_vz[v_i]
+    if v_kind2 == 1 then
+        # two directions at right angles to the star's motion
+        v_pl = max(sqrt(v_pvx * v_pvx + v_pvy * v_pvy + v_pvz * v_pvz), 0.001)
+        v_nx = v_pvx / v_pl
+        v_ny = v_pvy / v_pl
+        v_nz = v_pvz / v_pl
+        # a = n x up, normalised
+        v_qx = 0 - v_nz
+        v_qz = v_nx
+        v_ql = max(sqrt(v_qx * v_qx + v_qz * v_qz), 0.001)
+        v_qx = v_qx / v_ql
+        v_qz = v_qz / v_ql
+        # b = n x a
+        v_rx2 = v_ny * v_qz
+        v_ry2 = v_nz * v_qx - v_nx * v_qz
+        v_rz2 = 0 - v_ny * v_qx
+        for v_k in (0, 3, 1)
+            call plain
+            v_c = v_hp
+            v_l = 55
+            v_tr = 260
+            v_sg = 1
+            if v_k % 2 == 1 then
+                v_sg = -1
+            endif
+            if v_k < 2 then
+                v_bx = v_qx * 0.17 * v_sg + v_pvx * 0.3
+                v_by = v_pvy * 0.3
+                v_bz = v_qz * 0.17 * v_sg + v_pvz * 0.3
+            else
+                v_bx = v_rx2 * 0.17 * v_sg + v_pvx * 0.3
+                v_by = v_ry2 * 0.17 * v_sg + v_pvy * 0.3
+                v_bz = v_rz2 * 0.17 * v_sg + v_pvz * 0.3
+            endif
+            call add_star
+        endfor v_k
+    else
+        v_hm = random(0, 99, 0)
+        v_fn = 14
+        for v_fk in (0, 13, 1)
+            call fib_dir
+            call plain
+            v_c = v_hm
+            v_l = 60
+            v_tr = 260
+            v_bx = v_dx * 0.15 + v_pvx * 0.2
+            v_by = v_dy * 0.15 + v_pvy * 0.2
+            v_bz = v_dz * 0.15 + v_pvz * 0.2
+            call add_star
+        endfor v_fk
+    endif
+    v_wx = v_ax
+    v_wy = v_ay
+    v_wz = v_az
+    call project
+    mplot(v_sx, v_sy, white, 100, 90, fade)
+}
+
+def launch {
+    v_done = 0
+    for v_i in (0, v_rockets - 1, 1)
+        if v_ron[v_i] == 0 and v_done == 0 then
+            v_done = 1
+            v_ron[v_i] = 1
+            v_rx[v_i] = random(-9, 9, 1)
+            v_ry[v_i] = 0
+            v_rz[v_i] = random(-9, 9, 1)
+            v_rvx[v_i] = random(-0.05, 0.05, 3)
+            v_rvy[v_i] = random(0.6, 0.82, 3)
+            v_rvz[v_i] = random(-0.05, 0.05, 3)
+        endif
+    endfor v_i
+}
+
+# ---------------- Per-frame update ----------------
+def update_rockets {
+    for v_i in (0, v_rockets - 1, 1)
+        if v_ron[v_i] == 1 then
+            v_rvy[v_i] = v_rvy[v_i] - v_gravity
+            v_rx[v_i] = v_rx[v_i] + v_rvx[v_i]
+            v_ry[v_i] = v_ry[v_i] + v_rvy[v_i]
+            v_rz[v_i] = v_rz[v_i] + v_rvz[v_i]
+            v_wx = v_rx[v_i]
+            v_wy = v_ry[v_i]
+            v_wz = v_rz[v_i]
+            call project
+            mplot(v_sx, v_sy, gold, 90, 260, fade)
+            if v_rvy[v_i] < 0.12 then
+                v_ron[v_i] = 0
+                v_ax = v_rx[v_i]
+                v_ay = v_ry[v_i]
+                v_az = v_rz[v_i]
+                call burst
+            endif
+        endif
+    endfor v_i
+}
+
+def update_stars {
+    for v_i in (0, v_n - 1, 1)
+        v_l = v_life[v_i]
+        if v_l > 0 then
+            v_spl = v_split[v_i]
+            if v_spl == 1 then
+                v_split[v_i] = 0
+                v_keep = v_i
+                call split_star
+                v_i = v_keep
+            else
+                if v_spl > 1 then
+                    v_split[v_i] = v_spl - 1
+                endif
+                v_d = v_drag[v_i]
+                v_ux2 = v_vx[v_i] * v_d
+                v_uy2 = v_vy[v_i] * v_d - v_gravity * 0.55
+                v_uz2 = v_vz[v_i] * v_d
+                v_vx[v_i] = v_ux2
+                v_vy[v_i] = v_uy2
+                v_vz[v_i] = v_uz2
+                v_wx = v_px[v_i] + v_ux2
+                v_wy = v_py[v_i] + v_uy2
+                v_wz = v_pz[v_i] + v_uz2
+                v_px[v_i] = v_wx
+                v_py[v_i] = v_wy
+                v_pz[v_i] = v_wz
+                v_life[v_i] = v_l - 1
+                call project
+                v_fade = min(1, v_l / (v_max[v_i] * 0.35))
+                v_b = min(max((75 + v_dep * 1.5) * v_fade, 4), 100)
+                v_tw = v_twinkle[v_i]
+                if v_dhue[v_i] != 0 then
+                    v_col[v_i] = v_col[v_i] + v_dhue[v_i]
+                endif
+                v_cc = int(v_col[v_i] + 200) % 100
+                if v_tw == 0 then
+                    mplot(v_sx, v_sy, v_cc, v_b, v_trail[v_i], fade)
+                elseif v_tw == 1 then
+                    if random(0, 1, 2) < 0.5 then
+                        mplot(v_sx, v_sy, white, v_b, v_trail[v_i], fade)
+                    endif
+                elseif v_tw == 2 then
+                    # strobe: each star blinks on its own beat
+                    if (v_l + v_i * 3) % 9 < 3 then
+                        mplot(v_sx, v_sy, white, v_b, v_trail[v_i], fade)
+                    else
+                        mplot(v_sx, v_sy, v_cc, v_b * 0.25, v_trail[v_i], fade)
+                    endif
+                else
+                    # glitter: a trail plus little sparks left behind
+                    mplot(v_sx, v_sy, v_cc, v_b, v_trail[v_i], fade)
+                    if random(0, 1, 2) < 0.3 then
+                        mplot(v_sx + random(-1, 1, 0), v_sy + random(0, 1, 0), white, v_b * 0.7, 160, fade)
+                    endif
+                endif
+            endif
+        endif
+    endfor v_i
+}
+
+def draw_ground {
+    for v_g in (0, 35, 1)
+        v_ga = v_g * 0.17453
+        v_wx = cos(v_ga) * 16
+        v_wy = 0
+        v_wz = sin(v_ga) * 16
+        call project
+        mplot(v_sx, v_sy, v_g % 6 * 16 + 5, max(4, 28 + v_dep * 0.7), 40, instant)
+    endfor v_g
+}
+
+# ---------------- Main loop ----------------
+while true then
+    v_cam = v_cam + v_cam_speed
+    call setup_camera
+    v_timer = v_timer - 1
+    v_show_clock = v_show_clock + 1
+    if v_show_clock >= v_finale_every then
+        # finale: a fast barrage for a few seconds
+        v_finale = 26
+        v_show_clock = 0
+    endif
+    if v_timer <= 0 then
+        call launch
+        if v_finale > 0 then
+            v_finale = v_finale - 1
+            v_timer = random(6, 14, 0)
+            if v_finale == 0 then
+                v_timer = 240
+            endif
+        else
+            v_timer = random(v_launch_gap * 0.4, v_launch_gap * 1.6, 0)
+            # sometimes a quick volley
+            if random(0, 1, 2) < 0.2 then
+                v_timer = 8
+            endif
+        endif
+    endif
+    begin_frame(true)
+        call draw_ground
+        call update_rockets
+        call update_stars
+    end_frame
+endwhile

@@ -1,0 +1,224 @@
+# Ringed Planet - a slow flyby of a banded gas giant
+#
+# The camera drifts past a huge ringed planet. Over time the rings swing
+# from almost edge-on to wide open and back. The camera spends a long stretch
+# looking up at the rings from below, then slowly glides through the ring
+# plane and spends a long stretch looking down on them from above. The start
+# point is random each run. Meanwhile the view rolls, and the sun
+# slowly moves around so the planet goes from full daylight to a thin
+# crescent and back.
+#
+#   - The rings pass in FRONT of the planet on one side and disappear
+#     BEHIND it on the other, as a real ring system does.
+#   - The planet casts its shadow across the rings, and the rings cast a
+#     dark band of shadow onto the planet.
+#   - Cloud bands swirl and drift, with a big storm spot riding one band.
+#   - The rings have fine ringlets, a dim inner ring and a dark gap
+#     (like Saturn's Cassini division).
+#   - A thin blue haze glows on the sunlit edge, and a small moon orbits in
+#     the ring plane, passing in front of and behind the planet.
+#
+# How it is built: one field_program (formula mode). For every pixel it
+# works out, with closed-form math (no loops), where a straight view ray hits
+# the sphere and the ring plane, which is in front, and whether that point is
+# in shadow. The result packs colour and brightness into one number:
+# colour index (whole part) + brightness / 100 (fraction part).
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_ring_in = 1.3        # ring inner edge, in planet radii
+v_ring_out = 2.3       # ring outer edge, in planet radii
+v_spin_speed = 0.25    # cloud band rotation
+v_star_count = 70
+v_side_speed = 0.0095 # how often the camera changes between below and above
+
+# ---------------- State (updated every frame) ----------------
+v_t = random(0, 2000, 1)          # random start: lighting, tilt and roll
+v_side_phase = random(0, 6.283, 3) # random start: above or below the rings
+v_pcx = 32
+v_pcy = 32
+v_rp = 15
+v_rp2 = 225
+v_rin = 20
+v_rout = 34
+v_rin2 = 400
+v_rout2 = 1156
+v_nx = 0
+v_ny = 1
+v_nz = 0.3
+v_e1x = 1
+v_e1y = 0
+v_e2x = 0
+v_e2y = 0.3
+v_e2z = -1
+v_lx = 0.7
+v_ly = -0.3
+v_lz = 0.6
+v_nl = 0.3
+v_slon = 0
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program ringed_planet {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        v_dx = grid_x - v_pcx
+        v_dy = grid_y - v_pcy
+        v_d2 = v_dx * v_dx + v_dy * v_dy
+        v_in = where(v_d2 < v_rp2, 1, 0)
+        v_zs = sqrt(max(v_rp2 - v_d2, 0))
+        v_zr = 0 - (v_nx * v_dx + v_ny * v_dy) / v_nz
+        v_rr2 = v_d2 + v_zr * v_zr
+        v_rr = sqrt(v_rr2)
+        v_hidden = v_in * where(v_zr < v_zs, 1, 0)
+        v_ring_on = where(v_rr > v_rin, where(v_rr < v_rout, 1, 0), 0) * (1 - v_hidden)
+        v_u = (v_rr - v_rin) / (v_rout - v_rin)
+        v_dens = (0.68 + 0.2 * sin(v_u * 17) + 0.12 * sin(v_u * 29 + 1)) * where(abs(v_u - 0.66) < 0.035, 0.08, 1) * where(v_u < 0.18, 0.45, 1) * clamp((1 - v_u) * 12, 0, 1)
+        v_rl = v_dx * v_lx + v_dy * v_ly + v_zr * v_lz
+        v_rshadow = where(v_rl < 0, where(v_rr2 - v_rl * v_rl < v_rp2, 1, 0), 0)
+        v_ring_bri = v_dens * (55 + 40 * abs(v_nl)) * (1 - 0.88 * v_rshadow)
+        v_ring_hue = 13 + 2.5 * sin(v_u * 9)
+        v_qx = v_dx / v_rp
+        v_qy = v_dy / v_rp
+        v_qz = v_zs / v_rp
+        v_diff = max(v_qx * v_lx + v_qy * v_ly + v_qz * v_lz, 0)
+        v_lat = v_qx * v_nx + v_qy * v_ny + v_qz * v_nz
+        v_lon = atan2(v_qx * v_e2x + v_qy * v_e2y + v_qz * v_e2z, v_qx * v_e1x + v_qy * v_e1y) + v_t * v_spin_speed
+        v_band = sin(v_lat * 15 + 0.7 * sin(v_lon * 2 + v_lat * 9 + v_t * 0.2))
+        v_spot = pow(max(cos(v_lon - v_slon), 0), 18) / (1 + (v_lat + 0.38) * (v_lat + 0.38) * 160)
+        v_planet_hue = 10 + 3.5 * v_band - 8 * v_spot
+        v_pd = v_dx * v_nx + v_dy * v_ny + v_zs * v_nz
+        v_tt = 0 - v_pd / v_nl
+        v_sx = v_dx + v_tt * v_lx
+        v_sy = v_dy + v_tt * v_ly
+        v_sz = v_zs + v_tt * v_lz
+        v_sq = v_sx * v_sx + v_sy * v_sy + v_sz * v_sz
+        v_pshadow = where(v_tt > 0, where(v_sq > v_rin2, where(v_sq < v_rout2, 1, 0), 0), 0)
+        v_planet_bri = (4 + 92 * v_diff * (0.75 + 0.25 * v_band)) * (1 - 0.7 * v_pshadow) * (0.55 + 0.45 * sqrt(v_qz))
+        v_dd = sqrt(v_d2) - v_rp
+        v_halo_lit = max((v_dx * v_lx + v_dy * v_ly) / max(sqrt(v_d2), 1), 0)
+        v_halo_bri = where(v_dd < 2.5, 1, 0) * clamp(1 - v_dd / 2.5, 0, 1) * (8 + 60 * v_halo_lit) * (1 - v_in)
+        v_over = v_ring_on * v_in
+        v_bri = where(v_ring_on > 0, v_ring_bri + v_over * 0.35 * v_planet_bri, where(v_in > 0, v_planet_bri, v_halo_bri))
+        v_hue = where(v_ring_on > 0, v_ring_hue, where(v_in > 0, v_planet_hue, 58))
+        v_out = floor(clamp(v_hue, 0, 99)) + clamp(v_bri, 0, 99) / 100
+    }
+    plot_if v_sum - floor(v_sum) > 0.015
+    color floor(v_sum)
+    opacity (v_sum - floor(v_sum)) * 100
+}
+
+# ---------------- Stars ----------------
+create_array(v_star_x, v_star_count, numeric)
+create_array(v_star_y, v_star_count, numeric)
+create_array(v_star_b, v_star_count, numeric)
+for v_i in (0, v_star_count - 1, 1)
+    v_star_x[v_i] = random(0, 63, 0)
+    v_star_y[v_i] = random(0, 63, 0)
+    v_star_b[v_i] = random(6, 40, 0)
+endfor v_i
+
+def draw_stars {
+    for v_i in (0, v_star_count - 1, 1)
+        mplot(v_star_x[v_i], v_star_y[v_i], white, v_star_b[v_i])
+    endfor v_i
+}
+
+# ---------------- Moon ----------------
+v_moon_ang = 1.0
+v_moon_dist = 2.75     # in planet radii
+
+def place_moon {
+    v_mr = v_moon_dist * v_rp
+    v_mc = cos(v_moon_ang) * v_mr
+    v_ms = sin(v_moon_ang) * v_mr
+    # point in the ring plane: e1 * cos + e2 * sin
+    v_mx = v_pcx + v_e1x * v_mc + v_e2x * v_ms
+    v_my = v_pcy + v_e1y * v_mc + v_e2y * v_ms
+    v_mz = v_e2z * v_ms
+    v_msize = max(1.5, v_rp * 0.11)
+}
+
+def draw_moon {
+    v_mlit = 45 + 50 * max(v_lx * cos(v_moon_ang) + v_lz * 0.3, 0)
+    draw_circle(v_mx, v_my, v_msize, white, v_mlit, true)
+}
+
+# ---------------- Main loop ----------------
+while true then
+    # flyby camera
+    # v_side: +1 = camera below the ring plane, -1 = above it. It holds each
+    # side for a long time (roughly 1.5 - 2 minutes), then glides through
+    # the edge-on view to the other side over about half a minute.
+    v_side = min(max(sin(v_t * v_side_speed + v_side_phase) * 2.2, -1), 1)
+    v_side = v_side * (1.5 - 0.5 * v_side * v_side)
+    v_open = v_side * (0.1 + 0.42 * (0.5 + 0.5 * sin(v_t * 0.045 - 1.2)))
+    # never exactly edge-on (the ring maths divides by sin(v_open))
+    if abs(v_open) < 0.03 then
+        if v_open < 0 then
+            v_open = -0.03
+        else
+            v_open = 0.03
+        endif
+    endif
+    v_roll = 0.38 * sin(v_t * 0.031)
+    v_ci = cos(v_open)
+    v_si = sin(v_open)
+    v_cr = cos(v_roll)
+    v_sr = sin(v_roll)
+    v_nx = 0 - v_sr * v_ci
+    v_ny = v_cr * v_ci
+    v_nz = v_si
+    v_e1x = v_cr
+    v_e1y = v_sr
+    v_e2x = 0 - v_si * v_sr
+    v_e2y = v_si * v_cr
+    v_e2z = 0 - v_ci
+
+    v_rp = 14 + 3 * sin(v_t * 0.023)
+    v_pcx = 32 + 9 * sin(v_t * 0.019)
+    v_pcy = 31 + 4 * sin(v_t * 0.027 + 0.8)
+    v_rp2 = v_rp * v_rp
+    v_rin = v_rp * v_ring_in
+    v_rout = v_rp * v_ring_out
+    v_rin2 = v_rin * v_rin
+    v_rout2 = v_rout * v_rout
+
+    # sun swings around: full lit -> side lit -> crescent and back
+    v_sa = 0.9 + 1.25 * sin(v_t * 0.013)
+    v_lx = sin(v_sa) * 0.92
+    v_ly = -0.33
+    v_lz = cos(v_sa) * 0.92
+    v_nl = v_nx * v_lx + v_ny * v_ly + v_nz * v_lz
+    if abs(v_nl) < 0.02 then
+        if v_nl < 0 then
+            v_nl = -0.02
+        else
+            v_nl = 0.02
+        endif
+    endif
+
+    v_slon = v_slon + 0.002
+    v_moon_ang = v_moon_ang + 0.006
+
+    call place_moon
+    begin_frame
+        call draw_stars
+        if v_mz < 0 then
+            call draw_moon
+        endif
+        field_render(ringed_planet)
+        if v_mz >= 0 then
+            call draw_moon
+        endif
+    end_frame
+
+    v_t = v_t + 0.033
+endwhile

@@ -1,0 +1,1056 @@
+# Coin Shower - a vault of spinning gold coins
+#
+# Gold coins rain down at three depths. Each one spins as it falls: the star
+# face turns to an edge-on flash of gold, then the "1" on the back, and round
+# again. Far coins are small, dim and slow; near coins are big and fast.
+# The near coins land on a heap of gold at the bottom, tip over flat, and
+# become part of it; the heap slides like sand, glints, and keeps growing.
+# Coins further back fall behind the heap. When the heap gets high enough,
+# the vault floor opens and it drains away, and the shower carries on.
+#
+# Spin modes (a new one every 8 - 15 seconds, picked at random):
+#   1 clockwise            5 diagonal tumble down-left
+#   2 counter-clockwise    6 diagonal tumble up-left
+#   3 top-down tumble      7 diagonal tumble down-right
+#   4 bottom-up tumble     8 diagonal tumble up-right
+#   9 complete mix: every coin picks its own mode
+# The diagonal modes vary each coin's angle a little so they don't march in
+# lockstep. New coins take the new mode, so the shower changes over smoothly.
+#
+# How it works:
+#   - Three coin sprites (near / mid / far) with two cels each: front face
+#     and back face (sprite_back_cel). set_sprite_tilt spins them around the
+#     vertical axis; past 90 degrees the back face shows, and edge-on the
+#     engine draws a 1-pixel sliver of gold, just like a real spinning coin.
+#   - Drawing layers give the depth order: far coins (layer 0), mid coins
+#     (layer 10), the heap (layer 20), near coins (layer 30).
+#   - The heap is a height per column with a simple sand-slide rule.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_coins = 21           # coins in the air (a third at each depth)
+v_heap_max = 24        # heap height that opens the vault floor
+v_drain_speed = 0.18   # how fast the heap drains
+v_mode_min = 480       # frames before the spin mode changes (min)
+v_mode_max = 900       # ... and max
+v_diag_var = 18        # +/- degrees of variation in the diagonal modes
+
+define_sprite(coin_near, 13, 13)
+    sprite_cel(0)
+        plot(5, 0, bronze, 100)
+        plot(6, 0, bronze, 100)
+        plot(7, 0, bronze, 100)
+        plot(3, 1, bronze, 100)
+        plot(4, 1, bronze, 100)
+        plot(5, 1, bronze, 100)
+        plot(6, 1, gold, 100)
+        plot(7, 1, bronze, 100)
+        plot(8, 1, bronze, 100)
+        plot(9, 1, bronze, 100)
+        plot(2, 2, bronze, 100)
+        plot(3, 2, gold, 100)
+        plot(4, 2, white, 70)
+        plot(5, 2, gold, 100)
+        plot(6, 2, yellow, 100)
+        plot(7, 2, gold, 100)
+        plot(8, 2, gold, 100)
+        plot(9, 2, gold, 100)
+        plot(10, 2, bronze, 100)
+        plot(1, 3, bronze, 100)
+        plot(2, 3, gold, 100)
+        plot(3, 3, white, 100)
+        plot(4, 3, gold, 100)
+        plot(5, 3, gold, 100)
+        plot(6, 3, yellow, 100)
+        plot(7, 3, gold, 100)
+        plot(8, 3, gold, 100)
+        plot(9, 3, gold, 100)
+        plot(10, 3, gold, 100)
+        plot(11, 3, bronze, 100)
+        plot(1, 4, bronze, 100)
+        plot(2, 4, gold, 100)
+        plot(3, 4, gold, 100)
+        plot(4, 4, gold, 100)
+        plot(5, 4, yellow, 100)
+        plot(6, 4, yellow, 100)
+        plot(7, 4, yellow, 100)
+        plot(8, 4, gold, 100)
+        plot(9, 4, gold, 100)
+        plot(10, 4, gold, 100)
+        plot(11, 4, bronze, 100)
+        plot(0, 5, bronze, 100)
+        plot(1, 5, bronze, 100)
+        plot(2, 5, yellow, 100)
+        plot(3, 5, yellow, 100)
+        plot(4, 5, yellow, 100)
+        plot(5, 5, yellow, 100)
+        plot(6, 5, yellow, 100)
+        plot(7, 5, yellow, 100)
+        plot(8, 5, yellow, 100)
+        plot(9, 5, yellow, 100)
+        plot(10, 5, yellow, 100)
+        plot(11, 5, bronze, 100)
+        plot(12, 5, bronze, 100)
+        plot(0, 6, bronze, 100)
+        plot(1, 6, gold, 100)
+        plot(2, 6, gold, 100)
+        plot(3, 6, gold, 100)
+        plot(4, 6, yellow, 100)
+        plot(5, 6, yellow, 100)
+        plot(6, 6, yellow, 100)
+        plot(7, 6, yellow, 100)
+        plot(8, 6, yellow, 100)
+        plot(9, 6, gold, 100)
+        plot(10, 6, gold, 100)
+        plot(11, 6, gold, 100)
+        plot(12, 6, bronze, 100)
+        plot(0, 7, bronze, 100)
+        plot(1, 7, bronze, 100)
+        plot(2, 7, gold, 100)
+        plot(3, 7, gold, 100)
+        plot(4, 7, gold, 100)
+        plot(5, 7, yellow, 100)
+        plot(6, 7, yellow, 100)
+        plot(7, 7, yellow, 100)
+        plot(8, 7, gold, 100)
+        plot(9, 7, gold, 100)
+        plot(10, 7, gold, 100)
+        plot(11, 7, bronze, 100)
+        plot(12, 7, bronze, 100)
+        plot(1, 8, bronze, 100)
+        plot(2, 8, gold, 100)
+        plot(3, 8, gold, 100)
+        plot(4, 8, yellow, 100)
+        plot(5, 8, yellow, 100)
+        plot(6, 8, gold, 100)
+        plot(7, 8, yellow, 100)
+        plot(8, 8, yellow, 100)
+        plot(9, 8, gold, 100)
+        plot(10, 8, gold, 100)
+        plot(11, 8, bronze, 100)
+        plot(1, 9, bronze, 100)
+        plot(2, 9, gold, 100)
+        plot(3, 9, yellow, 100)
+        plot(4, 9, yellow, 100)
+        plot(5, 9, gold, 100)
+        plot(6, 9, gold, 100)
+        plot(7, 9, gold, 100)
+        plot(8, 9, yellow, 100)
+        plot(9, 9, yellow, 100)
+        plot(10, 9, gold, 100)
+        plot(11, 9, bronze, 100)
+        plot(2, 10, bronze, 100)
+        plot(3, 10, gold, 100)
+        plot(4, 10, gold, 100)
+        plot(5, 10, gold, 100)
+        plot(6, 10, gold, 100)
+        plot(7, 10, gold, 100)
+        plot(8, 10, gold, 100)
+        plot(9, 10, gold, 100)
+        plot(10, 10, bronze, 100)
+        plot(3, 11, bronze, 100)
+        plot(4, 11, bronze, 100)
+        plot(5, 11, bronze, 100)
+        plot(6, 11, gold, 100)
+        plot(7, 11, bronze, 100)
+        plot(8, 11, bronze, 100)
+        plot(9, 11, bronze, 100)
+        plot(5, 12, bronze, 100)
+        plot(6, 12, bronze, 100)
+        plot(7, 12, bronze, 100)
+    sprite_cel(1)
+        plot(5, 0, bronze, 100)
+        plot(6, 0, bronze, 100)
+        plot(7, 0, bronze, 100)
+        plot(3, 1, bronze, 100)
+        plot(4, 1, bronze, 100)
+        plot(5, 1, bronze, 100)
+        plot(6, 1, gold, 100)
+        plot(7, 1, bronze, 100)
+        plot(8, 1, bronze, 100)
+        plot(9, 1, bronze, 100)
+        plot(2, 2, bronze, 100)
+        plot(3, 2, gold, 100)
+        plot(4, 2, white, 70)
+        plot(5, 2, gold, 100)
+        plot(6, 2, gold, 100)
+        plot(7, 2, gold, 100)
+        plot(8, 2, gold, 100)
+        plot(9, 2, gold, 100)
+        plot(10, 2, bronze, 100)
+        plot(1, 3, bronze, 100)
+        plot(2, 3, gold, 100)
+        plot(3, 3, white, 100)
+        plot(4, 3, gold, 100)
+        plot(5, 3, gold, 100)
+        plot(6, 3, yellow, 100)
+        plot(7, 3, gold, 100)
+        plot(8, 3, gold, 100)
+        plot(9, 3, gold, 100)
+        plot(10, 3, gold, 100)
+        plot(11, 3, bronze, 100)
+        plot(1, 4, bronze, 100)
+        plot(2, 4, gold, 100)
+        plot(3, 4, gold, 100)
+        plot(4, 4, gold, 100)
+        plot(5, 4, yellow, 100)
+        plot(6, 4, yellow, 100)
+        plot(7, 4, gold, 100)
+        plot(8, 4, gold, 100)
+        plot(9, 4, gold, 100)
+        plot(10, 4, gold, 100)
+        plot(11, 4, bronze, 100)
+        plot(0, 5, bronze, 100)
+        plot(1, 5, bronze, 100)
+        plot(2, 5, gold, 100)
+        plot(3, 5, gold, 100)
+        plot(4, 5, gold, 100)
+        plot(5, 5, gold, 100)
+        plot(6, 5, yellow, 100)
+        plot(7, 5, gold, 100)
+        plot(8, 5, gold, 100)
+        plot(9, 5, gold, 100)
+        plot(10, 5, gold, 100)
+        plot(11, 5, bronze, 100)
+        plot(12, 5, bronze, 100)
+        plot(0, 6, bronze, 100)
+        plot(1, 6, gold, 100)
+        plot(2, 6, gold, 100)
+        plot(3, 6, gold, 100)
+        plot(4, 6, gold, 100)
+        plot(5, 6, gold, 100)
+        plot(6, 6, yellow, 100)
+        plot(7, 6, gold, 100)
+        plot(8, 6, gold, 100)
+        plot(9, 6, gold, 100)
+        plot(10, 6, gold, 100)
+        plot(11, 6, gold, 100)
+        plot(12, 6, bronze, 100)
+        plot(0, 7, bronze, 100)
+        plot(1, 7, bronze, 100)
+        plot(2, 7, gold, 100)
+        plot(3, 7, gold, 100)
+        plot(4, 7, gold, 100)
+        plot(5, 7, gold, 100)
+        plot(6, 7, yellow, 100)
+        plot(7, 7, gold, 100)
+        plot(8, 7, gold, 100)
+        plot(9, 7, gold, 100)
+        plot(10, 7, gold, 100)
+        plot(11, 7, bronze, 100)
+        plot(12, 7, bronze, 100)
+        plot(1, 8, bronze, 100)
+        plot(2, 8, gold, 100)
+        plot(3, 8, gold, 100)
+        plot(4, 8, gold, 100)
+        plot(5, 8, gold, 100)
+        plot(6, 8, yellow, 100)
+        plot(7, 8, gold, 100)
+        plot(8, 8, gold, 100)
+        plot(9, 8, gold, 100)
+        plot(10, 8, gold, 100)
+        plot(11, 8, bronze, 100)
+        plot(1, 9, bronze, 100)
+        plot(2, 9, gold, 100)
+        plot(3, 9, gold, 100)
+        plot(4, 9, gold, 100)
+        plot(5, 9, yellow, 100)
+        plot(6, 9, yellow, 100)
+        plot(7, 9, yellow, 100)
+        plot(8, 9, gold, 100)
+        plot(9, 9, gold, 100)
+        plot(10, 9, gold, 100)
+        plot(11, 9, bronze, 100)
+        plot(2, 10, bronze, 100)
+        plot(3, 10, gold, 100)
+        plot(4, 10, gold, 100)
+        plot(5, 10, gold, 100)
+        plot(6, 10, gold, 100)
+        plot(7, 10, gold, 100)
+        plot(8, 10, gold, 100)
+        plot(9, 10, gold, 100)
+        plot(10, 10, bronze, 100)
+        plot(3, 11, bronze, 100)
+        plot(4, 11, bronze, 100)
+        plot(5, 11, bronze, 100)
+        plot(6, 11, gold, 100)
+        plot(7, 11, bronze, 100)
+        plot(8, 11, bronze, 100)
+        plot(9, 11, bronze, 100)
+        plot(5, 12, bronze, 100)
+        plot(6, 12, bronze, 100)
+        plot(7, 12, bronze, 100)
+endsprite
+sprite_back_cel(coin_near, 1)
+
+define_sprite(coin_mid, 13, 13)
+    sprite_cel(0)
+        plot(5, 0, bronze, 70)
+        plot(6, 0, bronze, 70)
+        plot(7, 0, bronze, 70)
+        plot(3, 1, bronze, 70)
+        plot(4, 1, bronze, 70)
+        plot(5, 1, bronze, 70)
+        plot(6, 1, gold, 70)
+        plot(7, 1, bronze, 70)
+        plot(8, 1, bronze, 70)
+        plot(9, 1, bronze, 70)
+        plot(2, 2, bronze, 70)
+        plot(3, 2, gold, 70)
+        plot(4, 2, white, 49)
+        plot(5, 2, gold, 70)
+        plot(6, 2, yellow, 80)
+        plot(7, 2, gold, 70)
+        plot(8, 2, gold, 70)
+        plot(9, 2, gold, 70)
+        plot(10, 2, bronze, 70)
+        plot(1, 3, bronze, 70)
+        plot(2, 3, gold, 70)
+        plot(3, 3, white, 70)
+        plot(4, 3, gold, 70)
+        plot(5, 3, gold, 70)
+        plot(6, 3, yellow, 80)
+        plot(7, 3, gold, 70)
+        plot(8, 3, gold, 70)
+        plot(9, 3, gold, 70)
+        plot(10, 3, gold, 70)
+        plot(11, 3, bronze, 70)
+        plot(1, 4, bronze, 70)
+        plot(2, 4, gold, 70)
+        plot(3, 4, gold, 70)
+        plot(4, 4, gold, 70)
+        plot(5, 4, yellow, 80)
+        plot(6, 4, yellow, 80)
+        plot(7, 4, yellow, 80)
+        plot(8, 4, gold, 70)
+        plot(9, 4, gold, 70)
+        plot(10, 4, gold, 70)
+        plot(11, 4, bronze, 70)
+        plot(0, 5, bronze, 70)
+        plot(1, 5, bronze, 70)
+        plot(2, 5, yellow, 80)
+        plot(3, 5, yellow, 80)
+        plot(4, 5, yellow, 80)
+        plot(5, 5, yellow, 80)
+        plot(6, 5, yellow, 80)
+        plot(7, 5, yellow, 80)
+        plot(8, 5, yellow, 80)
+        plot(9, 5, yellow, 80)
+        plot(10, 5, yellow, 80)
+        plot(11, 5, bronze, 70)
+        plot(12, 5, bronze, 70)
+        plot(0, 6, bronze, 70)
+        plot(1, 6, gold, 70)
+        plot(2, 6, gold, 70)
+        plot(3, 6, gold, 70)
+        plot(4, 6, yellow, 80)
+        plot(5, 6, yellow, 80)
+        plot(6, 6, yellow, 80)
+        plot(7, 6, yellow, 80)
+        plot(8, 6, yellow, 80)
+        plot(9, 6, gold, 70)
+        plot(10, 6, gold, 70)
+        plot(11, 6, gold, 70)
+        plot(12, 6, bronze, 70)
+        plot(0, 7, bronze, 70)
+        plot(1, 7, bronze, 70)
+        plot(2, 7, gold, 70)
+        plot(3, 7, gold, 70)
+        plot(4, 7, gold, 70)
+        plot(5, 7, yellow, 80)
+        plot(6, 7, yellow, 80)
+        plot(7, 7, yellow, 80)
+        plot(8, 7, gold, 70)
+        plot(9, 7, gold, 70)
+        plot(10, 7, gold, 70)
+        plot(11, 7, bronze, 70)
+        plot(12, 7, bronze, 70)
+        plot(1, 8, bronze, 70)
+        plot(2, 8, gold, 70)
+        plot(3, 8, gold, 70)
+        plot(4, 8, yellow, 80)
+        plot(5, 8, yellow, 80)
+        plot(6, 8, gold, 70)
+        plot(7, 8, yellow, 80)
+        plot(8, 8, yellow, 80)
+        plot(9, 8, gold, 70)
+        plot(10, 8, gold, 70)
+        plot(11, 8, bronze, 70)
+        plot(1, 9, bronze, 70)
+        plot(2, 9, gold, 70)
+        plot(3, 9, yellow, 80)
+        plot(4, 9, yellow, 80)
+        plot(5, 9, gold, 70)
+        plot(6, 9, gold, 70)
+        plot(7, 9, gold, 70)
+        plot(8, 9, yellow, 80)
+        plot(9, 9, yellow, 80)
+        plot(10, 9, gold, 70)
+        plot(11, 9, bronze, 70)
+        plot(2, 10, bronze, 70)
+        plot(3, 10, gold, 70)
+        plot(4, 10, gold, 70)
+        plot(5, 10, gold, 70)
+        plot(6, 10, gold, 70)
+        plot(7, 10, gold, 70)
+        plot(8, 10, gold, 70)
+        plot(9, 10, gold, 70)
+        plot(10, 10, bronze, 70)
+        plot(3, 11, bronze, 70)
+        plot(4, 11, bronze, 70)
+        plot(5, 11, bronze, 70)
+        plot(6, 11, gold, 70)
+        plot(7, 11, bronze, 70)
+        plot(8, 11, bronze, 70)
+        plot(9, 11, bronze, 70)
+        plot(5, 12, bronze, 70)
+        plot(6, 12, bronze, 70)
+        plot(7, 12, bronze, 70)
+    sprite_cel(1)
+        plot(5, 0, bronze, 70)
+        plot(6, 0, bronze, 70)
+        plot(7, 0, bronze, 70)
+        plot(3, 1, bronze, 70)
+        plot(4, 1, bronze, 70)
+        plot(5, 1, bronze, 70)
+        plot(6, 1, gold, 70)
+        plot(7, 1, bronze, 70)
+        plot(8, 1, bronze, 70)
+        plot(9, 1, bronze, 70)
+        plot(2, 2, bronze, 70)
+        plot(3, 2, gold, 70)
+        plot(4, 2, white, 49)
+        plot(5, 2, gold, 70)
+        plot(6, 2, gold, 70)
+        plot(7, 2, gold, 70)
+        plot(8, 2, gold, 70)
+        plot(9, 2, gold, 70)
+        plot(10, 2, bronze, 70)
+        plot(1, 3, bronze, 70)
+        plot(2, 3, gold, 70)
+        plot(3, 3, white, 70)
+        plot(4, 3, gold, 70)
+        plot(5, 3, gold, 70)
+        plot(6, 3, yellow, 80)
+        plot(7, 3, gold, 70)
+        plot(8, 3, gold, 70)
+        plot(9, 3, gold, 70)
+        plot(10, 3, gold, 70)
+        plot(11, 3, bronze, 70)
+        plot(1, 4, bronze, 70)
+        plot(2, 4, gold, 70)
+        plot(3, 4, gold, 70)
+        plot(4, 4, gold, 70)
+        plot(5, 4, yellow, 80)
+        plot(6, 4, yellow, 80)
+        plot(7, 4, gold, 70)
+        plot(8, 4, gold, 70)
+        plot(9, 4, gold, 70)
+        plot(10, 4, gold, 70)
+        plot(11, 4, bronze, 70)
+        plot(0, 5, bronze, 70)
+        plot(1, 5, bronze, 70)
+        plot(2, 5, gold, 70)
+        plot(3, 5, gold, 70)
+        plot(4, 5, gold, 70)
+        plot(5, 5, gold, 70)
+        plot(6, 5, yellow, 80)
+        plot(7, 5, gold, 70)
+        plot(8, 5, gold, 70)
+        plot(9, 5, gold, 70)
+        plot(10, 5, gold, 70)
+        plot(11, 5, bronze, 70)
+        plot(12, 5, bronze, 70)
+        plot(0, 6, bronze, 70)
+        plot(1, 6, gold, 70)
+        plot(2, 6, gold, 70)
+        plot(3, 6, gold, 70)
+        plot(4, 6, gold, 70)
+        plot(5, 6, gold, 70)
+        plot(6, 6, yellow, 80)
+        plot(7, 6, gold, 70)
+        plot(8, 6, gold, 70)
+        plot(9, 6, gold, 70)
+        plot(10, 6, gold, 70)
+        plot(11, 6, gold, 70)
+        plot(12, 6, bronze, 70)
+        plot(0, 7, bronze, 70)
+        plot(1, 7, bronze, 70)
+        plot(2, 7, gold, 70)
+        plot(3, 7, gold, 70)
+        plot(4, 7, gold, 70)
+        plot(5, 7, gold, 70)
+        plot(6, 7, yellow, 80)
+        plot(7, 7, gold, 70)
+        plot(8, 7, gold, 70)
+        plot(9, 7, gold, 70)
+        plot(10, 7, gold, 70)
+        plot(11, 7, bronze, 70)
+        plot(12, 7, bronze, 70)
+        plot(1, 8, bronze, 70)
+        plot(2, 8, gold, 70)
+        plot(3, 8, gold, 70)
+        plot(4, 8, gold, 70)
+        plot(5, 8, gold, 70)
+        plot(6, 8, yellow, 80)
+        plot(7, 8, gold, 70)
+        plot(8, 8, gold, 70)
+        plot(9, 8, gold, 70)
+        plot(10, 8, gold, 70)
+        plot(11, 8, bronze, 70)
+        plot(1, 9, bronze, 70)
+        plot(2, 9, gold, 70)
+        plot(3, 9, gold, 70)
+        plot(4, 9, gold, 70)
+        plot(5, 9, yellow, 80)
+        plot(6, 9, yellow, 80)
+        plot(7, 9, yellow, 80)
+        plot(8, 9, gold, 70)
+        plot(9, 9, gold, 70)
+        plot(10, 9, gold, 70)
+        plot(11, 9, bronze, 70)
+        plot(2, 10, bronze, 70)
+        plot(3, 10, gold, 70)
+        plot(4, 10, gold, 70)
+        plot(5, 10, gold, 70)
+        plot(6, 10, gold, 70)
+        plot(7, 10, gold, 70)
+        plot(8, 10, gold, 70)
+        plot(9, 10, gold, 70)
+        plot(10, 10, bronze, 70)
+        plot(3, 11, bronze, 70)
+        plot(4, 11, bronze, 70)
+        plot(5, 11, bronze, 70)
+        plot(6, 11, gold, 70)
+        plot(7, 11, bronze, 70)
+        plot(8, 11, bronze, 70)
+        plot(9, 11, bronze, 70)
+        plot(5, 12, bronze, 70)
+        plot(6, 12, bronze, 70)
+        plot(7, 12, bronze, 70)
+endsprite
+sprite_back_cel(coin_mid, 1)
+
+define_sprite(coin_far, 13, 13)
+    sprite_cel(0)
+        plot(5, 0, bronze, 42)
+        plot(6, 0, bronze, 42)
+        plot(7, 0, bronze, 42)
+        plot(3, 1, bronze, 42)
+        plot(4, 1, bronze, 42)
+        plot(5, 1, bronze, 42)
+        plot(6, 1, gold, 42)
+        plot(7, 1, bronze, 42)
+        plot(8, 1, bronze, 42)
+        plot(9, 1, bronze, 42)
+        plot(2, 2, bronze, 42)
+        plot(3, 2, gold, 42)
+        plot(4, 2, white, 29)
+        plot(5, 2, gold, 42)
+        plot(6, 2, yellow, 52)
+        plot(7, 2, gold, 42)
+        plot(8, 2, gold, 42)
+        plot(9, 2, gold, 42)
+        plot(10, 2, bronze, 42)
+        plot(1, 3, bronze, 42)
+        plot(2, 3, gold, 42)
+        plot(3, 3, white, 42)
+        plot(4, 3, gold, 42)
+        plot(5, 3, gold, 42)
+        plot(6, 3, yellow, 52)
+        plot(7, 3, gold, 42)
+        plot(8, 3, gold, 42)
+        plot(9, 3, gold, 42)
+        plot(10, 3, gold, 42)
+        plot(11, 3, bronze, 42)
+        plot(1, 4, bronze, 42)
+        plot(2, 4, gold, 42)
+        plot(3, 4, gold, 42)
+        plot(4, 4, gold, 42)
+        plot(5, 4, yellow, 52)
+        plot(6, 4, yellow, 52)
+        plot(7, 4, yellow, 52)
+        plot(8, 4, gold, 42)
+        plot(9, 4, gold, 42)
+        plot(10, 4, gold, 42)
+        plot(11, 4, bronze, 42)
+        plot(0, 5, bronze, 42)
+        plot(1, 5, bronze, 42)
+        plot(2, 5, yellow, 52)
+        plot(3, 5, yellow, 52)
+        plot(4, 5, yellow, 52)
+        plot(5, 5, yellow, 52)
+        plot(6, 5, yellow, 52)
+        plot(7, 5, yellow, 52)
+        plot(8, 5, yellow, 52)
+        plot(9, 5, yellow, 52)
+        plot(10, 5, yellow, 52)
+        plot(11, 5, bronze, 42)
+        plot(12, 5, bronze, 42)
+        plot(0, 6, bronze, 42)
+        plot(1, 6, gold, 42)
+        plot(2, 6, gold, 42)
+        plot(3, 6, gold, 42)
+        plot(4, 6, yellow, 52)
+        plot(5, 6, yellow, 52)
+        plot(6, 6, yellow, 52)
+        plot(7, 6, yellow, 52)
+        plot(8, 6, yellow, 52)
+        plot(9, 6, gold, 42)
+        plot(10, 6, gold, 42)
+        plot(11, 6, gold, 42)
+        plot(12, 6, bronze, 42)
+        plot(0, 7, bronze, 42)
+        plot(1, 7, bronze, 42)
+        plot(2, 7, gold, 42)
+        plot(3, 7, gold, 42)
+        plot(4, 7, gold, 42)
+        plot(5, 7, yellow, 52)
+        plot(6, 7, yellow, 52)
+        plot(7, 7, yellow, 52)
+        plot(8, 7, gold, 42)
+        plot(9, 7, gold, 42)
+        plot(10, 7, gold, 42)
+        plot(11, 7, bronze, 42)
+        plot(12, 7, bronze, 42)
+        plot(1, 8, bronze, 42)
+        plot(2, 8, gold, 42)
+        plot(3, 8, gold, 42)
+        plot(4, 8, yellow, 52)
+        plot(5, 8, yellow, 52)
+        plot(6, 8, gold, 42)
+        plot(7, 8, yellow, 52)
+        plot(8, 8, yellow, 52)
+        plot(9, 8, gold, 42)
+        plot(10, 8, gold, 42)
+        plot(11, 8, bronze, 42)
+        plot(1, 9, bronze, 42)
+        plot(2, 9, gold, 42)
+        plot(3, 9, yellow, 52)
+        plot(4, 9, yellow, 52)
+        plot(5, 9, gold, 42)
+        plot(6, 9, gold, 42)
+        plot(7, 9, gold, 42)
+        plot(8, 9, yellow, 52)
+        plot(9, 9, yellow, 52)
+        plot(10, 9, gold, 42)
+        plot(11, 9, bronze, 42)
+        plot(2, 10, bronze, 42)
+        plot(3, 10, gold, 42)
+        plot(4, 10, gold, 42)
+        plot(5, 10, gold, 42)
+        plot(6, 10, gold, 42)
+        plot(7, 10, gold, 42)
+        plot(8, 10, gold, 42)
+        plot(9, 10, gold, 42)
+        plot(10, 10, bronze, 42)
+        plot(3, 11, bronze, 42)
+        plot(4, 11, bronze, 42)
+        plot(5, 11, bronze, 42)
+        plot(6, 11, gold, 42)
+        plot(7, 11, bronze, 42)
+        plot(8, 11, bronze, 42)
+        plot(9, 11, bronze, 42)
+        plot(5, 12, bronze, 42)
+        plot(6, 12, bronze, 42)
+        plot(7, 12, bronze, 42)
+    sprite_cel(1)
+        plot(5, 0, bronze, 42)
+        plot(6, 0, bronze, 42)
+        plot(7, 0, bronze, 42)
+        plot(3, 1, bronze, 42)
+        plot(4, 1, bronze, 42)
+        plot(5, 1, bronze, 42)
+        plot(6, 1, gold, 42)
+        plot(7, 1, bronze, 42)
+        plot(8, 1, bronze, 42)
+        plot(9, 1, bronze, 42)
+        plot(2, 2, bronze, 42)
+        plot(3, 2, gold, 42)
+        plot(4, 2, white, 29)
+        plot(5, 2, gold, 42)
+        plot(6, 2, gold, 42)
+        plot(7, 2, gold, 42)
+        plot(8, 2, gold, 42)
+        plot(9, 2, gold, 42)
+        plot(10, 2, bronze, 42)
+        plot(1, 3, bronze, 42)
+        plot(2, 3, gold, 42)
+        plot(3, 3, white, 42)
+        plot(4, 3, gold, 42)
+        plot(5, 3, gold, 42)
+        plot(6, 3, yellow, 52)
+        plot(7, 3, gold, 42)
+        plot(8, 3, gold, 42)
+        plot(9, 3, gold, 42)
+        plot(10, 3, gold, 42)
+        plot(11, 3, bronze, 42)
+        plot(1, 4, bronze, 42)
+        plot(2, 4, gold, 42)
+        plot(3, 4, gold, 42)
+        plot(4, 4, gold, 42)
+        plot(5, 4, yellow, 52)
+        plot(6, 4, yellow, 52)
+        plot(7, 4, gold, 42)
+        plot(8, 4, gold, 42)
+        plot(9, 4, gold, 42)
+        plot(10, 4, gold, 42)
+        plot(11, 4, bronze, 42)
+        plot(0, 5, bronze, 42)
+        plot(1, 5, bronze, 42)
+        plot(2, 5, gold, 42)
+        plot(3, 5, gold, 42)
+        plot(4, 5, gold, 42)
+        plot(5, 5, gold, 42)
+        plot(6, 5, yellow, 52)
+        plot(7, 5, gold, 42)
+        plot(8, 5, gold, 42)
+        plot(9, 5, gold, 42)
+        plot(10, 5, gold, 42)
+        plot(11, 5, bronze, 42)
+        plot(12, 5, bronze, 42)
+        plot(0, 6, bronze, 42)
+        plot(1, 6, gold, 42)
+        plot(2, 6, gold, 42)
+        plot(3, 6, gold, 42)
+        plot(4, 6, gold, 42)
+        plot(5, 6, gold, 42)
+        plot(6, 6, yellow, 52)
+        plot(7, 6, gold, 42)
+        plot(8, 6, gold, 42)
+        plot(9, 6, gold, 42)
+        plot(10, 6, gold, 42)
+        plot(11, 6, gold, 42)
+        plot(12, 6, bronze, 42)
+        plot(0, 7, bronze, 42)
+        plot(1, 7, bronze, 42)
+        plot(2, 7, gold, 42)
+        plot(3, 7, gold, 42)
+        plot(4, 7, gold, 42)
+        plot(5, 7, gold, 42)
+        plot(6, 7, yellow, 52)
+        plot(7, 7, gold, 42)
+        plot(8, 7, gold, 42)
+        plot(9, 7, gold, 42)
+        plot(10, 7, gold, 42)
+        plot(11, 7, bronze, 42)
+        plot(12, 7, bronze, 42)
+        plot(1, 8, bronze, 42)
+        plot(2, 8, gold, 42)
+        plot(3, 8, gold, 42)
+        plot(4, 8, gold, 42)
+        plot(5, 8, gold, 42)
+        plot(6, 8, yellow, 52)
+        plot(7, 8, gold, 42)
+        plot(8, 8, gold, 42)
+        plot(9, 8, gold, 42)
+        plot(10, 8, gold, 42)
+        plot(11, 8, bronze, 42)
+        plot(1, 9, bronze, 42)
+        plot(2, 9, gold, 42)
+        plot(3, 9, gold, 42)
+        plot(4, 9, gold, 42)
+        plot(5, 9, yellow, 52)
+        plot(6, 9, yellow, 52)
+        plot(7, 9, yellow, 52)
+        plot(8, 9, gold, 42)
+        plot(9, 9, gold, 42)
+        plot(10, 9, gold, 42)
+        plot(11, 9, bronze, 42)
+        plot(2, 10, bronze, 42)
+        plot(3, 10, gold, 42)
+        plot(4, 10, gold, 42)
+        plot(5, 10, gold, 42)
+        plot(6, 10, gold, 42)
+        plot(7, 10, gold, 42)
+        plot(8, 10, gold, 42)
+        plot(9, 10, gold, 42)
+        plot(10, 10, bronze, 42)
+        plot(3, 11, bronze, 42)
+        plot(4, 11, bronze, 42)
+        plot(5, 11, bronze, 42)
+        plot(6, 11, gold, 42)
+        plot(7, 11, bronze, 42)
+        plot(8, 11, bronze, 42)
+        plot(9, 11, bronze, 42)
+        plot(5, 12, bronze, 42)
+        plot(6, 12, bronze, 42)
+        plot(7, 12, bronze, 42)
+endsprite
+sprite_back_cel(coin_far, 1)
+
+# ---------------- Coins ----------------
+create_array(v_cx, v_coins, numeric)
+create_array(v_cy, v_coins, numeric)
+create_array(v_vy, v_coins, numeric)
+create_array(v_spin, v_coins, numeric)
+create_array(v_spd, v_coins, numeric)
+create_array(v_scl, v_coins, numeric)
+create_array(v_land, v_coins, numeric)   # 0 = falling, >0 frames since landing
+create_array(v_axis, v_coins, numeric)   # 0 = spin (tilt_y), 1 = tumble (tilt_x)
+create_array(v_cang, v_coins, numeric)   # in-plane angle that sets the tumble direction
+create_array(v_adirty, v_coins, numeric) # 1 = angle needs sending
+v_mode = random(1, 9, 0)
+
+# give coin v_i a spin style for mode v_mode (mode 9 = a random one of 1-8)
+def style_coin {
+    v_m = v_mode
+    if v_m == 9 then
+        v_m = random(1, 8, 0)
+    endif
+    v_mag = random(5, 13, 1)
+    v_var = random(0 - v_diag_var, v_diag_var, 0)
+    if v_m == 1 then
+        v_axis[v_i] = 0
+        v_spd[v_i] = v_mag
+        v_cang[v_i] = 0
+    elseif v_m == 2 then
+        v_axis[v_i] = 0
+        v_spd[v_i] = 0 - v_mag
+        v_cang[v_i] = 0
+    elseif v_m == 3 then
+        v_axis[v_i] = 1
+        v_spd[v_i] = 0 - v_mag
+        v_cang[v_i] = 0
+    elseif v_m == 4 then
+        v_axis[v_i] = 1
+        v_spd[v_i] = v_mag
+        v_cang[v_i] = 0
+    elseif v_m == 5 then
+        v_axis[v_i] = 1
+        v_spd[v_i] = 0 - v_mag
+        v_cang[v_i] = 45 + v_var
+    elseif v_m == 6 then
+        v_axis[v_i] = 1
+        v_spd[v_i] = v_mag
+        v_cang[v_i] = -45 + v_var
+    elseif v_m == 7 then
+        v_axis[v_i] = 1
+        v_spd[v_i] = 0 - v_mag
+        v_cang[v_i] = -45 + v_var
+    else
+        v_axis[v_i] = 1
+        v_spd[v_i] = v_mag
+        v_cang[v_i] = 45 + v_var
+    endif
+    v_adirty[v_i] = 1
+}
+
+create_array(v_heap, 64, numeric)
+for v_x in (0, 63, 1)
+    v_heap[v_x] = 0
+endfor v_x
+
+# v_i = coin; depth bucket = v_i % 3 (0 near, 1 mid, 2 far)
+def spawn {
+    v_b = v_i % 3
+    v_cx[v_i] = random(3, 60, 1)
+    v_cy[v_i] = random(-40, -8, 1)
+    v_spin[v_i] = random(0, 359, 0)
+    call style_coin
+    if v_b == 0 then
+        v_scl[v_i] = random(1.0, 1.35, 2)
+        v_vy[v_i] = random(0.55, 0.75, 2)
+    elseif v_b == 1 then
+        v_scl[v_i] = random(0.7, 0.9, 2)
+        v_vy[v_i] = random(0.38, 0.5, 2)
+    else
+        v_scl[v_i] = random(0.42, 0.58, 2)
+        v_vy[v_i] = random(0.22, 0.32, 2)
+    endif
+    v_land[v_i] = 0
+}
+
+def show_coin {
+    v_b = v_i % 3
+    if v_b == 0 then
+        set_layer(30)
+        show_sprite(coin_near, v_cx[v_i], v_cy[v_i], v_i, 0, 0)
+        set_sprite_anchor(coin_near, 1, v_i)
+        set_sprite_scale(coin_near, v_scl[v_i], v_i)
+    elseif v_b == 1 then
+        set_layer(10)
+        show_sprite(coin_mid, v_cx[v_i], v_cy[v_i], v_i, 0, 0)
+        set_sprite_anchor(coin_mid, 1, v_i)
+        set_sprite_scale(coin_mid, v_scl[v_i], v_i)
+    else
+        set_layer(0)
+        show_sprite(coin_far, v_cx[v_i], v_cy[v_i], v_i, 0, 0)
+        set_sprite_anchor(coin_far, 1, v_i)
+        set_sprite_scale(coin_far, v_scl[v_i], v_i)
+    endif
+    set_layer(0)
+}
+
+def draw_coin {
+    v_b = v_i % 3
+    v_ang = v_cang[v_i]
+    if v_axis[v_i] == 0 then
+        v_tx = 0
+        v_ty = v_spin[v_i]
+    else
+        v_tx = v_spin[v_i]
+        v_ty = 0
+    endif
+    if v_land[v_i] > 0 then
+        # settling flat onto the heap: blend from the spin to lying flat
+        v_k = min(v_land[v_i] / 10, 1)
+        v_tx = v_tx * (1 - v_k) + 80 * v_k
+        v_ty = v_ty * (1 - v_k)
+        v_ang = v_ang * (1 - v_k)
+        v_adirty[v_i] = 1
+    endif
+    if v_b == 0 then
+        if v_adirty[v_i] == 1 then
+            set_sprite_angle(coin_near, v_ang, v_i)
+        endif
+        set_sprite_tilt(coin_near, v_tx, v_ty, v_i)
+        move_sprite(coin_near, v_cx[v_i], v_cy[v_i], v_i, 0)
+    elseif v_b == 1 then
+        if v_adirty[v_i] == 1 then
+            set_sprite_angle(coin_mid, v_ang, v_i)
+        endif
+        set_sprite_tilt(coin_mid, v_tx, v_ty, v_i)
+        move_sprite(coin_mid, v_cx[v_i], v_cy[v_i], v_i, 0)
+    else
+        if v_adirty[v_i] == 1 then
+            set_sprite_angle(coin_far, v_ang, v_i)
+        endif
+        set_sprite_tilt(coin_far, v_tx, v_ty, v_i)
+        move_sprite(coin_far, v_cx[v_i], v_cy[v_i], v_i, 0)
+    endif
+    v_adirty[v_i] = 0
+}
+
+# a near coin joins the heap: a soft bump under it
+def add_to_heap {
+    v_hx = round(v_cx[v_i])
+    for v_d in (-3, 3, 1)
+        v_x = v_hx + v_d
+        if v_x >= 0 and v_x <= 63 then
+            v_heap[v_x] = v_heap[v_x] + (3.2 - abs(v_d)) * 0.55
+        endif
+    endfor v_d
+}
+
+# sand slide: steep steps pour sideways
+def settle_heap {
+    for v_x in (0, 62, 1)
+        v_diff = v_heap[v_x] - v_heap[v_x + 1]
+        if v_diff > 0.9 then
+            v_heap[v_x] = v_heap[v_x] - 0.2
+            v_heap[v_x + 1] = v_heap[v_x + 1] + 0.2
+        elseif v_diff < -0.9 then
+            v_heap[v_x] = v_heap[v_x] + 0.2
+            v_heap[v_x + 1] = v_heap[v_x + 1] - 0.2
+        endif
+    endfor v_x
+}
+
+def draw_heap {
+    set_layer(20)
+    v_top = 0
+    for v_x in (0, 63, 1)
+        v_h = round(v_heap[v_x])
+        v_top = max(v_top, v_heap[v_x])
+        if v_h >= 1 then
+            draw_line(v_x, 63, v_x, 64 - v_h, bronze, 40)
+            v_y = 64 - v_h
+            mplot(v_x, v_y, gold, 95)
+            if v_h >= 2 then
+                mplot(v_x, v_y + 1, gold, 70)
+            endif
+            # glints scattered through the heap
+            if random(0, 1, 2) < 0.04 then
+                mplot(v_x, v_y + random(0, v_h - 1, 0), white, 90)
+            endif
+        endif
+    endfor v_x
+    set_layer(0)
+}
+
+# ---------------- Start ----------------
+for v_i in (0, v_coins - 1, 1)
+    call spawn
+    v_cy[v_i] = random(-60, 50, 1)
+    call show_coin
+endfor v_i
+
+v_draining = 0
+v_mode_timer = random(v_mode_min, v_mode_max, 0)
+v_top = 0
+
+# ---------------- Main loop ----------------
+while true then
+    # time for a new spin mode?
+    v_mode_timer = v_mode_timer - 1
+    if v_mode_timer <= 0 then
+        v_old_mode = v_mode
+        while v_mode == v_old_mode then
+            v_mode = random(1, 9, 0)
+        endwhile
+        v_mode_timer = random(v_mode_min, v_mode_max, 0)
+        # coins still above the screen switch right away (nobody sees it)
+        for v_i in (0, v_coins - 1, 1)
+            if v_cy[v_i] < -8 then
+                call style_coin
+            endif
+        endfor v_i
+    endif
+    begin_frame
+        # faint glints in the dark vault behind everything
+        for v_k in (0, 3, 1)
+            mplot(random(0, 63, 0), random(0, 50, 0), gold, random(4, 18, 0))
+        endfor v_k
+
+        for v_i in (0, v_coins - 1, 1)
+            if v_land[v_i] > 0 then
+                v_land[v_i] = v_land[v_i] + 1
+                if v_land[v_i] > 12 then
+                    call add_to_heap
+                    call spawn
+                endif
+            else
+                v_cy[v_i] = v_cy[v_i] + v_vy[v_i]
+                v_vy[v_i] = v_vy[v_i] + 0.004
+                v_spin[v_i] = v_spin[v_i] + v_spd[v_i]
+                if v_spin[v_i] > 180 then
+                    v_spin[v_i] = v_spin[v_i] - 360
+                elseif v_spin[v_i] < -180 then
+                    v_spin[v_i] = v_spin[v_i] + 360
+                endif
+                if v_i % 3 == 0 then
+                    v_hx = min(max(round(v_cx[v_i]), 0), 63)
+                    v_floor = 63 - v_heap[v_hx] - 5 * v_scl[v_i]
+                    if v_cy[v_i] >= v_floor then
+                        v_cy[v_i] = v_floor
+                        if v_draining == 0 then
+                            v_land[v_i] = 1
+                        else
+                            call spawn
+                        endif
+                    endif
+                elseif v_cy[v_i] > 72 then
+                    call spawn
+                endif
+            endif
+            call draw_coin
+        endfor v_i
+
+        call settle_heap
+        if v_draining == 1 then
+            for v_x in (0, 63, 1)
+                v_heap[v_x] = max(v_heap[v_x] - v_drain_speed * (1 + v_heap[v_x] * 0.05), 0)
+            endfor v_x
+            if v_top < 0.5 then
+                v_draining = 0
+v_mode_timer = random(v_mode_min, v_mode_max, 0)
+            endif
+        elseif v_top > v_heap_max then
+            v_draining = 1
+        endif
+        call draw_heap
+    end_frame
+endwhile

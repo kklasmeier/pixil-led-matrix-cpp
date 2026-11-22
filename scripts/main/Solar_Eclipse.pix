@@ -1,0 +1,285 @@
+# Solar Eclipse - a total eclipse of the Sun over a quiet landscape
+#
+# The Sun hangs in a blue sky above dark hills. The Moon slides across it:
+#   - first a bite out of the Sun, which shrinks to a thin crescent while the
+#     sky slowly darkens;
+#   - just before totality the last light breaks into "Baily's beads"
+#     (sunlight shining through valleys on the Moon's rough edge);
+#   - then the "diamond ring": one brilliant point of light flares with rays;
+#   - totality: the sky goes dark, stars come out, the pearly-white corona
+#     streams out around the black Moon, red prominences peek out at the
+#     edge, and a sunset glow runs all along the horizon;
+#   - the diamond ring flashes again on the other side, and daylight returns.
+# Each eclipse gets a new corona shape and new prominences, then the next
+# one begins.
+#
+# How it is built:
+#   - One field_program (formula mode) draws the Sun's disc (darker toward
+#     its edge), the Moon with a bumpy edge (that is what makes the beads),
+#     the prominences, the sky, the horizon glow and the hills. Colour and
+#     brightness are packed into one number: colour index + brightness / 100.
+#   - The corona must be white, which a field cannot draw, so it is a list
+#     of white points worked out once per eclipse and drawn with mplot.
+#   - The diamond ring is a white core with rays, drawn on top.
+#   - Layers: sky and Sun on layer 0 (redrawn every frame), corona on
+#     layer 10 (redrawn only when it changes), diamond ring on layer 20.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_cycle = 4200         # frames per eclipse (~70 s)
+v_sun_x = 32
+v_sun_y = 25
+v_rs = 9.5             # Sun radius
+v_rmoon = 9.9          # Moon radius (a bit bigger, so totality happens)
+v_travel = 25          # how far the Moon starts from the Sun
+v_corona_out = 27      # how far the corona reaches
+v_star_count = 45
+
+# ---------------- State for the field ----------------
+v_sx = v_sun_x
+v_sy = v_sun_y
+v_mx = 0
+v_my = 0
+v_sky = 30             # sky brightness
+v_tot = 0              # 0..1 how deep into totality (horizon glow)
+v_glare = 1            # glow around the uncovered Sun
+v_pa1 = 0
+v_pa2 = 2
+v_pa3 = 4
+v_ph1 = 2
+v_ph2 = 1.5
+v_ph3 = 2.5
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program eclipse {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        v_dx = grid_x - v_sx
+        v_dy = grid_y - v_sy
+        v_r = sqrt(v_dx * v_dx + v_dy * v_dy)
+        v_mdx = grid_x - v_mx
+        v_mdy = grid_y - v_my
+        v_rm = sqrt(v_mdx * v_mdx + v_mdy * v_mdy)
+        v_ma = atan2(v_mdy, v_mdx)
+        v_rme = v_rmoon + 0.35 * sin(v_ma * 13) + 0.25 * sin(v_ma * 29 + 1)
+        v_inm = where(v_rm < v_rme, 1, 0)
+        v_photo = where(v_r < v_rs, 1, 0) * (1 - v_inm)
+        v_pb = 99 * (0.5 + 0.5 * sqrt(max(1 - v_r * v_r / (v_rs * v_rs), 0)))
+        v_phue = 15 - 6 * v_r * v_r / (v_rs * v_rs)
+        v_sa = atan2(v_dy, v_dx)
+        v_p1 = clamp((cos(v_sa - v_pa1) - 0.975) / 0.025, 0, 1) * v_ph1
+        v_p2 = clamp((cos(v_sa - v_pa2) - 0.975) / 0.025, 0, 1) * v_ph2
+        v_p3 = clamp((cos(v_sa - v_pa3) - 0.975) / 0.025, 0, 1) * v_ph3
+        v_pmax = max(max(v_p1, v_p2), v_p3)
+        v_prom = where(v_r >= v_rs - 0.3, where(v_r < v_rs + v_pmax, 1, 0), 0) * where(v_pmax > 0.2, 1, 0) * (1 - v_inm) * (1 - v_photo) * where(v_tot > 0.05, 1, 0)
+        v_hz = 55 + 2 * sin(grid_x * 0.21) + 1.4 * sin(grid_x * 0.07 + 1)
+        v_gnd = where(grid_y > v_hz, 1, 0)
+        v_gb = 2 + v_sky * 0.35
+        v_skyb = v_sky * (1 - grid_y / 95)
+        v_glow = v_glare * 28 / (1 + max(v_r - v_rs, 0) * max(v_r - v_rs, 0) * 0.12) * where(v_r > v_rs, 1, 0) * (1 - v_inm)
+        v_hg = v_tot * 34 * clamp(1 - (v_hz - grid_y) / 8, 0, 1) * where(grid_y <= v_hz, 1, 0)
+        v_skyall = max(v_skyb + v_glow, v_hg)
+        v_skyhue = where(v_hg > v_skyb + v_glow, 8, where(v_glow > v_skyb, 14, 60))
+        v_bri = where(v_gnd > 0, v_gb, where(v_photo > 0, v_pb, where(v_prom > 0, 25 + 60 * v_tot, v_skyall)))
+        v_hue = where(v_gnd > 0, 30, where(v_photo > 0, v_phue, where(v_prom > 0, 97, v_skyhue)))
+        v_out = floor(clamp(v_hue, 0, 99)) + clamp(v_bri, 0, 99) / 100
+    }
+    plot_if v_sum - floor(v_sum) > 0.012
+    color floor(v_sum)
+    opacity (v_sum - floor(v_sum)) * 100
+}
+
+# ---------------- Stars ----------------
+create_array(v_stx, v_star_count, numeric)
+create_array(v_sty, v_star_count, numeric)
+create_array(v_stb, v_star_count, numeric)
+for v_i in (0, v_star_count - 1, 1)
+    v_stx[v_i] = random(0, 63, 0)
+    v_sty[v_i] = random(0, 50, 0)
+    v_stb[v_i] = random(10, 55, 0)
+endfor v_i
+
+# ---------------- Corona (white points, rebuilt every eclipse) ----------------
+v_cmax = 2600
+create_array(v_cx, v_cmax, numeric)
+create_array(v_cy, v_cmax, numeric)
+create_array(v_ci, v_cmax, numeric)
+v_cn = 0
+
+def build_corona {
+    v_tilt = random(-0.6, 0.6, 2)
+    v_k1 = random(0, 6.28, 2)
+    v_k2 = random(0, 6.28, 2)
+    v_k3 = random(0, 6.28, 2)
+    v_cn = 0
+    v_lo = floor(-v_corona_out)
+    v_hi = ceil(v_corona_out)
+    for v_yy in (v_lo, v_hi, 1)
+        for v_xx in (v_lo, v_hi, 1)
+            v_rr = sqrt(v_xx * v_xx + v_yy * v_yy)
+            if v_rr >= v_rs and v_rr <= v_corona_out and v_cn < v_cmax then
+                v_th = atan2(v_yy, v_xx)
+                # streamers: a few broad petals plus fine rays
+                v_st = 0.5 + 0.28 * sin(v_th * 5 + v_k1) + 0.2 * sin(v_th * 11 + v_k2) + 0.14 * sin(v_th * 23 + v_k3)
+                v_st = min(max(v_st, 0), 1)
+                # the corona stretches out along the Sun's equator
+                v_eq = cos(v_th - v_tilt)
+                v_eq = 0.55 + 0.9 * v_eq * v_eq
+                v_fall = pow(v_rs / v_rr, 2.6 - v_st * 1.1)
+                v_int = 100 * v_fall * (0.35 + 0.65 * v_st) * v_eq
+                # fade out softly toward the outer edge
+                v_int = v_int * min(max((v_corona_out - v_rr) / 7, 0), 1)
+                if v_int > 4 then
+                    v_cx[v_cn] = v_sun_x + v_xx
+                    v_cy[v_cn] = v_sun_y + v_yy
+                    v_ci[v_cn] = min(v_int, 100)
+                    v_cn = v_cn + 1
+                endif
+            endif
+        endfor v_xx
+    endfor v_yy
+    # new prominences
+    v_pa1 = random(0, 6.28, 2)
+    v_pa2 = random(0, 6.28, 2)
+    v_pa3 = random(0, 6.28, 2)
+    v_ph1 = random(1.2, 2.8, 2)
+    v_ph2 = random(0.8, 2.2, 2)
+    v_ph3 = random(0.6, 2.4, 2)
+}
+
+def draw_corona {
+    v_rme2 = (v_rmoon + 0.2) * (v_rmoon + 0.2)
+    for v_i in (0, v_cn - 1, 1)
+        v_ex = v_cx[v_i] - v_mx
+        v_ey = v_cy[v_i] - v_my
+        if v_ex * v_ex + v_ey * v_ey > v_rme2 then
+            v_b = v_ci[v_i] * v_cvis
+            # only where the corona is brighter than the sky behind it
+            if v_b > v_sky * (1 - v_cy[v_i] / 95) * 3 + 4 then
+                mplot(v_cx[v_i], v_cy[v_i], white, v_b)
+            endif
+        endif
+    endfor v_i
+}
+
+def draw_stars {
+    for v_i in (0, v_star_count - 1, 1)
+        mplot(v_stx[v_i], v_sty[v_i], white, v_stb[v_i] * v_starvis)
+    endfor v_i
+}
+
+# diamond ring: a white flare with rays at the last point of sunlight
+def draw_diamond {
+    v_px = round(v_sx - v_odx * v_rs)
+    v_py = round(v_sy - v_ody * v_rs)
+    v_b = v_dia * 100
+    mplot(v_px, v_py, white, v_b)
+    mplot(v_px + 1, v_py, white, v_b * 0.8)
+    mplot(v_px - 1, v_py, white, v_b * 0.8)
+    mplot(v_px, v_py + 1, white, v_b * 0.8)
+    mplot(v_px, v_py - 1, white, v_b * 0.8)
+    v_len = 2 + v_dia * 9
+    for v_k in (0, 3, 1)
+        v_ra = v_k * 1.5708 + 0.785 + v_frame * 0.004
+        v_ex = v_px + cos(v_ra) * v_len
+        v_ey = v_py + sin(v_ra) * v_len
+        draw_line(v_px, v_py, v_ex, v_ey, white, v_b * 0.85)
+    endfor v_k
+    v_len = v_len * 0.6
+    for v_k in (0, 3, 1)
+        v_ra = v_k * 1.5708 + v_frame * 0.004
+        v_ex = v_px + cos(v_ra) * v_len
+        v_ey = v_py + sin(v_ra) * v_len
+        draw_line(v_px, v_py, v_ex, v_ey, white, v_b * 0.6)
+    endfor v_k
+}
+
+# ---------------- Main loop ----------------
+v_frame = random(0, v_cycle / 4, 0)
+v_dir_y = random(-0.25, 0.25, 2)
+call build_corona
+v_last_cvis = -1
+v_last_mx = -100
+v_last_my = -100
+
+while true then
+    v_p = (v_frame % v_cycle) / v_cycle
+    if v_frame % v_cycle == 0 then
+        v_dir_y = random(-0.25, 0.25, 2)
+        call build_corona
+    endif
+    # Moon position: fast far away, slow through the middle (longer totality)
+    v_q = v_p * 2 - 1
+    v_u = v_travel * (0.82 * v_q * v_q * v_q + 0.18 * v_q)
+    v_dl = sqrt(1 + v_dir_y * v_dir_y)
+    v_odx = 1 / v_dl
+    v_ody = v_dir_y / v_dl
+    v_mx = v_sx + v_odx * v_u
+    v_my = v_sy + v_ody * v_u
+    if v_u < 0 then
+        v_odx = 0 - v_odx
+        v_ody = 0 - v_ody
+    endif
+
+    # how much of the Sun is covered (by distance between the centres)
+    v_d = abs(v_u)
+    v_contact = v_rs + v_rmoon
+    v_full = v_rmoon - v_rs
+    v_cover = min(max((v_contact - v_d) / (v_contact - v_full), 0), 1)
+    # sky darkens slowly at first, then quickly near totality
+    v_sky = 30 * (1 - pow(v_cover, 6))
+    v_glare = 1 - pow(v_cover, 3)
+    v_cvis = min(max(1 - (v_d - v_full) / 2.2, 0), 1)
+    v_cvis = v_cvis * v_cvis
+    v_tot = v_cvis
+    v_starvis = v_cvis
+    # diamond ring just outside totality
+    v_dia = 0
+    if v_d > v_full and v_d < v_full + 1.8 then
+        v_dia = sin((v_d - v_full) / 1.8 * 3.1416)
+    endif
+
+    # The corona barely changes from frame to frame, so it lives on its own
+    # layer and is only redrawn when it has faded noticeably or the Moon has
+    # moved a little. Sky and diamond ring are redrawn every frame.
+    v_redraw = 0
+    if abs(v_cvis - v_last_cvis) > 0.03 or abs(v_mx - v_last_mx) + abs(v_my - v_last_my) > 0.25 then
+        v_redraw = 1
+    endif
+    if v_cvis <= 0.02 and v_last_cvis > 0.02 then
+        v_redraw = 1
+    endif
+    begin_frame(true)
+        clear_layer(0)
+        if v_starvis > 0.02 then
+            call draw_stars
+        endif
+        field_render(eclipse)
+        if v_redraw == 1 then
+            set_layer(10)
+            clear_layer(10)
+            if v_cvis > 0.02 then
+                call draw_corona
+            endif
+            v_last_cvis = v_cvis
+            v_last_mx = v_mx
+            v_last_my = v_my
+        endif
+        set_layer(20)
+        clear_layer(20)
+        if v_dia > 0.05 then
+            call draw_diamond
+        endif
+        set_layer(0)
+    end_frame
+
+    v_frame = v_frame + 1
+endwhile

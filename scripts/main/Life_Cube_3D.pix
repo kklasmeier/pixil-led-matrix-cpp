@@ -1,0 +1,334 @@
+# Life Cube 3D - Conway-style life in three dimensions
+#
+# A 10 x 10 x 10 block of cells lives inside a slowly turning glass cube.
+# Each cell has 26 neighbours instead of 8. Every few frames a new generation
+# is computed: cells are born or survive depending on how many live
+# neighbours they have. Dying cells fade out over a few generations
+# ("Generations" rules), leaving glowing embers behind the living front.
+#
+#   - Living cells are coloured by where they sit in the cube, and the
+#     colours slowly drift. Dying cells fade from orange to deep red.
+#   - Near cells are drawn as 2 x 2 blocks, far cells as single dots and
+#     dimmer, so the depth reads even while the cube turns.
+#   - Every 40 seconds (or if a pattern dies out or freezes) the next rule is
+#     chosen and a fresh seed grows from the middle of the cube.
+#
+# Rules (B = born with, S = survives with, G = number of states, counting
+# the fading ones):
+#   B4 S45 G5    a crawling, crystal-edged froth
+#   B3 S23 G8    3D cousin of Conway's Life, long ember trails
+#   B4 S4        the classic "445" crystal growth
+#   B45 S567 G6  dense coral that keeps reshaping
+#
+# How it stays fast: a neighbour table is built once at start, and the live
+# neighbour counts are only updated for cells that changed, so a generation
+# costs a few thousand operations instead of 26 x 1000 lookups.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_g = 10               # cells per side
+v_gen_frames = 9       # frames between generations
+v_rule_frames = 2400   # frames per rule (~40 s)
+v_spacing = 2.0        # world units between cells
+v_view = 1.62          # zoom
+v_spin = 0.006         # turn speed
+
+v_cells = v_g * v_g * v_g
+v_half = (v_g - 1) / 2
+
+# ---------------- Rules ----------------
+v_rules = 4
+create_array(v_rule_names, v_rules, string)
+create_array(v_rule_states, v_rules, numeric)
+# born / survive tables: index rule * 27 + neighbour count -> 1/0
+create_array(v_born, v_rules * 27, numeric)
+create_array(v_surv, v_rules * 27, numeric)
+for v_i in (0, v_rules * 27 - 1, 1)
+    v_born[v_i] = 0
+    v_surv[v_i] = 0
+endfor v_i
+v_rule_names[0] = "B4 S45 G5"
+v_rule_states[0] = 5
+v_born[0 * 27 + 4] = 1
+v_surv[0 * 27 + 4] = 1
+v_surv[0 * 27 + 5] = 1
+v_rule_names[1] = "B3 S23 G8"
+v_rule_states[1] = 8
+v_born[1 * 27 + 3] = 1
+v_surv[1 * 27 + 2] = 1
+v_surv[1 * 27 + 3] = 1
+v_rule_names[2] = "B4 S4"
+v_rule_states[2] = 2
+v_born[2 * 27 + 4] = 1
+v_surv[2 * 27 + 4] = 1
+v_rule_names[3] = "B45 S567 G6"
+v_rule_states[3] = 6
+v_born[3 * 27 + 4] = 1
+v_born[3 * 27 + 5] = 1
+v_surv[3 * 27 + 5] = 1
+v_surv[3 * 27 + 6] = 1
+v_surv[3 * 27 + 7] = 1
+
+# ---------------- Cells ----------------
+create_array(v_st, v_cells, numeric)      # 0 dead, 1 alive, 2+ dying
+create_array(v_cnt, v_cells, numeric)     # live neighbours
+create_array(v_wxa, v_cells, numeric)     # world position of each cell
+create_array(v_wya, v_cells, numeric)
+create_array(v_wza, v_cells, numeric)
+create_array(v_hue, v_cells, numeric)
+create_array(v_nbr, v_cells * 26, numeric)
+create_array(v_chg, v_cells, numeric)     # cells that changed alive-ness
+create_array(v_chd, v_cells, numeric)     # +1 born, -1 died
+create_array(v_show, v_cells, numeric)    # cells to draw (alive or dying)
+
+for v_z in (0, v_g - 1, 1)
+    for v_y in (0, v_g - 1, 1)
+        for v_x in (0, v_g - 1, 1)
+            v_c = (v_z * v_g + v_y) * v_g + v_x
+            v_wxa[v_c] = (v_x - v_half) * v_spacing
+            v_wya[v_c] = (v_y - v_half) * v_spacing
+            v_wza[v_c] = (v_z - v_half) * v_spacing
+            v_hue[v_c] = (v_x + v_y + v_z) * 2.2
+            v_k = v_c * 26
+            for v_dz in (-1, 1, 1)
+                for v_dy in (-1, 1, 1)
+                    for v_dx in (-1, 1, 1)
+                        if v_dx != 0 or v_dy != 0 or v_dz != 0 then
+                            v_nx = (v_x + v_dx + v_g) % v_g
+                            v_ny = (v_y + v_dy + v_g) % v_g
+                            v_nz = (v_z + v_dz + v_g) % v_g
+                            v_nbr[v_k] = (v_nz * v_g + v_ny) * v_g + v_nx
+                            v_k = v_k + 1
+                        endif
+                    endfor v_dx
+                endfor v_dy
+            endfor v_dz
+        endfor v_x
+    endfor v_y
+endfor v_z
+
+v_rule = 0
+v_states = 5
+v_nshow = 0
+v_alive = 0
+v_still = 0
+
+def rebuild_counts {
+    for v_c in (0, v_cells - 1, 1)
+        v_cnt[v_c] = 0
+    endfor v_c
+    for v_c in (0, v_cells - 1, 1)
+        if v_st[v_c] == 1 then
+            v_k = v_c * 26
+            for v_j in (0, 25, 1)
+                v_m = v_nbr[v_k + v_j]
+                v_cnt[v_m] = v_cnt[v_m] + 1
+            endfor v_j
+        endif
+    endfor v_c
+}
+
+def seed {
+    for v_c in (0, v_cells - 1, 1)
+        v_st[v_c] = 0
+    endfor v_c
+    v_lo = floor(v_g / 2) - 2
+    for v_z in (v_lo, v_lo + 4, 1)
+        for v_y in (v_lo, v_lo + 4, 1)
+            for v_x in (v_lo, v_lo + 4, 1)
+                if random(0, 1, 2) < 0.4 then
+                    v_st[(v_z * v_g + v_y) * v_g + v_x] = 1
+                endif
+            endfor v_x
+        endfor v_y
+    endfor v_z
+    call rebuild_counts
+    v_still = 0
+    call collect
+}
+
+# list the cells that should be drawn
+def collect {
+    v_nshow = 0
+    v_alive = 0
+    for v_c in (0, v_cells - 1, 1)
+        if v_st[v_c] > 0 then
+            v_show[v_nshow] = v_c
+            v_nshow = v_nshow + 1
+            if v_st[v_c] == 1 then
+                v_alive = v_alive + 1
+            endif
+        endif
+    endfor v_c
+}
+
+def generation {
+    v_base = v_rule * 27
+    v_nchg = 0
+    for v_c in (0, v_cells - 1, 1)
+        v_s = v_st[v_c]
+        if v_s == 0 then
+            if v_born[v_base + v_cnt[v_c]] == 1 then
+                v_st[v_c] = 1
+                v_chg[v_nchg] = v_c
+                v_chd[v_nchg] = 1
+                v_nchg = v_nchg + 1
+            endif
+        elseif v_s == 1 then
+            if v_surv[v_base + v_cnt[v_c]] == 0 then
+                v_chg[v_nchg] = v_c
+                v_chd[v_nchg] = -1
+                v_nchg = v_nchg + 1
+                if v_states > 2 then
+                    v_st[v_c] = 2
+                else
+                    v_st[v_c] = 0
+                endif
+            endif
+        else
+            v_s = v_s + 1
+            if v_s >= v_states then
+                v_s = 0
+            endif
+            v_st[v_c] = v_s
+        endif
+    endfor v_c
+    # neighbour counts only change around cells that were born or died
+    if v_nchg > 0 then
+        for v_i in (0, v_nchg - 1, 1)
+            v_k = v_chg[v_i] * 26
+            v_d = v_chd[v_i]
+            for v_j in (0, 25, 1)
+                v_m = v_nbr[v_k + v_j]
+                v_cnt[v_m] = v_cnt[v_m] + v_d
+            endfor v_j
+        endfor v_i
+        v_still = 0
+    else
+        v_still = v_still + 1
+    endif
+    call collect
+}
+
+def draw_cube_frame {
+    v_e = v_half * v_spacing + 1.2
+    # 8 corners
+    for v_i in (0, 7, 1)
+        v_wx = (v_i % 2) * 2 - 1
+        v_wy = (floor(v_i / 2) % 2) * 2 - 1
+        v_wz = (floor(v_i / 4) % 2) * 2 - 1
+        v_wx = v_wx * v_e
+        v_wy = v_wy * v_e
+        v_wz = v_wz * v_e
+        call project
+        v_kx[v_i] = v_sx
+        v_ky[v_i] = v_sy
+    endfor v_i
+    for v_i in (0, 11, 1)
+        draw_line(v_kx[v_ea[v_i]], v_ky[v_ea[v_i]], v_kx[v_eb[v_i]], v_ky[v_eb[v_i]], sky_blue, 18)
+    endfor v_i
+}
+
+create_array(v_kx, 8, numeric)
+create_array(v_ky, 8, numeric)
+create_array(v_ea, 12, numeric)
+create_array(v_eb, 12, numeric)
+v_e = 0
+for v_i in (0, 7, 1)
+    v_bit = 1
+    for v_b in (0, 2, 1)
+        if floor(v_i / v_bit) % 2 == 0 then
+            v_ea[v_e] = v_i
+            v_eb[v_e] = v_i + v_bit
+            v_e = v_e + 1
+        endif
+        v_bit = v_bit * 2
+    endfor v_b
+endfor v_i
+
+v_ay = 0.5
+v_ax = 0.45
+
+def setup_view {
+    v_cya = cos(v_ay)
+    v_sya = sin(v_ay)
+    v_cxa = cos(v_ax)
+    v_sxa = sin(v_ax)
+}
+
+def project {
+    v_tx = v_wx * v_cya + v_wz * v_sya
+    v_tz = v_wz * v_cya - v_wx * v_sya
+    v_ty = v_wy * v_cxa - v_tz * v_sxa
+    v_dep = v_wy * v_sxa + v_tz * v_cxa
+    v_f = v_view * 40 / (40 - v_dep)
+    v_sx = 31.5 + v_tx * v_f
+    v_sy = 31.5 + v_ty * v_f
+}
+
+def draw_cells {
+    for v_i in (0, v_nshow - 1, 1)
+        v_c = v_show[v_i]
+        v_wx = v_wxa[v_c]
+        v_wy = v_wya[v_c]
+        v_wz = v_wza[v_c]
+        call project
+        v_s = v_st[v_c]
+        v_b = min(max(62 + v_dep * 3.2, 14), 100)
+        if v_s == 1 then
+            v_col = int(v_hue[v_c] + v_hue_shift) % 100
+        else
+            v_age = (v_s - 1) / max(v_states - 2, 1)
+            v_col = int(8 - v_age * 8)
+            v_b = v_b * (1 - v_age * 0.7) * 0.6
+        endif
+        v_x0 = round(v_sx)
+        v_y0 = round(v_sy)
+        mplot(v_x0, v_y0, v_col, v_b)
+        if v_dep > 1 and v_s == 1 then
+            mplot(v_x0 + 1, v_y0, v_col, v_b * 0.8)
+            mplot(v_x0, v_y0 + 1, v_col, v_b * 0.8)
+            mplot(v_x0 + 1, v_y0 + 1, v_col, v_b * 0.6)
+        endif
+    endfor v_i
+}
+
+# ---------------- Main loop ----------------
+v_hue_shift = 0
+v_frame = 0
+v_rule_timer = 0
+v_states = v_rule_states[v_rule]
+call seed
+
+while true then
+    v_frame = v_frame + 1
+    v_rule_timer = v_rule_timer + 1
+    v_ay = v_ay + v_spin
+    v_ax = 0.45 + 0.25 * sin(v_frame * 0.003)
+    v_hue_shift = v_hue_shift + 0.05
+    call setup_view
+
+    if v_frame % v_gen_frames == 0 then
+        call generation
+        if v_rule_timer > v_rule_frames or v_alive < 4 or v_still > 3 then
+            if v_rule_timer > v_rule_frames then
+                v_rule = (v_rule + 1) % v_rules
+                v_states = v_rule_states[v_rule]
+            endif
+            v_rule_timer = 0
+            call seed
+        endif
+    endif
+
+    begin_frame
+        call draw_cube_frame
+        if v_nshow > 0 then
+            call draw_cells
+        endif
+        if v_rule_timer < 150 then
+            draw_text(32, 57, v_rule_names[v_rule], tiny64_font, 8, white, 45, NORMAL, CENTER)
+        endif
+    end_frame
+endwhile

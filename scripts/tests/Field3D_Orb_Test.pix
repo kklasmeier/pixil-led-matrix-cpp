@@ -1,0 +1,50 @@
+# Field3D Orb Test — Phase 0 spike for full-res 3D via field_program
+#
+# Lit, spinning, checkered ball at 64x64. Confirms formula mode, the
+# hue/shade packing trick (only the last value {} result is visible to
+# color/opacity), and a rough per-frame op budget on the Pi.
+
+fps(60)
+throttle(0)
+
+create_array(v_sx, 1)
+create_array(v_sy, 1)
+v_sx[0] = 32
+v_sy[0] = 32
+v_t = 0
+v_lx = 0
+v_ly = 0
+v_lz = 1
+
+field_program orb {
+    size 64
+    sites v_sx, v_sy
+    mode formula
+    value {
+        v_u = (grid_x - 31.5) / 26
+        v_v = (31.5 - grid_y) / 26
+        v_r2 = v_u * v_u + v_v * v_v
+        v_z = sqrt(max(1 - v_r2, 0))
+        v_diff = max(v_u * v_lx + v_v * v_ly + v_z * v_lz, 0)
+        v_spec = pow(v_diff, 24)
+        v_lon = atan2(v_u, v_z) + v_t
+        v_chk = floor(v_lon * 2.5) + floor(v_v * 4)
+        v_par = v_chk - floor(v_chk / 2) * 2
+        v_hue = where(v_par > 0.5, 8, 62)
+        v_shade = clamp(v_diff * 70 + v_spec * 30 + 6, 0, 99)
+        v_out = where(v_r2 < 1, v_hue * 1000 + v_shade, -1)
+    }
+    plot_if v_out >= 0
+    color floor(v_out / 1000)
+    opacity v_out - floor(v_out / 1000) * 1000
+}
+
+while true then
+    v_t = v_t + 0.03
+    v_lx = cos(v_t * 0.7) * 0.6
+    v_ly = 0.5
+    v_lz = 0.62
+    begin_frame
+        field_render(orb)
+    end_frame
+endwhile

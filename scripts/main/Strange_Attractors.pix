@@ -1,0 +1,317 @@
+# Strange Attractors - a gallery of chaos in 3D
+#
+# Hundreds of glowing particles flow along the paths of famous strange
+# attractors while the camera slowly circles each one:
+#   Lorenz     - the classic two-winged "butterfly"
+#   Aizawa     - a glowing apple with a tube through its core
+#   Thomas     - a cyclically symmetric tangle of loops
+#   Halvorsen  - three curled propeller blades
+#   Dadras     - two twisted lobes
+#   Rossler    - a flat spiral that folds back over itself
+#
+# Each particle follows the attractor's equations (a tiny Euler step a few
+# times per frame). Particles are coloured by how fast they are moving
+# compared with the attractor's average speed, and leave short fading
+# trails (mplot burnout), which draws the flow as silky streamlines.
+# Near particles are brighter than far ones.
+#
+# The attractors play in a random order: every one plays once, then the
+# order is reshuffled and it starts again (never repeating back to back).
+# Between attractors the trails fade out and the name is shown. Each
+# attractor is fitted to the panel automatically: one particle is run for a
+# few thousand steps to find the attractor's size and average speed, and the
+# other particles are dropped along that path so the whole shape appears at
+# once.
+
+fps(60)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_n = 220              # particles (lower this if the Pi struggles)
+v_trail_ms = 450       # trail length (ms of fade)
+v_show_frames = 1500   # frames per attractor (~25 s at 60 fps)
+v_title_secs = 1.6     # how long the name is shown
+v_orbit_speed = 0.006  # camera orbit, radians per frame
+v_fit = 27             # half-size on the panel, in pixels
+
+# ---------------- Attractor table ----------------
+v_kinds = 6
+create_array(v_names, v_kinds, string)
+create_array(v_dts, v_kinds, numeric)
+create_array(v_hue0, v_kinds, numeric)
+create_array(v_hspan, v_kinds, numeric)
+create_array(v_sx0, v_kinds, numeric)
+create_array(v_sy0, v_kinds, numeric)
+create_array(v_sz0, v_kinds, numeric)
+create_array(v_title_col, v_kinds, string)
+
+v_names[0] = "LORENZ"
+v_dts[0] = 0.005
+v_hue0[0] = 62
+v_hspan[0] = -28
+v_sx0[0] = 1
+v_sy0[0] = 1
+v_sz0[0] = 1
+v_title_col[0] = "sky_blue"
+
+v_names[1] = "AIZAWA"
+v_dts[1] = 0.012
+v_hue0[1] = 0
+v_hspan[1] = 24
+v_sx0[1] = 0.1
+v_sy0[1] = 0
+v_sz0[1] = 0
+v_title_col[1] = "orange"
+
+v_names[2] = "THOMAS"
+v_dts[2] = 0.07
+v_hue0[2] = 30
+v_hspan[2] = 22
+v_sx0[2] = 1.1
+v_sy0[2] = 1.1
+v_sz0[2] = -0.01
+v_title_col[2] = "lime"
+
+v_names[3] = "HALVORSEN"
+v_dts[3] = 0.004
+v_hue0[3] = 75
+v_hspan[3] = 20
+v_sx0[3] = -1.48
+v_sy0[3] = -1.51
+v_sz0[3] = 2.04
+v_title_col[3] = "violet"
+
+v_names[4] = "DADRAS"
+v_dts[4] = 0.004
+v_hue0[4] = 50
+v_hspan[4] = -40
+v_sx0[4] = 1.1
+v_sy0[4] = 2.1
+v_sz0[4] = -2
+v_title_col[4] = "cyan"
+
+v_names[5] = "ROSSLER"
+v_dts[5] = 0.025
+v_hue0[5] = 88
+v_hspan[5] = 22
+v_sx0[5] = 1
+v_sy0[5] = 1
+v_sz0[5] = 0
+v_title_col[5] = "pink"
+
+# ---------------- Particles ----------------
+create_array(v_x, v_n, numeric)
+create_array(v_y, v_n, numeric)
+create_array(v_z, v_n, numeric)
+create_array(v_spd, v_n, numeric)
+
+v_kind = 0
+v_dt = 0.005
+v_a = 0
+v_b = 0
+v_c = 0
+v_da = 0
+v_db = 0
+v_dc = 0
+
+# Derivative of the current attractor at (v_a, v_b, v_c) -> (v_da, v_db, v_dc)
+def deriv {
+    if v_kind == 0 then
+        v_da = 10 * (v_b - v_a)
+        v_db = v_a * (28 - v_c) - v_b
+        v_dc = v_a * v_b - 2.6667 * v_c
+    elseif v_kind == 1 then
+        v_zb = v_c - 0.7
+        v_da = v_zb * v_a - 3.5 * v_b
+        v_db = 3.5 * v_a + v_zb * v_b
+        v_dc = 0.6 + 0.95 * v_c - v_c * v_c * v_c / 3 - (v_a * v_a + v_b * v_b) * (1 + 0.25 * v_c) + 0.1 * v_c * v_a * v_a * v_a
+    elseif v_kind == 2 then
+        v_da = sin(v_b) - 0.208186 * v_a
+        v_db = sin(v_c) - 0.208186 * v_b
+        v_dc = sin(v_a) - 0.208186 * v_c
+    elseif v_kind == 3 then
+        v_da = -1.89 * v_a - 4 * v_b - 4 * v_c - v_b * v_b
+        v_db = -1.89 * v_b - 4 * v_c - 4 * v_a - v_c * v_c
+        v_dc = -1.89 * v_c - 4 * v_a - 4 * v_b - v_a * v_a
+    elseif v_kind == 4 then
+        v_da = v_b - 3 * v_a + 2.7 * v_b * v_c
+        v_db = 1.7 * v_b - v_a * v_c + v_c
+        v_dc = 2 * v_a * v_b - 9 * v_c
+    else
+        v_da = 0 - v_b - v_c
+        v_db = v_a + 0.2 * v_b
+        v_dc = 0.2 + v_c * (v_a - 5.7)
+    endif
+}
+
+def euler {
+    call deriv
+    v_a = v_a + v_da * v_dt
+    v_b = v_b + v_db * v_dt
+    v_c = v_c + v_dc * v_dt
+}
+
+# Find the attractor's size and speed, then spread the particles along it.
+def setup_attractor {
+    v_dt = v_dts[v_kind]
+    v_a = v_sx0[v_kind]
+    v_b = v_sy0[v_kind]
+    v_c = v_sz0[v_kind]
+    for v_s in (1, 1500, 1)
+        call euler
+    endfor v_s
+    v_minx = v_a
+    v_maxx = v_a
+    v_miny = v_b
+    v_maxy = v_b
+    v_minz = v_c
+    v_maxz = v_c
+    v_sum_spd = 0
+    v_gap = 26
+    v_mx = 0
+    v_my = 0
+    v_mz = 0
+    v_qq = 0
+    for v_i in (0, v_n - 1, 1)
+        for v_s in (1, v_gap, 1)
+            call euler
+            v_minx = min(v_minx, v_a)
+            v_maxx = max(v_maxx, v_a)
+            v_miny = min(v_miny, v_b)
+            v_maxy = max(v_maxy, v_b)
+            v_minz = min(v_minz, v_c)
+            v_maxz = max(v_maxz, v_c)
+        endfor v_s
+        v_x[v_i] = v_a
+        v_y[v_i] = v_b
+        v_z[v_i] = v_c
+        v_spd[v_i] = abs(v_da) + abs(v_db) + abs(v_dc)
+        v_sum_spd = v_sum_spd + v_spd[v_i]
+        v_mx = v_mx + v_a
+        v_my = v_my + v_b
+        v_mz = v_mz + v_c
+        v_qq = v_qq + v_a * v_a + v_b * v_b + v_c * v_c
+    endfor v_i
+    # centre on the particles' average position (balances lopsided shapes),
+    # size from the farthest extent of the path
+    v_cx = v_mx / v_n
+    v_cy = v_my / v_n
+    v_cz = v_mz / v_n
+    v_hx = max(v_maxx - v_cx, v_cx - v_minx)
+    v_hy = max(v_maxy - v_cy, v_cy - v_miny)
+    v_hz = max(v_maxz - v_cz, v_cz - v_minz)
+    v_rad = max(sqrt(v_hx * v_hx + v_hy * v_hy), v_hz * 1.1)
+    # rare far excursions (Dadras, Rossler) should not shrink the whole
+    # shape: cap the size at a multiple of the typical spread
+    v_rms = sqrt(max(v_qq / v_n - v_cx * v_cx - v_cy * v_cy - v_cz * v_cz, 0))
+    v_rad = min(v_rad, v_rms * 1.9)
+    v_sc = v_fit / max(v_rad, 0.01)
+    v_avg_spd = max(v_sum_spd / v_n, 0.0001)
+    v_reseed_lim = v_rad * 4
+}
+
+# Advance every particle a couple of steps, then draw it
+def step_and_draw {
+    v_ca = cos(v_az)
+    v_sa = sin(v_az)
+    v_ce = cos(v_el)
+    v_se = sin(v_el)
+    v_h0 = v_hue0[v_kind]
+    v_hs = v_hspan[v_kind]
+    for v_i in (0, v_n - 1, 1)
+        v_a = v_x[v_i]
+        v_b = v_y[v_i]
+        v_c = v_z[v_i]
+        call euler
+        call euler
+        # escaped particle (numerical blow-up): drop it back on the attractor
+        if abs(v_a - v_cx) + abs(v_b - v_cy) + abs(v_c - v_cz) > v_reseed_lim then
+            v_j = random(0, v_n - 1, 0)
+            v_a = v_x[v_j] + random(-0.01, 0.01, 3)
+            v_b = v_y[v_j]
+            v_c = v_z[v_j]
+        endif
+        v_x[v_i] = v_a
+        v_y[v_i] = v_b
+        v_z[v_i] = v_c
+        v_rel = (abs(v_da) + abs(v_db) + abs(v_dc)) / v_avg_spd
+        # camera: orbit around the vertical (z) axis, tilted by v_el
+        v_px = v_a - v_cx
+        v_py = v_b - v_cy
+        v_pz = v_c - v_cz
+        v_rx = v_px * v_ca - v_py * v_sa
+        v_rd = v_px * v_sa + v_py * v_ca
+        v_up = v_pz * v_ce + v_rd * v_se
+        v_dep = (v_rd * v_ce - v_pz * v_se) * v_sc
+        v_f = v_sc * 95 / (95 + v_dep)
+        v_sx = 31.5 + v_rx * v_f
+        v_sy = 31.5 - v_up * v_f
+        v_col = int(v_h0 + min(v_rel, 2.2) * v_hs + 200) % 100
+        v_bri = min(max(62 - v_dep * 1.3 + v_rel * 10, 12), 100)
+        mplot(v_sx, v_sy, v_col, v_bri, v_trail_ms, fade)
+    endfor v_i
+}
+
+# ---------------- Play order ----------------
+# Every pass plays all attractors once in a random order, then reshuffles.
+# A new pass never starts with the attractor that just finished.
+create_array(v_order, v_kinds, numeric)
+v_last = -1
+
+def shuffle_order {
+    for v_i in (0, v_kinds - 1, 1)
+        v_order[v_i] = v_i
+    endfor v_i
+    v_tries = 0
+    v_again = 1
+    while v_again == 1 then
+        # Fisher-Yates shuffle
+        for v_i in (v_kinds - 1, 1, -1)
+            v_j = random(0, v_i, 0)
+            v_tmp = v_order[v_i]
+            v_order[v_i] = v_order[v_j]
+            v_order[v_j] = v_tmp
+        endfor v_i
+        v_tries = v_tries + 1
+        v_again = 0
+        if v_order[0] == v_last and v_tries < 10 then
+            v_again = 1
+        endif
+    endwhile
+}
+
+# ---------------- Main loop ----------------
+v_az = 0
+v_el = 0.35
+v_t = 0
+v_kind = 0
+
+while true then
+    call shuffle_order
+    for v_slot in (0, v_kinds - 1, 1)
+        v_kind = v_order[v_slot]
+
+        # title card
+        begin_frame
+            draw_text(32, 29, v_names[v_kind], tiny64_font, 8, v_title_col[v_kind], 80, NORMAL, CENTER)
+        end_frame
+        call setup_attractor
+        rest(v_title_secs)
+        begin_frame
+        end_frame
+
+        # run this attractor
+        for v_frame in (1, v_show_frames, 1)
+            v_az = v_az + v_orbit_speed
+            v_el = 0.35 + 0.3 * sin(v_t * 0.004)
+            v_t = v_t + 1
+            begin_frame(true)
+                call step_and_draw
+            end_frame
+        endfor v_frame
+
+        # let the trails fade away, then move on
+        rest(v_trail_ms / 1000 + 0.3)
+        v_last = v_kind
+    endfor v_slot
+endwhile
