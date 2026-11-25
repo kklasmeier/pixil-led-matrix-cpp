@@ -1,0 +1,232 @@
+# Comet Flyby - a comet swings round the sun and grows its tails
+#
+# A comet falls in from the dark on a long elliptical orbit, speeds up as
+# it plunges past the sun (real Kepler orbit timing), and slows again on
+# the way out. Far from the sun it is just a dim speck. As it closes in,
+# the heat wakes it up: the coma swells and two tails grow:
+#   - a straight blue ion tail that always points directly away from the
+#     sun, even when the comet is heading away from it
+#   - a broader, curved yellow-white dust tail that lags behind along the
+#     orbit
+# Both tails shrink again as the comet heads back out. Every pass has a
+# new orbit: different direction, closeness to the sun, and shape.
+#
+# A couple of planets drift round on their own orbits, and a faint dotted
+# line traces the comet's path.
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_pass_secs = 32       # roughly how long one pass takes
+v_tilt = 0.62          # squash of the orbital plane (1 = looking straight down)
+
+v_cx = 32
+v_cy = 32
+
+# ---------------- Particles (tails) ----------------
+v_np = 420
+create_array(v_qx, v_np, numeric)
+create_array(v_qy, v_np, numeric)
+create_array(v_qvx, v_np, numeric)
+create_array(v_qvy, v_np, numeric)
+create_array(v_ql, v_np, numeric)
+create_array(v_qm, v_np, numeric)    # life at birth
+create_array(v_qt, v_np, numeric)    # 0 ion, 1 dust
+v_qn = 0
+
+# stars
+v_ns = 55
+create_array(v_stx, v_ns, numeric)
+create_array(v_sty, v_ns, numeric)
+create_array(v_stb, v_ns, numeric)
+for v_i in (0, v_ns - 1, 1)
+    v_stx[v_i] = random(0, 63, 0)
+    v_sty[v_i] = random(0, 63, 0)
+    v_stb[v_i] = random(4, 28, 0)
+endfor v_i
+
+# orbit trace (dotted)
+v_nt = 70
+create_array(v_trx, v_nt, numeric)
+create_array(v_try, v_nt, numeric)
+
+# ---------------- Orbit maths ----------------
+# mean anomaly v_M -> orbit-plane position v_ox, v_oy and distance v_r
+def kepler {
+    v_E = v_M
+    for v_k in (1, 6, 1)
+        v_E = v_E - (v_E - v_e * sin(v_E) - v_M) / (1 - v_e * cos(v_E))
+    endfor v_k
+    v_ox = v_a * (cos(v_E) - v_e)
+    v_oy = v_a * v_b_ratio * sin(v_E) * v_dir
+    v_r = v_a * (1 - v_e * cos(v_E))
+}
+# orbit plane -> world (rotate by v_w) -> screen
+def to_screen {
+    v_wx = v_ox * v_cw - v_oy * v_sw
+    v_wy = v_ox * v_sw + v_oy * v_cw
+    v_sx = v_cx + v_wx
+    v_sy = v_cy + v_wy * v_tilt
+}
+
+def new_orbit {
+    v_q = random(3.2, 7, 2)
+    v_e = random(0.86, 0.97, 3)
+    v_a = v_q / (1 - v_e)
+    v_b_ratio = sqrt(1 - v_e * v_e)
+    v_w = random(0, 6.283, 3)
+    v_cw = cos(v_w)
+    v_sw = sin(v_w)
+    v_dir = random(0, 1, 0) * 2 - 1
+    # start and end where the comet is about 40 px from the sun
+    v_rmax = 40
+    v_Em = acos(max(-1, min(1, (1 - v_rmax / v_a) / v_e)))
+    v_Mm = v_Em - v_e * sin(v_Em)
+    v_M = -v_Mm
+    v_dM = 2 * v_Mm / (v_pass_secs * 40)
+    # dotted trace of the path
+    for v_i in (0, v_nt - 1, 1)
+        v_M = -v_Mm + 2 * v_Mm * v_i / (v_nt - 1)
+        call kepler
+        call to_screen
+        v_trx[v_i] = v_sx
+        v_try[v_i] = v_sy
+    endfor v_i
+    v_M = -v_Mm
+    call kepler
+    call to_screen
+    v_lsx = v_sx
+    v_lsy = v_sy
+    v_ion_h = random(55, 64, 0)
+}
+
+def spawn {
+    v_qx[v_qn] = v_nx
+    v_qy[v_qn] = v_ny
+    v_qvx[v_qn] = v_nvx
+    v_qvy[v_qn] = v_nvy
+    v_ql[v_qn] = v_nl
+    v_qm[v_qn] = v_nl
+    v_qt[v_qn] = v_ntp
+    v_qn = (v_qn + 1) % v_np
+}
+
+# ---------------- Start ----------------
+call new_orbit
+v_frame = 0
+v_p1 = random(0, 6.283, 2)
+v_p2 = random(0, 6.283, 2)
+v_gap = 0
+
+# ---------------- Main loop ----------------
+while true then
+    v_frame = v_frame + 1
+    if v_gap > 0 then
+        v_gap = v_gap - 1
+        if v_gap == 0 then
+            call new_orbit
+        endif
+    else
+        v_M = v_M + v_dM
+        if v_M > v_Mm then
+            v_gap = 120
+        endif
+    endif
+    call kepler
+    call to_screen
+    # comet velocity on screen (for the dust)
+    v_vx = v_sx - v_lsx
+    v_vy = v_sy - v_lsy
+    v_lsx = v_sx
+    v_lsy = v_sy
+    # direction away from the sun (in world space, then squashed)
+    v_rx = v_sx - v_cx
+    v_ry = (v_sy - v_cy) / v_tilt
+    v_rl = sqrt(v_rx * v_rx + v_ry * v_ry) + 0.01
+    v_ux = v_rx / v_rl
+    v_uy = v_ry / v_rl * v_tilt
+    # activity grows as 1/r^2 near the sun
+    v_act = min(1, 120 / (v_r * v_r))
+
+    if v_gap == 0 then
+        # ion tail: fast, straight away from the sun
+        v_n_ion = floor(v_act * 5 + random(0, 1, 2))
+        for v_k in (1, v_n_ion, 1)
+            v_nx = v_sx
+            v_ny = v_sy
+            v_sp = random(1.0, 1.8, 2) * (0.5 + v_act)
+            v_nvx = v_ux * v_sp + random(-0.08, 0.08, 3)
+            v_nvy = v_uy * v_sp + random(-0.08, 0.08, 3)
+            v_nl = floor(12 + v_act * 18)
+            v_ntp = 0
+            call spawn
+        endfor v_k
+        # dust: launched gently, drifts behind along the orbit
+        v_n_dust = floor(v_act * 6 + random(0, 1, 2))
+        for v_k in (1, v_n_dust, 1)
+            v_nx = v_sx + random(-0.5, 0.5, 2)
+            v_ny = v_sy + random(-0.5, 0.5, 2)
+            v_sp = random(0.1, 0.35, 2)
+            v_nvx = v_vx * 0.55 + v_ux * v_sp + random(-0.06, 0.06, 3)
+            v_nvy = v_vy * 0.55 + v_uy * v_sp + random(-0.06, 0.06, 3)
+            v_nl = floor(25 + v_act * 45)
+            v_ntp = 1
+            call spawn
+        endfor v_k
+    endif
+
+    begin_frame
+        for v_i in (0, v_ns - 1, 1)
+            mplot(v_stx[v_i], v_sty[v_i], white, v_stb[v_i])
+        endfor v_i
+        # planets on their own orbits
+        v_p1 = v_p1 + 0.004
+        v_p2 = v_p2 + 0.0016
+        mplot(v_cx + cos(v_p1) * 15, v_cy + sin(v_p1) * 15 * v_tilt, ocean_blue, 70)
+        mplot(v_cx + cos(v_p2) * 26, v_cy + sin(v_p2) * 26 * v_tilt, coral, 60)
+        # dotted path
+        if v_gap == 0 then
+            for v_i in (0, v_nt - 1, 2)
+                mplot(v_trx[v_i], v_try[v_i], gray, 10)
+            endfor v_i
+        endif
+        # tails
+        for v_i in (0, v_np - 1, 1)
+            if v_ql[v_i] > 0 then
+                v_ql[v_i] = v_ql[v_i] - 1
+                v_qx[v_i] = v_qx[v_i] + v_qvx[v_i]
+                v_qy[v_i] = v_qy[v_i] + v_qvy[v_i]
+                v_f = v_ql[v_i] / v_qm[v_i]
+                if v_qt[v_i] == 0 then
+                    mplot(v_qx[v_i], v_qy[v_i], v_ion_h, 25 + 70 * v_f)
+                else
+                    # dust is pushed outward slowly by sunlight
+                    v_dx = v_qx[v_i] - v_cx
+                    v_dy = (v_qy[v_i] - v_cy) / v_tilt
+                    v_dl = sqrt(v_dx * v_dx + v_dy * v_dy) + 0.5
+                    v_qvx[v_i] = v_qvx[v_i] * 0.985 + v_dx / v_dl * 0.012
+                    v_qvy[v_i] = v_qvy[v_i] * 0.985 + v_dy / v_dl * 0.012 * v_tilt
+                    if v_f > 0.6 then
+                        mplot(v_qx[v_i], v_qy[v_i], white, 30 + 50 * v_f)
+                    else
+                        mplot(v_qx[v_i], v_qy[v_i], 14, 30 + 70 * v_f)
+                    endif
+                endif
+            endif
+        endfor v_i
+        # the sun
+        v_fl = sin(v_frame * 0.3) * 0.3
+        draw_circle(v_cx, v_cy, 6 + v_fl, orange, 15, true)
+        draw_circle(v_cx, v_cy, 4.5, orange, 50, true)
+        draw_circle(v_cx, v_cy, 3.3, yellow, 95, true)
+        draw_circle(v_cx - 0.6, v_cy - 0.6, 1.4, white, 85, true)
+        # the comet: coma and nucleus
+        if v_gap == 0 then
+            if v_act > 0.08 then
+                draw_circle(v_sx, v_sy, 0.6 + v_act * 1.4, cyan, 8 + v_act * 18, true)
+            endif
+            mplot(v_sx, v_sy, white, 60 + v_act * 40)
+        endif
+    end_frame
+endwhile

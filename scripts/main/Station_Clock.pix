@@ -1,0 +1,149 @@
+# Station Clock - a railway platform clock with the "stop at twelve" seconds hand
+#
+# Railway clocks keep every clock on the network in step in a clever way:
+# the red seconds hand sweeps round a little faster than real time, taking
+# about 58.5 seconds for the circle, then waits at twelve. When the master
+# clock sends its pulse at the top of the minute, the seconds hand sets off
+# again and the minute hand jumps forward one mark with a little bounce.
+#
+# This clock works the same way: smooth sweeping red seconds hand with an
+# arrow tip and a ring counterweight, a pause at twelve, a jumping minute
+# hand, black tapered hands on a white face with sixty minute marks and
+# bold hour bars. (The face design is this script's own.)
+#
+# The face is drawn once on layer 0; only the hands are redrawn each frame
+# on layer 1.
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_sweep_secs = 58.5    # how long the seconds hand takes to go round
+v_face_bright = 62     # brightness of the white face
+
+v_cx = 31.5
+v_cy = 31.5
+
+# ---------------- The face (drawn once) ----------------
+def draw_face {
+    # bezel: dark rim with a lighter inner edge
+    draw_circle(v_cx, v_cy, 31.5, dark_gray, 70, true)
+    draw_circle(v_cx, v_cy, 30.5, gray, 45, true)
+    draw_circle(v_cx, v_cy, 29.5, white, v_face_bright, true)
+    # minute marks and hour bars
+    for v_m in (0, 59, 1)
+        v_a = v_m * 6 * 0.0174533
+        v_sa = sin(v_a)
+        v_ca = -cos(v_a)
+        if v_m % 5 == 0 then
+            # bold hour bar, three lines wide
+            for v_o in (-0.8, 0.8, 0.8)
+                v_px = v_ca * v_o * -1
+                v_py = v_sa * v_o
+                draw_line(v_cx + v_sa * 28.3 + v_ca * 0 + v_o * cos(v_a), v_cy + v_ca * 28.3 + v_o * sin(v_a), v_cx + v_sa * 21.5 + v_o * cos(v_a), v_cy + v_ca * 21.5 + v_o * sin(v_a), black, 100)
+            endfor v_o
+        else
+            draw_line(v_cx + v_sa * 28.3, v_cy + v_ca * 28.3, v_cx + v_sa * 26, v_cy + v_ca * 26, black, 100)
+        endif
+    endfor v_m
+}
+
+# ---------------- Hands ----------------
+# thick tapered hand: angle v_ha (degrees), length v_hl, tail v_ht,
+# half-width at the base v_hw, colour v_hc
+def draw_hand {
+    v_a = v_ha * 0.0174533
+    v_dx = sin(v_a)
+    v_dy = -cos(v_a)
+    v_nx = -v_dy
+    v_ny = v_dx
+    v_steps = max(1, floor(v_hw * 2.5))
+    for v_k in (-v_steps, v_steps, 1)
+        v_o = v_k / v_steps * v_hw
+        # outer strands are shorter, so the hand tapers to a point
+        v_len = v_hl * (1 - abs(v_k / v_steps) * 0.55)
+        draw_line(v_cx - v_dx * v_ht + v_nx * v_o, v_cy - v_dy * v_ht + v_ny * v_o, v_cx + v_dx * v_len + v_nx * v_o * 0.6, v_cy + v_dy * v_len + v_ny * v_o * 0.6, v_hc, 100)
+    endfor v_k
+}
+
+def draw_seconds {
+    v_a = v_sa_deg * 0.0174533
+    v_dx = sin(v_a)
+    v_dy = -cos(v_a)
+    v_nx = -v_dy
+    v_ny = v_dx
+    # slim shaft from the counterweight ring out to the arrow tip
+    draw_line(v_cx - v_dx * 9, v_cy - v_dy * 9, v_cx + v_dx * 22, v_cy + v_dy * 22, red, 100)
+    # arrow tip
+    v_tx = v_cx + v_dx * 26
+    v_ty = v_cy + v_dy * 26
+    draw_line(v_tx, v_ty, v_cx + v_dx * 21.5 + v_nx * 2, v_cy + v_dy * 21.5 + v_ny * 2, red, 100)
+    draw_line(v_tx, v_ty, v_cx + v_dx * 21.5 - v_nx * 2, v_cy + v_dy * 21.5 - v_ny * 2, red, 100)
+    draw_line(v_cx + v_dx * 21.5 + v_nx * 2, v_cy + v_dy * 21.5 + v_ny * 2, v_cx + v_dx * 21.5 - v_nx * 2, v_cy + v_dy * 21.5 - v_ny * 2, red, 100)
+    draw_line(v_tx, v_ty, v_cx + v_dx * 22.5, v_cy + v_dy * 22.5, red, 100)
+    # ring counterweight on the tail
+    draw_circle(v_cx - v_dx * 7, v_cy - v_dy * 7, 2, red, 100, false)
+    # centre cap
+    draw_circle(v_cx, v_cy, 1.5, red, 100, true)
+    mplot(v_cx, v_cy, maroon, 100)
+}
+
+# ---------------- Start ----------------
+begin_frame
+    call draw_face
+end_frame
+
+v_frame = 0
+v_last_s = get_datetime("s")
+v_s_frame = 0
+v_last_m = get_datetime("mi")
+v_jump = 99            # frames since the minute hand jumped
+v_shown_min = v_last_m
+
+# ---------------- Main loop ----------------
+while true then
+    v_frame = v_frame + 1
+    v_s = get_datetime("s")
+    v_m = get_datetime("mi")
+    v_h = get_datetime("H")
+    if v_s != v_last_s then
+        v_last_s = v_s
+        v_s_frame = v_frame
+    endif
+    if v_m != v_last_m then
+        v_last_m = v_m
+        v_jump = 0
+    endif
+    v_frac = min(0.999, (v_frame - v_s_frame) / 40)
+    v_t = v_s + v_frac
+
+    # seconds hand: sweep, then wait at twelve for the next minute pulse
+    v_sa_deg = min(1, v_t / v_sweep_secs) * 360
+
+    # minute hand: jumps on the pulse with a small damped bounce
+    v_bounce = 0
+    if v_jump < 30 then
+        v_jump = v_jump + 1
+        v_bounce = 1.6 * sin(v_jump * 0.9) * pow(0.82, v_jump)
+    endif
+    v_ma = v_m * 6 + v_bounce
+    v_hra = ((v_h % 12) + v_m / 60) * 30 + v_bounce * 0.08
+
+    begin_frame(true)
+        set_layer(1)
+        clear_layer(1)
+        v_ha = v_hra
+        v_hl = 16
+        v_ht = 5
+        v_hw = 1.6
+        v_hc = "black"
+        call draw_hand
+        v_ha = v_ma
+        v_hl = 25
+        v_ht = 5
+        v_hw = 1.3
+        call draw_hand
+        call draw_seconds
+        set_layer(0)
+    end_frame
+endwhile

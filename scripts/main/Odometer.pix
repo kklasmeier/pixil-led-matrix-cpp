@@ -1,0 +1,586 @@
+# Mechanical Odometer - the time on rolling number wheels
+#
+# Six drums behind a brass panel show hours, minutes and seconds. Each
+# drum is a real cylinder: you see the digits above and below the current
+# one curving away and darkening, and when the time ticks over the drum
+# rolls round to the next number. When the seconds pass 59 the tens drum
+# and the minutes drums all roll together, just like the carry on a car's
+# mileage counter.
+#
+# Every few minutes the panel switches to TRIP mode for a while: the drums
+# become a mileage counter that races up from 999,990, rolls through the
+# big 999999 -> 000000 rollover where every wheel turns at once, keeps
+# counting fast, and then rolls back to the time.
+#
+# Drums and panel are drawn once on layer 0; only the digits on layer 1
+# are redrawn each frame.
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_24h = 1              # 1 = 24-hour clock, 0 = 12-hour
+v_trip_every = 150     # seconds between trip-meter shows (0 = never)
+v_trip_secs = 22       # how long the trip meter runs
+
+# ---------------- Digit glyphs (5 x 7, generated) ----------------
+create_array(v_gn, 10, numeric)
+create_array(v_gpx, 400, numeric)
+create_array(v_gpy, 400, numeric)
+v_gpx[0] = 1
+v_gpy[0] = 0
+v_gpx[1] = 2
+v_gpy[1] = 0
+v_gpx[2] = 3
+v_gpy[2] = 0
+v_gpx[3] = 0
+v_gpy[3] = 1
+v_gpx[4] = 4
+v_gpy[4] = 1
+v_gpx[5] = 0
+v_gpy[5] = 2
+v_gpx[6] = 3
+v_gpy[6] = 2
+v_gpx[7] = 4
+v_gpy[7] = 2
+v_gpx[8] = 0
+v_gpy[8] = 3
+v_gpx[9] = 2
+v_gpy[9] = 3
+v_gpx[10] = 4
+v_gpy[10] = 3
+v_gpx[11] = 0
+v_gpy[11] = 4
+v_gpx[12] = 1
+v_gpy[12] = 4
+v_gpx[13] = 4
+v_gpy[13] = 4
+v_gpx[14] = 0
+v_gpy[14] = 5
+v_gpx[15] = 4
+v_gpy[15] = 5
+v_gpx[16] = 1
+v_gpy[16] = 6
+v_gpx[17] = 2
+v_gpy[17] = 6
+v_gpx[18] = 3
+v_gpy[18] = 6
+v_gn[0] = 19
+v_gpx[40] = 2
+v_gpy[40] = 0
+v_gpx[41] = 1
+v_gpy[41] = 1
+v_gpx[42] = 2
+v_gpy[42] = 1
+v_gpx[43] = 2
+v_gpy[43] = 2
+v_gpx[44] = 2
+v_gpy[44] = 3
+v_gpx[45] = 2
+v_gpy[45] = 4
+v_gpx[46] = 2
+v_gpy[46] = 5
+v_gpx[47] = 1
+v_gpy[47] = 6
+v_gpx[48] = 2
+v_gpy[48] = 6
+v_gpx[49] = 3
+v_gpy[49] = 6
+v_gn[1] = 10
+v_gpx[80] = 1
+v_gpy[80] = 0
+v_gpx[81] = 2
+v_gpy[81] = 0
+v_gpx[82] = 3
+v_gpy[82] = 0
+v_gpx[83] = 0
+v_gpy[83] = 1
+v_gpx[84] = 4
+v_gpy[84] = 1
+v_gpx[85] = 4
+v_gpy[85] = 2
+v_gpx[86] = 3
+v_gpy[86] = 3
+v_gpx[87] = 2
+v_gpy[87] = 4
+v_gpx[88] = 1
+v_gpy[88] = 5
+v_gpx[89] = 0
+v_gpy[89] = 6
+v_gpx[90] = 1
+v_gpy[90] = 6
+v_gpx[91] = 2
+v_gpy[91] = 6
+v_gpx[92] = 3
+v_gpy[92] = 6
+v_gpx[93] = 4
+v_gpy[93] = 6
+v_gn[2] = 14
+v_gpx[120] = 0
+v_gpy[120] = 0
+v_gpx[121] = 1
+v_gpy[121] = 0
+v_gpx[122] = 2
+v_gpy[122] = 0
+v_gpx[123] = 3
+v_gpy[123] = 0
+v_gpx[124] = 4
+v_gpy[124] = 1
+v_gpx[125] = 4
+v_gpy[125] = 2
+v_gpx[126] = 1
+v_gpy[126] = 3
+v_gpx[127] = 2
+v_gpy[127] = 3
+v_gpx[128] = 3
+v_gpy[128] = 3
+v_gpx[129] = 4
+v_gpy[129] = 4
+v_gpx[130] = 4
+v_gpy[130] = 5
+v_gpx[131] = 0
+v_gpy[131] = 6
+v_gpx[132] = 1
+v_gpy[132] = 6
+v_gpx[133] = 2
+v_gpy[133] = 6
+v_gpx[134] = 3
+v_gpy[134] = 6
+v_gn[3] = 15
+v_gpx[160] = 3
+v_gpy[160] = 0
+v_gpx[161] = 2
+v_gpy[161] = 1
+v_gpx[162] = 3
+v_gpy[162] = 1
+v_gpx[163] = 1
+v_gpy[163] = 2
+v_gpx[164] = 3
+v_gpy[164] = 2
+v_gpx[165] = 0
+v_gpy[165] = 3
+v_gpx[166] = 3
+v_gpy[166] = 3
+v_gpx[167] = 0
+v_gpy[167] = 4
+v_gpx[168] = 1
+v_gpy[168] = 4
+v_gpx[169] = 2
+v_gpy[169] = 4
+v_gpx[170] = 3
+v_gpy[170] = 4
+v_gpx[171] = 4
+v_gpy[171] = 4
+v_gpx[172] = 3
+v_gpy[172] = 5
+v_gpx[173] = 3
+v_gpy[173] = 6
+v_gn[4] = 14
+v_gpx[200] = 0
+v_gpy[200] = 0
+v_gpx[201] = 1
+v_gpy[201] = 0
+v_gpx[202] = 2
+v_gpy[202] = 0
+v_gpx[203] = 3
+v_gpy[203] = 0
+v_gpx[204] = 4
+v_gpy[204] = 0
+v_gpx[205] = 0
+v_gpy[205] = 1
+v_gpx[206] = 0
+v_gpy[206] = 2
+v_gpx[207] = 1
+v_gpy[207] = 2
+v_gpx[208] = 2
+v_gpy[208] = 2
+v_gpx[209] = 3
+v_gpy[209] = 2
+v_gpx[210] = 4
+v_gpy[210] = 3
+v_gpx[211] = 4
+v_gpy[211] = 4
+v_gpx[212] = 0
+v_gpy[212] = 5
+v_gpx[213] = 4
+v_gpy[213] = 5
+v_gpx[214] = 1
+v_gpy[214] = 6
+v_gpx[215] = 2
+v_gpy[215] = 6
+v_gpx[216] = 3
+v_gpy[216] = 6
+v_gn[5] = 17
+v_gpx[240] = 2
+v_gpy[240] = 0
+v_gpx[241] = 3
+v_gpy[241] = 0
+v_gpx[242] = 1
+v_gpy[242] = 1
+v_gpx[243] = 0
+v_gpy[243] = 2
+v_gpx[244] = 0
+v_gpy[244] = 3
+v_gpx[245] = 1
+v_gpy[245] = 3
+v_gpx[246] = 2
+v_gpy[246] = 3
+v_gpx[247] = 3
+v_gpy[247] = 3
+v_gpx[248] = 0
+v_gpy[248] = 4
+v_gpx[249] = 4
+v_gpy[249] = 4
+v_gpx[250] = 0
+v_gpy[250] = 5
+v_gpx[251] = 4
+v_gpy[251] = 5
+v_gpx[252] = 1
+v_gpy[252] = 6
+v_gpx[253] = 2
+v_gpy[253] = 6
+v_gpx[254] = 3
+v_gpy[254] = 6
+v_gn[6] = 15
+v_gpx[280] = 0
+v_gpy[280] = 0
+v_gpx[281] = 1
+v_gpy[281] = 0
+v_gpx[282] = 2
+v_gpy[282] = 0
+v_gpx[283] = 3
+v_gpy[283] = 0
+v_gpx[284] = 4
+v_gpy[284] = 0
+v_gpx[285] = 4
+v_gpy[285] = 1
+v_gpx[286] = 3
+v_gpy[286] = 2
+v_gpx[287] = 2
+v_gpy[287] = 3
+v_gpx[288] = 1
+v_gpy[288] = 4
+v_gpx[289] = 1
+v_gpy[289] = 5
+v_gpx[290] = 1
+v_gpy[290] = 6
+v_gn[7] = 11
+v_gpx[320] = 1
+v_gpy[320] = 0
+v_gpx[321] = 2
+v_gpy[321] = 0
+v_gpx[322] = 3
+v_gpy[322] = 0
+v_gpx[323] = 0
+v_gpy[323] = 1
+v_gpx[324] = 4
+v_gpy[324] = 1
+v_gpx[325] = 0
+v_gpy[325] = 2
+v_gpx[326] = 4
+v_gpy[326] = 2
+v_gpx[327] = 1
+v_gpy[327] = 3
+v_gpx[328] = 2
+v_gpy[328] = 3
+v_gpx[329] = 3
+v_gpy[329] = 3
+v_gpx[330] = 0
+v_gpy[330] = 4
+v_gpx[331] = 4
+v_gpy[331] = 4
+v_gpx[332] = 0
+v_gpy[332] = 5
+v_gpx[333] = 4
+v_gpy[333] = 5
+v_gpx[334] = 1
+v_gpy[334] = 6
+v_gpx[335] = 2
+v_gpy[335] = 6
+v_gpx[336] = 3
+v_gpy[336] = 6
+v_gn[8] = 17
+v_gpx[360] = 1
+v_gpy[360] = 0
+v_gpx[361] = 2
+v_gpy[361] = 0
+v_gpx[362] = 3
+v_gpy[362] = 0
+v_gpx[363] = 0
+v_gpy[363] = 1
+v_gpx[364] = 4
+v_gpy[364] = 1
+v_gpx[365] = 0
+v_gpy[365] = 2
+v_gpx[366] = 4
+v_gpy[366] = 2
+v_gpx[367] = 1
+v_gpy[367] = 3
+v_gpx[368] = 2
+v_gpy[368] = 3
+v_gpx[369] = 3
+v_gpy[369] = 3
+v_gpx[370] = 4
+v_gpy[370] = 3
+v_gpx[371] = 4
+v_gpy[371] = 4
+v_gpx[372] = 3
+v_gpy[372] = 5
+v_gpx[373] = 1
+v_gpy[373] = 6
+v_gpx[374] = 2
+v_gpy[374] = 6
+v_gn[9] = 15
+
+# ---------------- Drums ----------------
+v_nw = 6
+create_array(v_wx, v_nw, numeric)     # left edge of each drum
+create_array(v_pos, v_nw, numeric)    # displayed position (digits, can be fractional)
+create_array(v_ndig, v_nw, numeric)   # digits printed on the drum
+create_array(v_from, v_nw, numeric)
+create_array(v_to, v_nw, numeric)
+create_array(v_an, v_nw, numeric)     # roll animation frame (-1 = still)
+create_array(v_red, v_nw, numeric)    # red digits (seconds drums)
+v_wx[0] = 3
+v_wx[1] = 12
+v_wx[2] = 24
+v_wx[3] = 33
+v_wx[4] = 45
+v_wx[5] = 54
+v_red[4] = 1
+v_red[5] = 1
+v_cy = 29
+v_R = 11
+v_roll_frames = 12
+
+# ---------------- Panel and drums (layer 0, once) ----------------
+def draw_panel {
+    draw_rectangle(0, 0, 64, 64, bronze, 30, true)
+    draw_rectangle(1, 1, 62, 62, bronze, 40, false)
+    # screws
+    for v_k in (0, 3, 1)
+        v_sx = 4 + (v_k % 2) * 55
+        v_sy = 4 + floor(v_k / 2) * 55
+        draw_circle(v_sx, v_sy, 1.2, gold, 50, true)
+        mplot(v_sx, v_sy, bronze, 30)
+    endfor v_k
+    # window: dark recess around all the drums
+    draw_rectangle(1, v_cy - 10, 62, 21, black, 100, true)
+    draw_line(1, v_cy - 11, 62, v_cy - 11, dark_brown, 60)
+    draw_line(1, v_cy + 11, 62, v_cy + 11, gold, 30)
+    # each drum: a shaded cylinder
+    for v_w in (0, v_nw - 1, 1)
+        for v_y in (v_cy - 9, v_cy + 9, 1)
+            v_s = (v_y - v_cy) / v_R
+            v_c = sqrt(max(0, 1 - v_s * v_s))
+            draw_line(v_wx[v_w], v_y, v_wx[v_w] + 6, v_y, gray, 3 + 13 * v_c * v_c)
+        endfor v_y
+    endfor v_w
+}
+
+def draw_labels {
+    draw_rectangle(2, 45, 60, 7, bronze, 30, true)
+    draw_rectangle(2, 8, 60, 7, bronze, 30, true)
+    # colons between the pairs (the trip meter has none)
+    if v_mode == 0 then
+        v_cc = "gold"
+    else
+        v_cc = "black"
+    endif
+    draw_rectangle(21, v_cy - 3, 2, 2, v_cc, 55, true)
+    draw_rectangle(21, v_cy + 2, 2, 2, v_cc, 55, true)
+    draw_rectangle(42, v_cy - 3, 2, 2, v_cc, 55, true)
+    draw_rectangle(42, v_cy + 2, 2, 2, v_cc, 55, true)
+    if v_mode == 0 then
+        draw_text(11, 46, "HRS", tiny64_font, 8, gold, 45, NORMAL)
+        draw_text(26, 46, "MIN", tiny64_font, 8, gold, 45, NORMAL)
+        draw_text(47, 46, "SEC", tiny64_font, 8, gold, 45, NORMAL)
+        draw_text(32, 9, "TIME", tiny64_font, 8, gold, 70, NORMAL, CENTER)
+    else
+        draw_text(32, 46, "MILES", tiny64_font, 8, gold, 45, NORMAL, CENTER)
+        draw_text(32, 9, "TRIP", tiny64_font, 8, gold, 80, NORMAL, CENTER)
+    endif
+}
+
+# ---------------- Digits on the drums (layer 1, every frame) ----------------
+def draw_drums {
+    for v_w in (0, v_nw - 1, 1)
+        v_p = v_pos[v_w]
+        v_n = v_ndig[v_w]
+        v_base = floor(v_p)
+        v_x0 = v_wx[v_w] + 1
+        for v_o in (-1, 2, 1)
+            v_dig = (v_base + v_o) % v_n
+            if v_dig < 0 then
+                v_dig = v_dig + v_n
+            endif
+            # angle of this digit's centre from straight ahead (36 degrees a digit)
+            v_pc = (v_base + v_o - v_p) * 0.6283
+            if abs(v_pc) < 1.75 then
+                for v_k in (0, v_gn[v_dig] - 1, 1)
+                    v_gy = v_gpy[v_dig * 40 + v_k]
+                    v_ph = v_pc + (v_gy - 3) * 0.074
+                    if abs(v_ph) < 1.15 then
+                        # brightness falls off steeply as the digit curves away
+                        v_c = pow(max(0, (cos(v_ph) - 0.6) / 0.4), 3)
+                        v_yy = v_cy + v_R * sin(v_ph)
+                        if v_red[v_w] == 1 and v_mode == 0 then
+                            mplot(v_x0 + v_gpx[v_dig * 40 + v_k], v_yy, red, 3 + 97 * v_c)
+                        else
+                            mplot(v_x0 + v_gpx[v_dig * 40 + v_k], v_yy, white, 3 + 97 * v_c)
+                        endif
+                    endif
+                endfor v_k
+            endif
+        endfor v_o
+    endfor v_w
+}
+
+# ---------------- Clock targets ----------------
+create_array(v_want, v_nw, numeric)
+def read_clock {
+    if v_24h == 1 then
+        v_hr = get_datetime("H")
+    else
+        v_hr = get_datetime("h")
+    endif
+    v_mn = get_datetime("mi")
+    v_sc = get_datetime("s")
+    v_want[0] = floor(v_hr / 10)
+    v_want[1] = v_hr % 10
+    v_want[2] = floor(v_mn / 10)
+    v_want[3] = v_mn % 10
+    v_want[4] = floor(v_sc / 10)
+    v_want[5] = v_sc % 10
+}
+
+# start rolling drum v_w forward to v_want[v_w]
+def roll_to {
+    v_n = v_ndig[v_w]
+    v_cur = v_pos[v_w] % v_n
+    v_steps = (v_want[v_w] - round(v_cur) + v_n) % v_n
+    if v_steps > 0 then
+        v_from[v_w] = v_pos[v_w]
+        v_to[v_w] = v_pos[v_w] + v_steps
+        v_an[v_w] = 0
+    endif
+}
+
+def animate {
+    for v_w in (0, v_nw - 1, 1)
+        if v_an[v_w] >= 0 then
+            v_an[v_w] = v_an[v_w] + 1
+            v_len = v_roll_frames * min(3, 0.6 + 0.4 * (v_to[v_w] - v_from[v_w]))
+            v_u = min(1, v_an[v_w] / v_len)
+            # ease out with a tiny settle past the stop
+            v_e = 1 - pow(1 - v_u, 3) + 0.06 * sin(v_u * 3.14159)
+            v_pos[v_w] = v_from[v_w] + (v_to[v_w] - v_from[v_w]) * v_e
+            if v_u >= 1 then
+                v_pos[v_w] = v_to[v_w] % v_ndig[v_w]
+                v_an[v_w] = -1
+            endif
+        endif
+    endfor v_w
+}
+
+def set_clock_drums {
+    v_ndig[0] = 3
+    v_ndig[1] = 10
+    v_ndig[2] = 6
+    v_ndig[3] = 10
+    v_ndig[4] = 6
+    v_ndig[5] = 10
+}
+
+# ---------------- Start ----------------
+v_mode = 0
+call set_clock_drums
+call read_clock
+for v_w in (0, v_nw - 1, 1)
+    v_pos[v_w] = v_want[v_w]
+    v_an[v_w] = -1
+endfor v_w
+begin_frame
+    call draw_panel
+    call draw_labels
+end_frame
+v_frame = 0
+v_next_trip = v_trip_every * 40
+
+# ---------------- Main loop ----------------
+while true then
+    v_frame = v_frame + 1
+    if v_mode == 0 then
+        call read_clock
+        for v_w in (0, v_nw - 1, 1)
+            if v_an[v_w] < 0 and round(v_pos[v_w]) % v_ndig[v_w] != v_want[v_w] then
+                call roll_to
+            endif
+        endfor v_w
+        call animate
+        if v_trip_every > 0 and v_frame >= v_next_trip then
+            # ---- switch to the trip meter: every drum becomes 0-9 ----
+            v_mode = 1
+            for v_w in (0, v_nw - 1, 1)
+                v_ndig[v_w] = 10
+                v_pos[v_w] = round(v_pos[v_w]) % 10
+            endfor v_w
+            v_trip_v = 999990 - random(0, 30, 0)
+            v_trip_t = 0
+            # roll from the clock to the trip reading
+            for v_w in (0, v_nw - 1, 1)
+                v_want[v_w] = floor(v_trip_v / pow(10, 5 - v_w)) % 10
+                call roll_to
+            endfor v_w
+            v_settle = 50
+            begin_frame(true)
+                call draw_labels
+            end_frame
+        endif
+    else
+        if v_settle > 0 then
+            v_settle = v_settle - 1
+            call animate
+        else
+            # odometer gearing: each wheel turns only while every wheel to
+            # its right is rolling from 9 to 0
+            v_trip_t = v_trip_t + 1
+            v_rate = 0.06 + 0.5 * min(1, v_trip_t / 200) * (0.5 + 0.5 * sin(v_trip_t * 0.01))
+            v_trip_v = v_trip_v + v_rate
+            if v_trip_v >= 1000000 then
+                v_trip_v = v_trip_v - 1000000
+            endif
+            for v_w in (0, v_nw - 1, 1)
+                v_pw = pow(10, 5 - v_w)
+                v_whole = floor(v_trip_v / v_pw) % 10
+                v_below = v_trip_v - floor(v_trip_v / v_pw) * v_pw
+                v_carry = max(0, v_below - (v_pw - 1))
+                v_pos[v_w] = v_whole + v_carry
+            endfor v_w
+            if v_trip_t > v_trip_secs * 40 then
+                # ---- back to the clock ----
+                v_mode = 0
+                for v_w in (0, v_nw - 1, 1)
+                    v_pos[v_w] = round(v_pos[v_w]) % 10
+                endfor v_w
+                call set_clock_drums
+                call read_clock
+                for v_w in (0, v_nw - 1, 1)
+                    v_pos[v_w] = v_pos[v_w] % v_ndig[v_w]
+                    call roll_to
+                endfor v_w
+                v_next_trip = v_frame + v_trip_every * 40
+                begin_frame(true)
+                    call draw_labels
+                end_frame
+            endif
+        endif
+    endif
+
+    begin_frame(true)
+        set_layer(1)
+        clear_layer(1)
+        call draw_drums
+        set_layer(0)
+    end_frame
+endwhile

@@ -1,0 +1,942 @@
+# Flip-Disc Display - the clattering bus-sign board, disc by disc
+#
+# A 16 x 16 board of round discs, yellow on one side and black on the
+# other, like the destination signs on old buses and trains. Every change
+# flips discs over one by one: you see each disc turn edge-on and come
+# round showing its other face, usually rippling across the board column
+# by column the way real flip-dot signs update.
+#
+# The board cycles through:
+#   - A clock: hours over minutes, with a seconds bar along the bottom that
+#     clicks over one disc at a time
+#   - Scrolling bus-sign messages ("ROUTE 64 DOWNTOWN", "NOT IN SERVICE"...)
+#     and the current time
+#   - Patterns: wipes, diagonal sweeps, ripples, a checkerboard that
+#     inverts, sparkle, rolling waves, rain and a spiral fill
+#
+# Only discs that are changing get redrawn, so the board costs very little
+# per frame.
+
+fps(30)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_24h = 0              # 1 = 24-hour clock
+v_clock_secs = 25      # how long the clock shows between other items
+v_flip_frames = 4      # frames for one disc to turn over
+v_scroll_step = 3      # frames per column when scrolling text
+
+# ---------------- Font and messages (generated) ----------------
+# font: 42 glyphs, columns as 5-bit masks (bit 0 = top row)
+create_array(v_gcol, 210, numeric)
+create_array(v_gw, 42, numeric)
+v_gw[0] = 3
+v_gw[1] = 3
+v_gcol[5] = 30
+v_gcol[6] = 5
+v_gcol[7] = 30
+v_gw[2] = 3
+v_gcol[10] = 31
+v_gcol[11] = 21
+v_gcol[12] = 10
+v_gw[3] = 3
+v_gcol[15] = 14
+v_gcol[16] = 17
+v_gcol[17] = 17
+v_gw[4] = 3
+v_gcol[20] = 31
+v_gcol[21] = 17
+v_gcol[22] = 14
+v_gw[5] = 3
+v_gcol[25] = 31
+v_gcol[26] = 21
+v_gcol[27] = 17
+v_gw[6] = 3
+v_gcol[30] = 31
+v_gcol[31] = 5
+v_gcol[32] = 1
+v_gw[7] = 3
+v_gcol[35] = 14
+v_gcol[36] = 17
+v_gcol[37] = 29
+v_gw[8] = 3
+v_gcol[40] = 31
+v_gcol[41] = 4
+v_gcol[42] = 31
+v_gw[9] = 3
+v_gcol[45] = 17
+v_gcol[46] = 31
+v_gcol[47] = 17
+v_gw[10] = 3
+v_gcol[50] = 8
+v_gcol[51] = 16
+v_gcol[52] = 15
+v_gw[11] = 3
+v_gcol[55] = 31
+v_gcol[56] = 4
+v_gcol[57] = 27
+v_gw[12] = 3
+v_gcol[60] = 31
+v_gcol[61] = 16
+v_gcol[62] = 16
+v_gw[13] = 5
+v_gcol[65] = 31
+v_gcol[66] = 2
+v_gcol[67] = 4
+v_gcol[68] = 2
+v_gcol[69] = 31
+v_gw[14] = 4
+v_gcol[70] = 31
+v_gcol[71] = 2
+v_gcol[72] = 4
+v_gcol[73] = 31
+v_gw[15] = 3
+v_gcol[75] = 14
+v_gcol[76] = 17
+v_gcol[77] = 14
+v_gw[16] = 3
+v_gcol[80] = 31
+v_gcol[81] = 5
+v_gcol[82] = 2
+v_gw[17] = 3
+v_gcol[85] = 14
+v_gcol[86] = 17
+v_gcol[87] = 30
+v_gw[18] = 3
+v_gcol[90] = 31
+v_gcol[91] = 5
+v_gcol[92] = 26
+v_gw[19] = 3
+v_gcol[95] = 18
+v_gcol[96] = 21
+v_gcol[97] = 9
+v_gw[20] = 3
+v_gcol[100] = 1
+v_gcol[101] = 31
+v_gcol[102] = 1
+v_gw[21] = 3
+v_gcol[105] = 15
+v_gcol[106] = 16
+v_gcol[107] = 15
+v_gw[22] = 3
+v_gcol[110] = 15
+v_gcol[111] = 16
+v_gcol[112] = 15
+v_gw[23] = 5
+v_gcol[115] = 31
+v_gcol[116] = 8
+v_gcol[117] = 4
+v_gcol[118] = 8
+v_gcol[119] = 31
+v_gw[24] = 3
+v_gcol[120] = 27
+v_gcol[121] = 4
+v_gcol[122] = 27
+v_gw[25] = 3
+v_gcol[125] = 3
+v_gcol[126] = 28
+v_gcol[127] = 3
+v_gw[26] = 3
+v_gcol[130] = 25
+v_gcol[131] = 21
+v_gcol[132] = 19
+v_gw[27] = 3
+v_gcol[135] = 14
+v_gcol[136] = 17
+v_gcol[137] = 14
+v_gw[28] = 3
+v_gcol[141] = 2
+v_gcol[142] = 31
+v_gw[29] = 3
+v_gcol[145] = 25
+v_gcol[146] = 21
+v_gcol[147] = 18
+v_gw[30] = 3
+v_gcol[150] = 21
+v_gcol[151] = 21
+v_gcol[152] = 10
+v_gw[31] = 3
+v_gcol[155] = 7
+v_gcol[156] = 4
+v_gcol[157] = 31
+v_gw[32] = 3
+v_gcol[160] = 23
+v_gcol[161] = 21
+v_gcol[162] = 9
+v_gw[33] = 3
+v_gcol[165] = 14
+v_gcol[166] = 21
+v_gcol[167] = 25
+v_gw[34] = 3
+v_gcol[170] = 1
+v_gcol[171] = 29
+v_gcol[172] = 3
+v_gw[35] = 3
+v_gcol[175] = 10
+v_gcol[176] = 21
+v_gcol[177] = 27
+v_gw[36] = 3
+v_gcol[180] = 2
+v_gcol[181] = 21
+v_gcol[182] = 15
+v_gw[37] = 3
+v_gcol[186] = 10
+v_gw[38] = 3
+v_gcol[190] = 4
+v_gcol[191] = 4
+v_gcol[192] = 4
+v_gw[39] = 3
+v_gcol[197] = 23
+v_gw[40] = 3
+v_gcol[201] = 16
+v_gw[41] = 3
+v_gcol[207] = 3
+v_nmsg = 12
+create_array(v_mcode, 192, numeric)
+create_array(v_mstart, 12, numeric)
+create_array(v_mlen, 12, numeric)
+v_mcode[0] = 14
+v_mcode[1] = 15
+v_mcode[2] = 23
+v_mcode[3] = 0
+v_mcode[4] = 2
+v_mcode[5] = 15
+v_mcode[6] = 1
+v_mcode[7] = 18
+v_mcode[8] = 4
+v_mcode[9] = 9
+v_mcode[10] = 14
+v_mcode[11] = 7
+v_mcode[12] = 14
+v_mcode[13] = 5
+v_mcode[14] = 24
+v_mcode[15] = 20
+v_mcode[16] = 0
+v_mcode[17] = 19
+v_mcode[18] = 20
+v_mcode[19] = 15
+v_mcode[20] = 16
+v_mcode[21] = 0
+v_mcode[22] = 13
+v_mcode[23] = 1
+v_mcode[24] = 9
+v_mcode[25] = 14
+v_mcode[26] = 0
+v_mcode[27] = 19
+v_mcode[28] = 20
+v_mcode[29] = 18
+v_mcode[30] = 15
+v_mcode[31] = 21
+v_mcode[32] = 20
+v_mcode[33] = 5
+v_mcode[34] = 0
+v_mcode[35] = 33
+v_mcode[36] = 31
+v_mcode[37] = 0
+v_mcode[38] = 4
+v_mcode[39] = 15
+v_mcode[40] = 23
+v_mcode[41] = 14
+v_mcode[42] = 20
+v_mcode[43] = 15
+v_mcode[44] = 23
+v_mcode[45] = 14
+v_mcode[46] = 5
+v_mcode[47] = 24
+v_mcode[48] = 16
+v_mcode[49] = 18
+v_mcode[50] = 5
+v_mcode[51] = 19
+v_mcode[52] = 19
+v_mcode[53] = 0
+v_mcode[54] = 20
+v_mcode[55] = 15
+v_mcode[56] = 0
+v_mcode[57] = 1
+v_mcode[58] = 9
+v_mcode[59] = 18
+v_mcode[60] = 16
+v_mcode[61] = 15
+v_mcode[62] = 18
+v_mcode[63] = 20
+v_mcode[64] = 14
+v_mcode[65] = 15
+v_mcode[66] = 20
+v_mcode[67] = 0
+v_mcode[68] = 9
+v_mcode[69] = 14
+v_mcode[70] = 0
+v_mcode[71] = 19
+v_mcode[72] = 5
+v_mcode[73] = 18
+v_mcode[74] = 22
+v_mcode[75] = 9
+v_mcode[76] = 3
+v_mcode[77] = 5
+v_mcode[78] = 8
+v_mcode[79] = 1
+v_mcode[80] = 22
+v_mcode[81] = 5
+v_mcode[82] = 0
+v_mcode[83] = 1
+v_mcode[84] = 0
+v_mcode[85] = 14
+v_mcode[86] = 9
+v_mcode[87] = 3
+v_mcode[88] = 5
+v_mcode[89] = 0
+v_mcode[90] = 4
+v_mcode[91] = 1
+v_mcode[92] = 25
+v_mcode[93] = 39
+v_mcode[94] = 16
+v_mcode[95] = 9
+v_mcode[96] = 24
+v_mcode[97] = 9
+v_mcode[98] = 12
+v_mcode[99] = 0
+v_mcode[100] = 20
+v_mcode[101] = 18
+v_mcode[102] = 1
+v_mcode[103] = 14
+v_mcode[104] = 19
+v_mcode[105] = 9
+v_mcode[106] = 20
+v_mcode[107] = 16
+v_mcode[108] = 12
+v_mcode[109] = 5
+v_mcode[110] = 1
+v_mcode[111] = 19
+v_mcode[112] = 5
+v_mcode[113] = 0
+v_mcode[114] = 19
+v_mcode[115] = 20
+v_mcode[116] = 1
+v_mcode[117] = 14
+v_mcode[118] = 4
+v_mcode[119] = 0
+v_mcode[120] = 3
+v_mcode[121] = 12
+v_mcode[122] = 5
+v_mcode[123] = 1
+v_mcode[124] = 18
+v_mcode[125] = 19
+v_mcode[126] = 15
+v_mcode[127] = 18
+v_mcode[128] = 18
+v_mcode[129] = 25
+v_mcode[130] = 0
+v_mcode[131] = 38
+v_mcode[132] = 0
+v_mcode[133] = 2
+v_mcode[134] = 21
+v_mcode[135] = 19
+v_mcode[136] = 0
+v_mcode[137] = 6
+v_mcode[138] = 21
+v_mcode[139] = 12
+v_mcode[140] = 12
+v_mcode[141] = 23
+v_mcode[142] = 1
+v_mcode[143] = 20
+v_mcode[144] = 3
+v_mcode[145] = 8
+v_mcode[146] = 0
+v_mcode[147] = 25
+v_mcode[148] = 15
+v_mcode[149] = 21
+v_mcode[150] = 18
+v_mcode[151] = 0
+v_mcode[152] = 19
+v_mcode[153] = 20
+v_mcode[154] = 5
+v_mcode[155] = 16
+v_mcode[156] = 12
+v_mcode[157] = 1
+v_mcode[158] = 19
+v_mcode[159] = 20
+v_mcode[160] = 0
+v_mcode[161] = 19
+v_mcode[162] = 20
+v_mcode[163] = 15
+v_mcode[164] = 16
+v_mcode[165] = 0
+v_mcode[166] = 38
+v_mcode[167] = 0
+v_mcode[168] = 1
+v_mcode[169] = 12
+v_mcode[170] = 12
+v_mcode[171] = 0
+v_mcode[172] = 15
+v_mcode[173] = 6
+v_mcode[174] = 6
+v_mcode[175] = 6
+v_mcode[176] = 12
+v_mcode[177] = 9
+v_mcode[178] = 16
+v_mcode[179] = 0
+v_mcode[180] = 4
+v_mcode[181] = 9
+v_mcode[182] = 19
+v_mcode[183] = 3
+v_mcode[184] = 0
+v_mcode[185] = 4
+v_mcode[186] = 9
+v_mcode[187] = 19
+v_mcode[188] = 16
+v_mcode[189] = 12
+v_mcode[190] = 1
+v_mcode[191] = 25
+v_mstart[0] = 0
+v_mlen[0] = 12
+v_mstart[1] = 12
+v_mlen[1] = 17
+v_mstart[2] = 29
+v_mlen[2] = 17
+v_mstart[3] = 46
+v_mlen[3] = 18
+v_mstart[4] = 64
+v_mlen[4] = 14
+v_mstart[5] = 78
+v_mlen[5] = 16
+v_mstart[6] = 94
+v_mlen[6] = 13
+v_mstart[7] = 107
+v_mlen[7] = 18
+v_mstart[8] = 125
+v_mlen[8] = 16
+v_mstart[9] = 141
+v_mlen[9] = 15
+v_mstart[10] = 156
+v_mlen[10] = 19
+v_mstart[11] = 175
+v_mlen[11] = 17
+v_code_0 = 27
+v_code_colon = 37
+v_code_space = 0
+v_code_A = 1
+v_code_P = 16
+v_code_M = 13
+
+# ---------------- Board ----------------
+v_n = 256
+create_array(v_cur, v_n, numeric)   # face showing: 0 black, 1 yellow
+create_array(v_tgt, v_n, numeric)   # face wanted
+create_array(v_fp, v_n, numeric)    # flip progress in frames (-1 = still)
+create_array(v_fd, v_n, numeric)    # frames to wait before flipping
+create_array(v_drop, 16, numeric)
+
+# draw disc v_i: face v_face, width v_wd (0 full, 1 narrow, 2 edge-on)
+def draw_disc {
+    v_x0 = (v_i % 16) * 4
+    v_y0 = floor(v_i / 16) * 4
+    for v_yy in (0, 2, 1)
+        for v_xx in (0, 2, 1)
+            mplot(v_x0 + v_xx, v_y0 + v_yy, black, 100)
+        endfor v_xx
+    endfor v_yy
+    if v_wd == 2 then
+        mplot(v_x0 + 1, v_y0, gray, 25)
+        mplot(v_x0 + 1, v_y0 + 1, gray, 35)
+        mplot(v_x0 + 1, v_y0 + 2, gray, 25)
+    else
+        if v_face == 1 then
+            v_dc = "yellow"
+            v_bc = 100
+            v_be = 80
+            v_bk = 55
+        else
+            v_dc = "dark_gray"
+            v_bc = 16
+            v_be = 12
+            v_bk = 5
+        endif
+        mplot(v_x0 + 1, v_y0 + 1, v_dc, v_bc)
+        mplot(v_x0 + 1, v_y0, v_dc, v_be)
+        mplot(v_x0 + 1, v_y0 + 2, v_dc, v_be)
+        if v_wd == 0 then
+            mplot(v_x0, v_y0 + 1, v_dc, v_be)
+            mplot(v_x0 + 2, v_y0 + 1, v_dc, v_be)
+            mplot(v_x0, v_y0, v_dc, v_bk)
+            mplot(v_x0 + 2, v_y0, v_dc, v_bk)
+            mplot(v_x0, v_y0 + 2, v_dc, v_bk)
+            mplot(v_x0 + 2, v_y0 + 2, v_dc, v_bk)
+        else
+            mplot(v_x0, v_y0 + 1, v_dc, v_bk)
+            mplot(v_x0 + 2, v_y0 + 1, v_dc, v_bk)
+        endif
+    endif
+}
+
+# ask disc v_i to show face v_val after v_dl frames
+def set_disc {
+    if v_tgt[v_i] != v_val then
+        v_tgt[v_i] = v_val
+        v_fd[v_i] = v_dl
+    endif
+}
+
+# advance all flips by one frame (call inside a frame)
+def update_board {
+    for v_i in (0, v_n - 1, 1)
+        if v_fp[v_i] >= 0 then
+            v_fp[v_i] = v_fp[v_i] + 1
+            v_q = v_fp[v_i] / v_flip_frames
+            if v_q >= 1 then
+                v_cur[v_i] = 1 - v_cur[v_i]
+                v_fp[v_i] = -1
+                v_face = v_cur[v_i]
+                v_wd = 0
+            elseif v_q < 0.34 then
+                v_face = v_cur[v_i]
+                v_wd = 1
+            elseif v_q < 0.67 then
+                v_wd = 2
+            else
+                v_face = 1 - v_cur[v_i]
+                v_wd = 1
+            endif
+            call draw_disc
+        elseif v_tgt[v_i] != v_cur[v_i] then
+            if v_fd[v_i] > 0 then
+                v_fd[v_i] = v_fd[v_i] - 1
+            else
+                v_fp[v_i] = 0
+            endif
+        endif
+    endfor v_i
+}
+
+# run v_wait frames of flipping
+def run_frames {
+    for v_f in (1, v_wait, 1)
+        v_fr = v_fr + 1
+        begin_frame(true)
+            call update_board
+        end_frame
+    endfor v_f
+}
+
+# set every disc to v_val with a column-by-column ripple (direction v_rdir)
+def fill_board {
+    for v_i in (0, v_n - 1, 1)
+        if v_rdir == 1 then
+            v_dl = (v_i % 16) * 2
+        elseif v_rdir == -1 then
+            v_dl = (15 - v_i % 16) * 2
+        elseif v_rdir == 2 then
+            v_dl = (v_i % 16 + floor(v_i / 16)) * 1.5
+        else
+            v_dl = 0
+        endif
+        call set_disc
+    endfor v_i
+}
+
+# ---------------- Text ----------------
+create_array(v_buf, 520, numeric)   # column masks for the text being shown
+v_blen = 0
+# each font column is used twice, so letters are twice as wide on the board
+def add_char {
+    v_w = v_gw[v_code]
+    for v_c in (0, v_w - 1, 1)
+        v_buf[v_blen] = v_gcol[v_code * 5 + v_c]
+        v_buf[v_blen + 1] = v_gcol[v_code * 5 + v_c]
+        v_blen = v_blen + 2
+    endfor v_c
+    v_buf[v_blen] = 0
+    v_blen = v_blen + 1
+}
+
+# draw the glyph for digit v_dg with its top-left at disc (v_gc, v_gr)
+def put_digit {
+    v_code = v_code_0 + v_dg
+    for v_c in (0, 2, 1)
+        v_m = v_gcol[v_code * 5 + v_c]
+        for v_r in (0, 4, 1)
+            v_i = (v_gr + v_r) * 16 + v_gc + v_c
+            v_val = floor(v_m / pow(2, v_r)) % 2
+            call set_disc
+        endfor v_r
+    endfor v_c
+}
+
+# ---------------- Clock ----------------
+def show_clock {
+    if v_24h == 1 then
+        v_hr = get_datetime("H")
+    else
+        v_hr = get_datetime("h")
+    endif
+    v_mn = get_datetime("mi")
+    v_sc = get_datetime("s")
+    # clear rows we don't use
+    v_val = 0
+    for v_i in (0, v_n - 1, 1)
+        v_row = floor(v_i / 16)
+        v_col = v_i % 16
+        v_use = 0
+        if v_row >= 1 and v_row <= 5 and v_col >= 4 and v_col <= 10 then
+            v_use = 1
+        endif
+        if v_row >= 8 and v_row <= 12 and v_col >= 4 and v_col <= 10 then
+            v_use = 1
+        endif
+        if v_row == 14 then
+            v_use = 1
+        endif
+        if v_use == 0 then
+            call set_disc
+        endif
+    endfor v_i
+    # hours (one centred digit when it's a single figure in 12-hour mode)
+    v_gr = 1
+    if v_hr < 10 and v_24h == 0 then
+        for v_r in (1, 5, 1)
+            for v_c in (4, 10, 1)
+                v_i = v_r * 16 + v_c
+                v_val = 0
+                call set_disc
+            endfor v_c
+        endfor v_r
+        v_dg = v_hr
+        v_gc = 6
+        call put_digit
+    else
+        for v_r in (1, 5, 1)
+            v_i = v_r * 16 + 7
+            v_val = 0
+            call set_disc
+        endfor v_r
+        v_dg = floor(v_hr / 10)
+        v_gc = 4
+        call put_digit
+        v_dg = v_hr % 10
+        v_gc = 8
+        call put_digit
+    endif
+    v_gr = 8
+    for v_r in (8, 12, 1)
+        v_i = v_r * 16 + 7
+        v_val = 0
+        call set_disc
+    endfor v_r
+    v_dg = floor(v_mn / 10)
+    v_gc = 4
+    call put_digit
+    v_dg = v_mn % 10
+    v_gc = 8
+    call put_digit
+    # seconds bar
+    v_lit = floor(v_sc * 16 / 60)
+    for v_c in (0, 15, 1)
+        v_i = 14 * 16 + v_c
+        v_val = 0
+        if v_c <= v_lit then
+            v_val = 1
+        endif
+        call set_disc
+    endfor v_c
+}
+
+def clock_mode {
+    v_dl = 0
+    v_end = v_fr + v_clock_secs * 30
+    while v_fr < v_end then
+        v_dl = 0
+        call show_clock
+        # the first update ripples in column by column
+        if v_fr < v_clock_start + 2 then
+            for v_i in (0, v_n - 1, 1)
+                if v_tgt[v_i] != v_cur[v_i] then
+                    v_fd[v_i] = (v_i % 16) * 2
+                endif
+            endfor v_i
+        endif
+        v_wait = 6
+        call run_frames
+    endwhile
+}
+
+# ---------------- Scrolling message ----------------
+def scroll_mode {
+    v_blen = 0
+    for v_k in (1, 16, 1)
+        v_buf[v_blen] = 0
+        v_blen = v_blen + 1
+    endfor v_k
+    if random(0, 1, 2) < 0.3 then
+        # the time, spelled out
+        if v_24h == 1 then
+            v_hr = get_datetime("H")
+        else
+            v_hr = get_datetime("h")
+        endif
+        v_mn = get_datetime("mi")
+        if v_hr >= 10 then
+            v_code = v_code_0 + floor(v_hr / 10)
+            call add_char
+        endif
+        v_code = v_code_0 + v_hr % 10
+        call add_char
+        v_code = v_code_colon
+        call add_char
+        v_code = v_code_0 + floor(v_mn / 10)
+        call add_char
+        v_code = v_code_0 + v_mn % 10
+        call add_char
+        if v_24h == 0 then
+            v_code = v_code_space
+            call add_char
+            if get_datetime("H") < 12 then
+                v_code = v_code_A
+            else
+                v_code = v_code_P
+            endif
+            call add_char
+            v_code = v_code_M
+            call add_char
+        endif
+    else
+        v_m = random(0, v_nmsg - 1, 0)
+        if v_m == v_last_msg then
+            v_m = (v_m + 1) % v_nmsg
+        endif
+        v_last_msg = v_m
+        for v_k in (0, v_mlen[v_m] - 1, 1)
+            v_code = v_mcode[v_mstart[v_m] + v_k]
+            call add_char
+        endfor v_k
+    endif
+    for v_k in (1, 16, 1)
+        v_buf[v_blen] = 0
+        v_blen = v_blen + 1
+    endfor v_k
+    # clear the board first, sweeping right to left
+    v_val = 0
+    v_rdir = -1
+    call fill_board
+    v_wait = 40
+    call run_frames
+    # a thin rail above and below the text, like a sign's frame
+    v_dl = 0
+    for v_c in (0, 15, 1)
+        v_i = 3 * 16 + v_c
+        v_val = 1
+        v_dl = v_c
+        call set_disc
+        v_i = 11 * 16 + v_c
+        call set_disc
+    endfor v_c
+    v_wait = 20
+    call run_frames
+    v_dl = 0
+    for v_s in (0, v_blen - 16, 1)
+        for v_c in (0, 15, 1)
+            v_m = v_buf[v_s + v_c]
+            for v_r in (0, 4, 1)
+                v_i = (5 + v_r) * 16 + v_c
+                v_val = floor(v_m / pow(2, v_r)) % 2
+                call set_disc
+            endfor v_r
+        endfor v_c
+        v_wait = v_scroll_step
+        call run_frames
+    endfor v_s
+    v_wait = 10
+    call run_frames
+}
+
+# ---------------- Patterns ----------------
+def pattern_mode {
+    v_pat = random(0, 7, 0)
+    if v_pat == v_last_pat then
+        v_pat = (v_pat + 3) % 8
+    endif
+    v_last_pat = v_pat
+    if v_pat == 0 then
+        # wipes: fill left to right, clear right to left, twice
+        for v_k in (1, 2, 1)
+            v_val = 1
+            v_rdir = 1
+            call fill_board
+            v_wait = 55
+            call run_frames
+            v_val = 0
+            v_rdir = -1
+            call fill_board
+            v_wait = 55
+            call run_frames
+        endfor v_k
+    elseif v_pat == 1 then
+        # diagonal sweeps
+        for v_k in (1, 3, 1)
+            v_val = 1
+            v_rdir = 2
+            call fill_board
+            v_wait = 60
+            call run_frames
+            v_val = 0
+            call fill_board
+            v_wait = 60
+            call run_frames
+        endfor v_k
+    elseif v_pat == 2 then
+        # ripples from the centre
+        for v_t in (0, 90, 1)
+            v_rad = (v_t % 30) * 0.45
+            v_dl = 0
+            for v_i in (0, v_n - 1, 1)
+                v_dx = v_i % 16 - 7.5
+                v_dy = floor(v_i / 16) - 7.5
+                v_d = sqrt(v_dx * v_dx + v_dy * v_dy)
+                v_val = 0
+                if abs(v_d - v_rad) < 0.8 or abs(v_d - v_rad + 6.5) < 0.8 then
+                    v_val = 1
+                endif
+                call set_disc
+            endfor v_i
+            v_wait = 3
+            call run_frames
+        endfor v_t
+    elseif v_pat == 3 then
+        # checkerboard that keeps inverting
+        for v_k in (0, 5, 1)
+            for v_i in (0, v_n - 1, 1)
+                v_val = (v_i % 16 + floor(v_i / 16) + v_k) % 2
+                v_dl = floor(v_i / 16) * 2
+                call set_disc
+            endfor v_i
+            v_wait = 45
+            call run_frames
+        endfor v_k
+    elseif v_pat == 4 then
+        # sparkle
+        for v_t in (0, 240, 1)
+            for v_k in (1, 4, 1)
+                v_i = random(0, v_n - 1, 0)
+                v_val = 1 - v_tgt[v_i]
+                v_dl = 0
+                call set_disc
+            endfor v_k
+            v_wait = 1
+            call run_frames
+        endfor v_t
+    elseif v_pat == 5 then
+        # rolling waves
+        for v_t in (0, 110, 1)
+            v_dl = 0
+            for v_i in (0, v_n - 1, 1)
+                v_c = v_i % 16
+                v_r = floor(v_i / 16)
+                v_h = 8 + 4 * sin(v_c * 0.45 + v_t * 0.25) + 1.5 * sin(v_c * 1.1 - v_t * 0.17)
+                v_val = 0
+                if v_r > v_h then
+                    v_val = 1
+                endif
+                call set_disc
+            endfor v_i
+            v_wait = 2
+            call run_frames
+        endfor v_t
+    elseif v_pat == 6 then
+        # rain: drops fall down the columns
+        for v_c in (0, 15, 1)
+            v_drop[v_c] = -random(0, 20, 0)
+        endfor v_c
+        for v_t in (0, 120, 1)
+            v_dl = 0
+            for v_c in (0, 15, 1)
+                v_drop[v_c] = v_drop[v_c] + 0.5
+                if v_drop[v_c] > 19 then
+                    v_drop[v_c] = -random(0, 10, 0)
+                endif
+                for v_r in (0, 15, 1)
+                    v_i = v_r * 16 + v_c
+                    v_val = 0
+                    if v_r <= v_drop[v_c] and v_r > v_drop[v_c] - 3 then
+                        v_val = 1
+                    endif
+                    call set_disc
+                endfor v_r
+            endfor v_c
+            v_wait = 2
+            call run_frames
+        endfor v_t
+    else
+        # spiral fill, then spiral clear
+        for v_k in (1, 0, -1)
+            v_x = 0
+            v_y = 0
+            v_dxs = 1
+            v_dys = 0
+            v_lo = 0
+            v_hi = 15
+            v_top = 0
+            v_bot = 15
+            for v_step in (0, v_n - 1, 1)
+                v_i = v_y * 16 + v_x
+                v_val = v_k
+                v_dl = v_step * 0.5
+                call set_disc
+                # walk the spiral
+                if v_dxs == 1 and v_x == v_hi then
+                    v_dxs = 0
+                    v_dys = 1
+                    v_top = v_top + 1
+                elseif v_dys == 1 and v_y == v_bot then
+                    v_dxs = -1
+                    v_dys = 0
+                    v_hi = v_hi - 1
+                elseif v_dxs == -1 and v_x == v_lo then
+                    v_dxs = 0
+                    v_dys = -1
+                    v_bot = v_bot - 1
+                elseif v_dys == -1 and v_y == v_top then
+                    v_dxs = 1
+                    v_dys = 0
+                    v_lo = v_lo + 1
+                endif
+                v_x = v_x + v_dxs
+                v_y = v_y + v_dys
+            endfor v_step
+            v_wait = 150
+            call run_frames
+        endfor v_k
+    endif
+    # sweep clear
+    v_val = 0
+    v_rdir = 1
+    call fill_board
+    v_wait = 40
+    call run_frames
+}
+
+# ---------------- Start ----------------
+v_fr = 0
+v_last_msg = -1
+v_last_pat = -1
+for v_i in (0, v_n - 1, 1)
+    v_cur[v_i] = 0
+    v_tgt[v_i] = 0
+    v_fp[v_i] = -1
+    v_fd[v_i] = 0
+endfor v_i
+begin_frame
+    v_face = 0
+    v_wd = 0
+    for v_i in (0, v_n - 1, 1)
+        call draw_disc
+    endfor v_i
+end_frame
+
+# ---------------- Main loop ----------------
+while true then
+    v_clock_start = v_fr
+    call clock_mode
+    if random(0, 1, 2) < 0.5 then
+        call scroll_mode
+    else
+        call pattern_mode
+    endif
+endwhile

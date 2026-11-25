@@ -1,0 +1,169 @@
+# Hypnotic Tunnel - flying down an endless twisting tunnel
+#
+# The camera flies forward through a tunnel that bends and weaves, so the
+# far end swings around the screen. The tunnel walls change pattern every
+# so often, blending smoothly from one to the next:
+#   checkerboard tiles, glowing rings, spiral stripes, honeycomb cells,
+#   rippling plasma, and a barber-pole twist.
+# The walls also roll around the flight path, speed surges come and go,
+# and the colours drift through the spectrum.
+#
+# How it works: one field_program in formula mode works out, for every
+# pixel, which point of the tunnel wall it is looking at (angle around the
+# tunnel and distance down it), then paints the current pattern there.
+# Everything else is a handful of numbers updated once per frame.
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_speed = 1.0          # flight speed
+v_style_secs = 12      # seconds each pattern holds before blending to the next
+v_bend = 1.0           # how much the tunnel winds around
+
+# ---------------- Per-frame inputs to the field ----------------
+v_t = 0
+v_z = 0                # distance travelled
+v_roll = 0             # wall rotation
+v_ox = 0               # far-end offset (the bend)
+v_oy = 0
+v_hue0 = 0
+create_array(v_w, 6, numeric)    # pattern weights (two are non-zero while blending)
+v_w0 = 1
+v_w1 = 0
+v_w2 = 0
+v_w3 = 0
+v_w4 = 0
+v_w5 = 0
+
+create_array(v_dummy_x, 1)
+create_array(v_dummy_y, 1)
+v_dummy_x[0] = 32
+v_dummy_y[0] = 32
+
+field_program tunnel {
+    size 64
+    sites v_dummy_x, v_dummy_y
+    mode formula
+    value {
+        # distance down the tunnel from the straight-ahead view
+        v_ax = grid_x - 31.5
+        v_ay = grid_y - 31.5
+        v_r0 = sqrt(v_ax * v_ax + v_ay * v_ay) + 0.4
+        v_d0 = 24 / v_r0
+        # bend: deeper parts of the tunnel are shifted further
+        v_bk = clamp(v_d0 / 6, 0, 1)
+        v_bx = v_ax - v_ox * v_bk * v_bk
+        v_by = v_ay - v_oy * v_bk * v_bk
+        v_r = sqrt(v_bx * v_bx + v_by * v_by) + 0.4
+        v_dep = 24 / v_r
+        v_ang = atan2(v_by, v_bx) / 6.28319 + 0.5
+        v_u = v_ang + v_roll
+        v_v = v_dep + v_z
+        # patterns, each 0..1
+        v_p0 = where(sin(v_u * 50.2655) * sin(v_v * 3.1416) > 0, 1, 0.18)
+        v_p1 = pow(0.5 + 0.5 * sin(v_v * 6.2832), 3)
+        v_p2 = 0.5 + 0.5 * sin(v_u * 37.6991 + v_v * 4)
+        v_p3 = clamp(abs(sin(v_u * 37.6991 + 0.5 * sin(v_v * 3.1416))) * abs(sin(v_v * 3.1416 + 0.8)) * 1.8, 0, 1)
+        v_p4 = 0.5 + 0.25 * sin(v_u * 25.1327 + sin(v_v * 1.7) * 2) + 0.25 * sin(v_v * 2.3 + sin(v_u * 18.8496))
+        v_p5 = where(sin(v_u * 50.2655 - v_v * 6.2832) > 0, 1, 0.12)
+        v_pat = v_p0 * v_w0 + v_p1 * v_w1 + v_p2 * v_w2 + v_p3 * v_w3 + v_p4 * v_w4 + v_p5 * v_w5
+        # far end fades into darkness, a soft glow at the very end
+        v_fade = clamp((v_r - 1.5) / 9, 0, 1)
+        v_end = 40 / (1 + v_r * v_r * 0.3)
+        v_bri = clamp(v_pat * 92 * v_fade + v_end, 0, 99)
+        v_hraw = v_hue0 + v_v * 2.5 + 6 * sin(v_ang * 6.28319) + 10
+        v_hue = v_hraw - floor(v_hraw / 100) * 100
+        v_out = floor(v_hue) + v_bri / 100
+    }
+    plot_if v_sum - floor(v_sum) > 0.02
+    color floor(v_sum)
+    opacity (v_sum - floor(v_sum)) * 100
+}
+
+# ---------------- Pattern sequence ----------------
+v_styles = 6
+v_cur = 0
+v_next = 1
+v_hold = v_style_secs * 40
+v_blend_len = 80
+v_timer = 0
+
+def set_weights {
+    v_w0 = 0
+    v_w1 = 0
+    v_w2 = 0
+    v_w3 = 0
+    v_w4 = 0
+    v_w5 = 0
+    v_e = v_mix * v_mix * (3 - 2 * v_mix)
+    v_a = 1 - v_e
+    if v_cur == 0 then
+        v_w0 = v_w0 + v_a
+    elseif v_cur == 1 then
+        v_w1 = v_w1 + v_a
+    elseif v_cur == 2 then
+        v_w2 = v_w2 + v_a
+    elseif v_cur == 3 then
+        v_w3 = v_w3 + v_a
+    elseif v_cur == 4 then
+        v_w4 = v_w4 + v_a
+    else
+        v_w5 = v_w5 + v_a
+    endif
+    if v_next == 0 then
+        v_w0 = v_w0 + v_e
+    elseif v_next == 1 then
+        v_w1 = v_w1 + v_e
+    elseif v_next == 2 then
+        v_w2 = v_w2 + v_e
+    elseif v_next == 3 then
+        v_w3 = v_w3 + v_e
+    elseif v_next == 4 then
+        v_w4 = v_w4 + v_e
+    else
+        v_w5 = v_w5 + v_e
+    endif
+}
+
+v_cur = random(0, v_styles - 1, 0)
+v_next = v_cur
+v_mix = 0
+v_hue0 = random(0, 99, 0)
+v_phase = random(0, 100, 1)
+v_roll_v = 0.002
+
+# ---------------- Main loop ----------------
+while true then
+    v_timer = v_timer + 1
+    # pick the next pattern, then blend over to it
+    if v_timer == v_hold then
+        v_next = random(0, v_styles - 2, 0)
+        if v_next >= v_cur then
+            v_next = v_next + 1
+        endif
+        v_roll_v = random(-0.004, 0.004, 4)
+    endif
+    if v_timer > v_hold then
+        v_mix = (v_timer - v_hold) / v_blend_len
+        if v_mix >= 1 then
+            v_cur = v_next
+            v_mix = 0
+            v_timer = 0
+        endif
+    endif
+    call set_weights
+
+    v_t = v_t + 0.025
+    # speed surges
+    v_surge = 1 + 0.6 * pow(0.5 + 0.5 * sin(v_t * 0.31 + v_phase), 4)
+    v_z = v_z + 0.06 * v_speed * v_surge
+    v_roll = v_roll + v_roll_v + 0.0015 * sin(v_t * 0.23)
+    v_ox = v_bend * (13 * sin(v_t * 0.47 + v_phase) + 5 * sin(v_t * 1.13))
+    v_oy = v_bend * (10 * sin(v_t * 0.39 + 1.7 + v_phase) + 4 * cos(v_t * 0.91))
+    v_hue0 = v_hue0 + 0.05
+
+    begin_frame
+        field_render(tunnel)
+    end_frame
+endwhile

@@ -1,0 +1,1560 @@
+# VORTEX - a vector tube shooter in the spirit of the 1980s arcade classics
+#
+# An attract-mode game that plays itself, with the full arcade flow:
+#   1. Title screen: the VORTEX logo zooms out of a spinning tube, then the
+#      high score table, then "PRESS START".
+#   2. The game: an AI pilot rides the rim of a glowing vector tube,
+#      sliding from lane to lane and firing down into it. Enemies climb up
+#      out of the depths:
+#        - Spinners (red triangles) climb and hop between lanes. When they
+#          reach the rim they crawl along it toward the ship and grab it.
+#        - Carriers (violet diamonds) split into two spinners when hit or
+#          when they reach the top.
+#        - Weavers (green spirals) climb part way, leave a spike in the lane,
+#          then sink back down. Shots chip spikes shorter.
+#      Spinners also fire up their lane. Once per level the ship can fire a
+#      zapper that wipes every enemy on the tube.
+#      Clear a level and the ship warps down the tube (don't hit a spike!)
+#      into the next shape: circle, square, plus, hourglass, star,
+#      triangle, then open shapes - flat, vee, cup and steps. Each level is
+#      faster than the last.
+#   3. Game over screen: final score, then the high score table with the new
+#      entry flashing. Then back to the title.
+#
+# Original designs throughout; the tubes, ships and enemies are this
+# script's own.
+
+fps(30)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_start_lives = 3
+v_title_frames = 300   # length of the title / attract screens
+v_ai_skill = 0.9      # 0..1: how sharp the AI pilot is (lower = shorter games)
+
+# ---------------- Tube shapes (generated) ----------------
+v_nshapes = 10
+create_array(v_shx, 160, numeric)
+create_array(v_shy, 160, numeric)
+create_array(v_shclosed, 10, numeric)
+create_array(v_shfar, 10, numeric)
+# circle
+v_shclosed[0] = 1
+v_shfar[0] = -3
+v_shx[0] = 0.000
+v_shy[0] = -1.000
+v_shx[1] = 0.383
+v_shy[1] = -0.924
+v_shx[2] = 0.707
+v_shy[2] = -0.707
+v_shx[3] = 0.924
+v_shy[3] = -0.383
+v_shx[4] = 1.000
+v_shy[4] = 0.000
+v_shx[5] = 0.924
+v_shy[5] = 0.383
+v_shx[6] = 0.707
+v_shy[6] = 0.707
+v_shx[7] = 0.383
+v_shy[7] = 0.924
+v_shx[8] = 0.000
+v_shy[8] = 1.000
+v_shx[9] = -0.383
+v_shy[9] = 0.924
+v_shx[10] = -0.707
+v_shy[10] = 0.707
+v_shx[11] = -0.924
+v_shy[11] = 0.383
+v_shx[12] = -1.000
+v_shy[12] = 0.000
+v_shx[13] = -0.924
+v_shy[13] = -0.383
+v_shx[14] = -0.707
+v_shy[14] = -0.707
+v_shx[15] = -0.383
+v_shy[15] = -0.924
+# square
+v_shclosed[1] = 1
+v_shfar[1] = -3
+v_shx[16] = -1.000
+v_shy[16] = -1.000
+v_shx[17] = -0.500
+v_shy[17] = -1.000
+v_shx[18] = 0.000
+v_shy[18] = -1.000
+v_shx[19] = 0.500
+v_shy[19] = -1.000
+v_shx[20] = 1.000
+v_shy[20] = -1.000
+v_shx[21] = 1.000
+v_shy[21] = -0.500
+v_shx[22] = 1.000
+v_shy[22] = 0.000
+v_shx[23] = 1.000
+v_shy[23] = 0.500
+v_shx[24] = 1.000
+v_shy[24] = 1.000
+v_shx[25] = 0.500
+v_shy[25] = 1.000
+v_shx[26] = 0.000
+v_shy[26] = 1.000
+v_shx[27] = -0.500
+v_shy[27] = 1.000
+v_shx[28] = -1.000
+v_shy[28] = 1.000
+v_shx[29] = -1.000
+v_shy[29] = 0.500
+v_shx[30] = -1.000
+v_shy[30] = 0.000
+v_shx[31] = -1.000
+v_shy[31] = -0.500
+# plus
+v_shclosed[2] = 1
+v_shfar[2] = -3
+v_shx[32] = -0.350
+v_shy[32] = -1.000
+v_shx[33] = 0.150
+v_shy[33] = -1.000
+v_shx[34] = 0.350
+v_shy[34] = -0.700
+v_shx[35] = 0.500
+v_shy[35] = -0.350
+v_shx[36] = 1.000
+v_shy[36] = -0.350
+v_shx[37] = 1.000
+v_shy[37] = 0.150
+v_shx[38] = 0.700
+v_shy[38] = 0.350
+v_shx[39] = 0.350
+v_shy[39] = 0.500
+v_shx[40] = 0.350
+v_shy[40] = 1.000
+v_shx[41] = -0.150
+v_shy[41] = 1.000
+v_shx[42] = -0.350
+v_shy[42] = 0.700
+v_shx[43] = -0.500
+v_shy[43] = 0.350
+v_shx[44] = -1.000
+v_shy[44] = 0.350
+v_shx[45] = -1.000
+v_shy[45] = -0.150
+v_shx[46] = -0.700
+v_shy[46] = -0.350
+v_shx[47] = -0.350
+v_shy[47] = -0.500
+# hourglass
+v_shclosed[3] = 1
+v_shfar[3] = -3
+v_shx[48] = -1.000
+v_shy[48] = -1.000
+v_shx[49] = -0.438
+v_shy[49] = -1.000
+v_shx[50] = 0.125
+v_shy[50] = -1.000
+v_shx[51] = 0.688
+v_shy[51] = -1.000
+v_shx[52] = 0.850
+v_shy[52] = -0.800
+v_shx[53] = 0.512
+v_shy[53] = -0.350
+v_shx[54] = 0.325
+v_shy[54] = 0.100
+v_shx[55] = 0.663
+v_shy[55] = 0.550
+v_shx[56] = 1.000
+v_shy[56] = 1.000
+v_shx[57] = 0.438
+v_shy[57] = 1.000
+v_shx[58] = -0.125
+v_shy[58] = 1.000
+v_shx[59] = -0.688
+v_shy[59] = 1.000
+v_shx[60] = -0.850
+v_shy[60] = 0.800
+v_shx[61] = -0.512
+v_shy[61] = 0.350
+v_shx[62] = -0.325
+v_shy[62] = -0.100
+v_shx[63] = -0.663
+v_shy[63] = -0.550
+# star
+v_shclosed[4] = 1
+v_shfar[4] = -2
+v_shx[64] = -0.000
+v_shy[64] = -0.968
+v_shx[65] = 0.191
+v_shy[65] = -0.508
+v_shx[66] = 0.504
+v_shy[66] = -0.217
+v_shx[67] = 1.000
+v_shy[67] = -0.177
+v_shx[68] = 0.797
+v_shy[68] = 0.090
+v_shx[69] = 0.518
+v_shy[69] = 0.446
+v_shx[70] = 0.633
+v_shy[70] = 0.930
+v_shx[71] = 0.425
+v_shy[71] = 0.968
+v_shx[72] = -0.000
+v_shy[72] = 0.708
+v_shx[73] = -0.425
+v_shy[73] = 0.968
+v_shx[74] = -0.633
+v_shy[74] = 0.930
+v_shx[75] = -0.518
+v_shy[75] = 0.446
+v_shx[76] = -0.797
+v_shy[76] = 0.090
+v_shx[77] = -1.000
+v_shy[77] = -0.177
+v_shx[78] = -0.504
+v_shy[78] = -0.217
+v_shx[79] = -0.191
+v_shy[79] = -0.508
+# triangle
+v_shclosed[5] = 1
+v_shfar[5] = -2
+v_shx[80] = 0.000
+v_shy[80] = -0.969
+v_shx[81] = 0.200
+v_shy[81] = -0.609
+v_shx[82] = 0.400
+v_shy[82] = -0.249
+v_shx[83] = 0.600
+v_shy[83] = 0.111
+v_shx[84] = 0.800
+v_shy[84] = 0.471
+v_shx[85] = 1.000
+v_shy[85] = 0.831
+v_shx[86] = 0.824
+v_shy[86] = 0.969
+v_shx[87] = 0.412
+v_shy[87] = 0.969
+v_shx[88] = 0.000
+v_shy[88] = 0.969
+v_shx[89] = -0.412
+v_shy[89] = 0.969
+v_shx[90] = -0.824
+v_shy[90] = 0.969
+v_shx[91] = -1.000
+v_shy[91] = 0.831
+v_shx[92] = -0.800
+v_shy[92] = 0.471
+v_shx[93] = -0.600
+v_shy[93] = 0.111
+v_shx[94] = -0.400
+v_shy[94] = -0.249
+v_shx[95] = -0.200
+v_shy[95] = -0.609
+# flat
+v_shclosed[6] = 0
+v_shfar[6] = -26
+v_shx[96] = -1.000
+v_shy[96] = 0.750
+v_shx[97] = -0.867
+v_shy[97] = 0.750
+v_shx[98] = -0.733
+v_shy[98] = 0.750
+v_shx[99] = -0.600
+v_shy[99] = 0.750
+v_shx[100] = -0.467
+v_shy[100] = 0.750
+v_shx[101] = -0.333
+v_shy[101] = 0.750
+v_shx[102] = -0.200
+v_shy[102] = 0.750
+v_shx[103] = -0.067
+v_shy[103] = 0.750
+v_shx[104] = 0.067
+v_shy[104] = 0.750
+v_shx[105] = 0.200
+v_shy[105] = 0.750
+v_shx[106] = 0.333
+v_shy[106] = 0.750
+v_shx[107] = 0.467
+v_shy[107] = 0.750
+v_shx[108] = 0.600
+v_shy[108] = 0.750
+v_shx[109] = 0.733
+v_shy[109] = 0.750
+v_shx[110] = 0.867
+v_shy[110] = 0.750
+v_shx[111] = 1.000
+v_shy[111] = 0.750
+# vee
+v_shclosed[7] = 0
+v_shfar[7] = -22
+v_shx[112] = -1.000
+v_shy[112] = -0.100
+v_shx[113] = -0.867
+v_shy[113] = 0.033
+v_shx[114] = -0.733
+v_shy[114] = 0.167
+v_shx[115] = -0.600
+v_shy[115] = 0.300
+v_shx[116] = -0.467
+v_shy[116] = 0.433
+v_shx[117] = -0.333
+v_shy[117] = 0.567
+v_shx[118] = -0.200
+v_shy[118] = 0.700
+v_shx[119] = -0.067
+v_shy[119] = 0.833
+v_shx[120] = 0.067
+v_shy[120] = 0.833
+v_shx[121] = 0.200
+v_shy[121] = 0.700
+v_shx[122] = 0.333
+v_shy[122] = 0.567
+v_shx[123] = 0.467
+v_shy[123] = 0.433
+v_shx[124] = 0.600
+v_shy[124] = 0.300
+v_shx[125] = 0.733
+v_shy[125] = 0.167
+v_shx[126] = 0.867
+v_shy[126] = 0.033
+v_shx[127] = 1.000
+v_shy[127] = -0.100
+# cup
+v_shclosed[8] = 0
+v_shfar[8] = -22
+v_shx[128] = -1.000
+v_shy[128] = -0.300
+v_shx[129] = -0.928
+v_shy[129] = -0.084
+v_shx[130] = -0.856
+v_shy[130] = 0.133
+v_shx[131] = -0.784
+v_shy[131] = 0.349
+v_shx[132] = -0.712
+v_shy[132] = 0.565
+v_shx[133] = -0.524
+v_shy[133] = 0.675
+v_shx[134] = -0.314
+v_shy[134] = 0.765
+v_shx[135] = -0.105
+v_shy[135] = 0.855
+v_shx[136] = 0.105
+v_shy[136] = 0.855
+v_shx[137] = 0.314
+v_shy[137] = 0.765
+v_shx[138] = 0.524
+v_shy[138] = 0.675
+v_shx[139] = 0.712
+v_shy[139] = 0.565
+v_shx[140] = 0.784
+v_shy[140] = 0.349
+v_shx[141] = 0.856
+v_shy[141] = 0.133
+v_shx[142] = 0.928
+v_shy[142] = -0.084
+v_shx[143] = 1.000
+v_shy[143] = -0.300
+# steps
+v_shclosed[9] = 0
+v_shfar[9] = -22
+v_shx[144] = -1.000
+v_shy[144] = 0.200
+v_shx[145] = -0.787
+v_shy[145] = 0.200
+v_shx[146] = -0.573
+v_shy[146] = 0.200
+v_shx[147] = -0.500
+v_shy[147] = 0.340
+v_shx[148] = -0.500
+v_shy[148] = 0.553
+v_shx[149] = -0.500
+v_shy[149] = 0.767
+v_shx[150] = -0.320
+v_shy[150] = 0.800
+v_shx[151] = -0.107
+v_shy[151] = 0.800
+v_shx[152] = 0.107
+v_shy[152] = 0.800
+v_shx[153] = 0.320
+v_shy[153] = 0.800
+v_shx[154] = 0.500
+v_shy[154] = 0.767
+v_shx[155] = 0.500
+v_shy[155] = 0.553
+v_shx[156] = 0.500
+v_shy[156] = 0.340
+v_shx[157] = 0.573
+v_shy[157] = 0.200
+v_shx[158] = 0.787
+v_shy[158] = 0.200
+v_shx[159] = 1.000
+v_shy[159] = 0.200
+
+# ---------------- Current tube ----------------
+v_np = 16                       # points on the current tube
+create_array(v_wx, 16, numeric)
+create_array(v_wy, 16, numeric)
+create_array(v_rx, 16, numeric) # projected rim / far points (per frame)
+create_array(v_ry, 16, numeric)
+create_array(v_fx, 16, numeric)
+create_array(v_fy, 16, numeric)
+v_S = 27
+v_depth = 5
+v_cam = 0
+v_rot = 0
+v_cyr = 32
+v_cyf = 29
+
+create_array(v_hues, 8, numeric)
+v_hues[0] = 66
+v_hues[1] = 0
+v_hues[2] = 14
+v_hues[3] = 50
+v_hues[4] = 83
+v_hues[5] = 33
+v_hues[6] = 8
+v_hues[7] = 60
+
+def load_shape {
+    v_shape = (v_level - 1) % v_nshapes
+    v_closed = v_shclosed[v_shape]
+    if v_closed == 1 then
+        v_nl = 16
+    else
+        v_nl = 15
+    endif
+    for v_i in (0, 15, 1)
+        v_wx[v_i] = v_shx[v_shape * 16 + v_i]
+        v_wy[v_i] = v_shy[v_shape * 16 + v_i]
+    endfor v_i
+    v_cyr = 32
+    v_cyf = 32 + v_shfar[v_shape]
+    if v_closed == 0 then
+        v_cyr = 30
+    endif
+    v_webh = v_hues[(v_level - 1) % 8]
+    v_spin_h = (v_webh + 34) % 100
+    v_carr_h = (v_webh + 14) % 100
+}
+
+# point v_pp at depth v_pd -> v_ox, v_oy (v_ok = 0 if behind the camera)
+def proj {
+    v_oz = 1 + v_pd * v_depth - v_cam
+    v_ok = 1
+    if v_oz < 0.18 then
+        v_oz = 0.18
+        v_ok = 0
+    endif
+    v_s = v_S / v_oz
+    v_ax = v_wx[v_pp]
+    v_ay = v_wy[v_pp]
+    if v_rot != 0 then
+        v_rt = v_ax * v_rc - v_ay * v_rs
+        v_ay = v_ax * v_rs + v_ay * v_rc
+        v_ax = v_rt
+    endif
+    v_ox = 32 + v_ax * v_s
+    v_oy = v_cyr + (v_cyf - v_cyr) * (1 - 1 / v_oz) + v_ay * v_s
+}
+
+# centre of lane v_ll at depth v_pd -> v_lx, v_ly, and lane width v_lw
+def lane_pt {
+    v_pp = v_ll
+    call proj
+    v_l1x = v_ox
+    v_l1y = v_oy
+    v_pp = (v_ll + 1) % v_np
+    call proj
+    v_lx = (v_l1x + v_ox) / 2
+    v_ly = (v_l1y + v_oy) / 2
+    v_lw = abs(v_ox - v_l1x) + abs(v_oy - v_l1y)
+}
+
+def draw_web {
+    v_rc = cos(v_rot)
+    v_rs = sin(v_rot)
+    # near edge: the rim, or as close as the camera allows during a warp
+    v_dn = max(0, (v_cam - 1 + 0.25) / v_depth)
+    for v_p in (0, v_np - 1, 1)
+        v_pp = v_p
+        v_pd = v_dn
+        call proj
+        v_rx[v_p] = v_ox
+        v_ry[v_p] = v_oy
+        v_pd = 1
+        call proj
+        v_fx[v_p] = v_ox
+        v_fy[v_p] = v_oy
+        v_fok = v_ok
+    endfor v_p
+    if v_fok == 1 then
+        for v_p in (0, v_np - 1, 1)
+            draw_line(v_rx[v_p], v_ry[v_p], v_fx[v_p], v_fy[v_p], v_webh, v_webb * 0.55)
+        endfor v_p
+        for v_p in (0, v_nl - 1, 1)
+            v_q = (v_p + 1) % v_np
+            draw_line(v_fx[v_p], v_fy[v_p], v_fx[v_q], v_fy[v_q], v_webh, v_webb * 0.45)
+            draw_line(v_rx[v_p], v_ry[v_p], v_rx[v_q], v_ry[v_q], v_webh, v_webb)
+        endfor v_p
+    endif
+}
+
+# ---------------- Big vector logo ----------------
+create_array(v_gx1, 40, numeric)
+create_array(v_gy1, 40, numeric)
+create_array(v_gx2, 40, numeric)
+create_array(v_gy2, 40, numeric)
+v_ng = 0
+def seg {
+    v_gx1[v_ng] = v_lo + v_a1
+    v_gy1[v_ng] = v_b1
+    v_gx2[v_ng] = v_lo + v_a2
+    v_gy2[v_ng] = v_b2
+    v_ng = v_ng + 1
+}
+# V
+v_lo = 0
+v_a1 = 0
+v_b1 = 0
+v_a2 = 4
+v_b2 = 10
+call seg
+v_a1 = 4
+v_b1 = 10
+v_a2 = 8
+v_b2 = 0
+call seg
+# O
+v_lo = 10
+v_a1 = 2
+v_b1 = 0
+v_a2 = 6
+v_b2 = 0
+call seg
+v_a1 = 6
+v_b1 = 0
+v_a2 = 8
+v_b2 = 2
+call seg
+v_a1 = 8
+v_b1 = 2
+v_a2 = 8
+v_b2 = 8
+call seg
+v_a1 = 8
+v_b1 = 8
+v_a2 = 6
+v_b2 = 10
+call seg
+v_a1 = 6
+v_b1 = 10
+v_a2 = 2
+v_b2 = 10
+call seg
+v_a1 = 2
+v_b1 = 10
+v_a2 = 0
+v_b2 = 8
+call seg
+v_a1 = 0
+v_b1 = 8
+v_a2 = 0
+v_b2 = 2
+call seg
+v_a1 = 0
+v_b1 = 2
+v_a2 = 2
+v_b2 = 0
+call seg
+# R
+v_lo = 20
+v_a1 = 0
+v_b1 = 10
+v_a2 = 0
+v_b2 = 0
+call seg
+v_a1 = 0
+v_b1 = 0
+v_a2 = 6
+v_b2 = 0
+call seg
+v_a1 = 6
+v_b1 = 0
+v_a2 = 8
+v_b2 = 2
+call seg
+v_a1 = 8
+v_b1 = 2
+v_a2 = 8
+v_b2 = 4
+call seg
+v_a1 = 8
+v_b1 = 4
+v_a2 = 6
+v_b2 = 5
+call seg
+v_a1 = 6
+v_b1 = 5
+v_a2 = 0
+v_b2 = 5
+call seg
+v_a1 = 3
+v_b1 = 5
+v_a2 = 8
+v_b2 = 10
+call seg
+# T
+v_lo = 30
+v_a1 = 0
+v_b1 = 0
+v_a2 = 8
+v_b2 = 0
+call seg
+v_a1 = 4
+v_b1 = 0
+v_a2 = 4
+v_b2 = 10
+call seg
+# E
+v_lo = 40
+v_a1 = 8
+v_b1 = 0
+v_a2 = 0
+v_b2 = 0
+call seg
+v_a1 = 0
+v_b1 = 0
+v_a2 = 0
+v_b2 = 10
+call seg
+v_a1 = 0
+v_b1 = 10
+v_a2 = 8
+v_b2 = 10
+call seg
+v_a1 = 0
+v_b1 = 5
+v_a2 = 6
+v_b2 = 5
+call seg
+# X
+v_lo = 50
+v_a1 = 0
+v_b1 = 0
+v_a2 = 8
+v_b2 = 10
+call seg
+v_a1 = 8
+v_b1 = 0
+v_a2 = 0
+v_b2 = 10
+call seg
+
+# logo centred at (32, v_ly0), scale v_lsc, hue v_lh
+def draw_logo {
+    for v_i in (0, v_ng - 1, 1)
+        v_c = floor(v_lh + v_i * 1.5) % 100
+        draw_line(32 + (v_gx1[v_i] - 29) * v_lsc, v_ly0 + (v_gy1[v_i] - 5) * v_lsc, 32 + (v_gx2[v_i] - 29) * v_lsc, v_ly0 + (v_gy2[v_i] - 5) * v_lsc, v_c, 100)
+    endfor v_i
+}
+
+# ---------------- High scores ----------------
+create_array(v_hs, 5, numeric)
+create_array(v_hn, 5, string)
+v_hs[0] = 90000
+v_hs[1] = 70000
+v_hs[2] = 50000
+v_hs[3] = 30000
+v_hs[4] = 15000
+v_hn[0] = "VTX"
+v_hn[1] = "ZAP"
+v_hn[2] = "ARC"
+v_hn[3] = "RIM"
+v_hn[4] = "PIX"
+create_array(v_cpu_names, 8, string)
+v_cpu_names[0] = "CPU"
+v_cpu_names[1] = "BOT"
+v_cpu_names[2] = "AI "
+v_cpu_names[3] = "ACE"
+v_cpu_names[4] = "MAX"
+v_cpu_names[5] = "RAD"
+v_cpu_names[6] = "JET"
+v_cpu_names[7] = "ORB"
+v_new_rank = -1
+
+def draw_table {
+    draw_text(32, v_ty0, "HIGH SCORES", tiny64_font, 8, v_webh, 100, NORMAL, CENTER)
+    for v_i in (0, 4, 1)
+        v_c = "white"
+        v_b = 85
+        if v_i == v_new_rank then
+            v_c = "yellow"
+            if v_fr % 16 < 8 then
+                v_b = 30
+            endif
+        endif
+        v_yy = v_ty0 + 9 + v_i * 7
+        draw_text(4, v_yy, v_i + 1, tiny64_font, 8, gray, 70, NORMAL)
+        draw_text(12, v_yy, v_hn[v_i], tiny64_font, 8, v_c, v_b, NORMAL)
+        draw_text(61, v_yy, v_hs[v_i], tiny64_font, 8, v_c, v_b, NORMAL, RIGHT)
+    endfor v_i
+}
+
+# ---------------- Title / attract screen ----------------
+def title_screen {
+    v_level = 1
+    call load_shape
+    v_webb = 35
+    for v_fr in (0, v_title_frames, 1)
+        v_rot = v_fr * 0.01
+        v_cam = -1.5 + sin(v_fr * 0.02) * 1.2
+        begin_frame
+            if v_fr < v_title_frames * 0.55 then
+                call draw_web
+                v_u = min(1, v_fr / 45)
+                v_lsc = 0.15 + 0.85 * v_u * v_u * (3 - 2 * v_u)
+                v_ly0 = 22
+                v_lh = (v_fr * 0.8) % 100
+                call draw_logo
+                if v_fr > 50 then
+                    draw_text(32, 38, "HIGH SCORE", tiny64_font, 8, gray, 80, NORMAL, CENTER)
+                    draw_text(32, 45, v_hs[0], tiny64_font, 8, white, 90, NORMAL, CENTER)
+                endif
+            else
+                v_ty0 = 6
+                call draw_table
+            endif
+            if v_fr > 60 and v_fr % 30 < 20 then
+                draw_text(32, 57, "PRESS START", tiny64_font, 8, yellow, 90, NORMAL, CENTER)
+            endif
+        end_frame
+    endfor v_fr
+    v_rot = 0
+    v_cam = 0
+}
+
+# ---------------- Game state ----------------
+v_me = 40
+create_array(v_et, v_me, numeric)   # -1 free, 0 spinner, 1 carrier, 2 weaver
+create_array(v_el, v_me, numeric)   # lane
+create_array(v_ed, v_me, numeric)   # depth (1 = far end, 0 = rim)
+create_array(v_ef, v_me, numeric)   # lane-hop progress (0 = not hopping)
+create_array(v_eto, v_me, numeric)  # lane being hopped to
+create_array(v_es, v_me, numeric)   # misc state / timer
+create_array(v_eturn, v_me, numeric)
+v_ms = 6
+create_array(v_sl, v_ms, numeric)   # player shots
+create_array(v_sd, v_ms, numeric)
+v_mb = 14
+create_array(v_bl, v_mb, numeric)   # enemy bullets
+create_array(v_bd, v_mb, numeric)
+create_array(v_spk, 16, numeric)    # spike tip depth per lane (1 = none)
+v_mp = 50
+create_array(v_px, v_mp, numeric)   # explosion sparks (screen space)
+create_array(v_py, v_mp, numeric)
+create_array(v_pvx, v_mp, numeric)
+create_array(v_pvy, v_mp, numeric)
+create_array(v_plife, v_mp, numeric)
+create_array(v_ph, v_mp, numeric)
+v_pnext = 0
+
+def burst {
+    # sparks at v_bxs, v_bys in hue v_bh
+    for v_bk in (1, 8, 1)
+        v_a = random(0, 6.283, 2)
+        v_sp = random(0.4, 1.4, 2)
+        v_px[v_pnext] = v_bxs
+        v_py[v_pnext] = v_bys
+        v_pvx[v_pnext] = cos(v_a) * v_sp
+        v_pvy[v_pnext] = sin(v_a) * v_sp
+        v_plife[v_pnext] = random(6, 12, 0)
+        v_ph[v_pnext] = v_bh
+        v_pnext = (v_pnext + 1) % v_mp
+    endfor v_bk
+}
+
+def clear_board {
+    for v_i in (0, v_me - 1, 1)
+        v_et[v_i] = -1
+    endfor v_i
+    for v_i in (0, v_ms - 1, 1)
+        v_sd[v_i] = -1
+    endfor v_i
+    for v_i in (0, v_mb - 1, 1)
+        v_bd[v_i] = -1
+    endfor v_i
+    for v_i in (0, v_mp - 1, 1)
+        v_plife[v_i] = 0
+    endfor v_i
+}
+
+def start_level {
+    call load_shape
+    call clear_board
+    for v_i in (0, 15, 1)
+        v_spk[v_i] = 1
+    endfor v_i
+    v_to_spawn = min(80, 18 + v_level * 5)
+    v_spawn_cd = 10
+    v_zap = 1
+    v_espeed = min(0.02, 0.005 + v_level * 0.00065)
+    v_rimhop = max(8, 30 - v_level * 2)
+    v_spawn_gap = max(4, 15 - v_level * 0.8)
+}
+
+# spawn an enemy of type v_nt in lane v_nl2 at depth v_nd (hopping toward v_nto if >= 0)
+def spawn_enemy {
+    v_slot = -1
+    for v_si in (0, v_me - 1, 1)
+        if v_slot < 0 and v_et[v_si] < 0 then
+            v_slot = v_si
+        endif
+    endfor v_si
+    if v_slot >= 0 then
+        v_et[v_slot] = v_nt
+        v_el[v_slot] = v_nl2
+        v_ed[v_slot] = v_nd
+        v_ef[v_slot] = 0
+        v_es[v_slot] = 0
+        v_eturn[v_slot] = random(0.25, 0.6, 2)
+        if v_nto >= 0 then
+            v_ef[v_slot] = 0.01
+            v_eto[v_slot] = v_nto
+        endif
+    endif
+}
+
+# neighbouring lane of v_ll in direction v_dir -> v_nb (-1 if off the edge)
+def neighbour {
+    v_nb = v_ll + v_dir
+    if v_closed == 1 then
+        v_nb = (v_nb + 16) % 16
+    elseif v_nb < 0 or v_nb >= v_nl then
+        v_nb = -1
+    endif
+}
+
+def kill_enemy {
+    # enemy v_k destroyed: sparks, score, carriers split
+    v_ll = v_el[v_k]
+    v_pd = max(0, v_ed[v_k])
+    call lane_pt
+    v_bxs = v_lx
+    v_bys = v_ly
+    v_t = v_et[v_k]
+    if v_t == 0 then
+        v_score = v_score + 150
+        v_bh = v_spin_h
+    elseif v_t == 1 then
+        v_score = v_score + 100
+        v_bh = v_carr_h
+    else
+        v_score = v_score + 50
+        v_bh = 33
+    endif
+    call burst
+    v_et[v_k] = -1
+    if v_t == 1 then
+        v_kd = v_ed[v_k]
+        v_kl = v_el[v_k]
+        for v_dir in (-1, 1, 2)
+            v_ll = v_kl
+            call neighbour
+            if v_nb >= 0 then
+                v_nt = 0
+                v_nl2 = v_kl
+                v_nd = max(0, v_kd)
+                v_nto = v_nb
+                call spawn_enemy
+            endif
+        endfor v_dir
+    endif
+}
+
+# ---- AI pilot ----
+def ai_think {
+    v_think = v_think - 1
+    if v_think <= 0 then
+        v_think = floor(4 + (1 - v_ai_skill) * 14 + random(0, 4, 0))
+        # most urgent threat: lowest enemy (rim crawlers first), bullets close to the rim
+        v_best = 9
+        v_tgt = v_plane
+        for v_i in (0, v_me - 1, 1)
+            if v_et[v_i] >= 0 then
+                v_u = v_ed[v_i]
+                if v_et[v_i] == 2 and v_es[v_i] == 1 then
+                    v_u = v_u + 2
+                endif
+                v_ln = v_el[v_i]
+                if v_ef[v_i] > 0 then
+                    v_ln = v_eto[v_i]
+                endif
+                # prefer nearby lanes a little
+                v_dist = abs(v_ln - v_plane)
+                if v_closed == 1 then
+                    v_dist = min(v_dist, 16 - v_dist)
+                endif
+                v_u = v_u + v_dist * 0.03
+                if v_u < v_best then
+                    v_best = v_u
+                    v_tgt = v_ln
+                endif
+            endif
+        endfor v_i
+        # occasionally the pilot loses focus
+        if random(0, 1, 3) > v_ai_skill + 0.1 then
+            v_tgt = v_plane
+        endif
+    endif
+    # slide one lane at a time toward the target
+    v_move_cd = v_move_cd - 1
+    if v_move_cd <= 0 and v_tgt != v_plane then
+        if v_closed == 1 then
+            v_diff = (v_tgt - v_plane + 16) % 16
+            v_dir = 1
+            if v_diff > 8 then
+                v_dir = -1
+            endif
+        else
+            v_dir = 1
+            if v_tgt < v_plane then
+                v_dir = -1
+            endif
+        endif
+        v_ll = v_plane
+        call neighbour
+        # don't slide into a lane with a bullet about to hit the rim
+        if v_nb >= 0 then
+            for v_i in (0, v_mb - 1, 1)
+                if v_bd[v_i] >= 0 and v_bd[v_i] < 0.2 and v_bl[v_i] == v_nb then
+                    v_nb = -1
+                endif
+            endfor v_i
+        endif
+        if v_nb >= 0 then
+            v_plane = v_nb
+        endif
+        v_move_cd = 2
+    endif
+    # emergency dodge: a bullet is about to hit and no shot can stop it
+    v_danger = 0
+    for v_i in (0, v_mb - 1, 1)
+        if v_bd[v_i] >= 0 and v_bd[v_i] < 0.1 and v_bl[v_i] == v_plane then
+            v_danger = 1
+        endif
+    endfor v_i
+    if v_danger == 1 and random(0, 1, 2) < v_ai_skill then
+        v_dir = 1
+        v_ll = v_plane
+        call neighbour
+        if v_nb < 0 then
+            v_dir = -1
+            call neighbour
+        endif
+        if v_nb >= 0 then
+            v_plane = v_nb
+            v_move_cd = 2
+        endif
+    endif
+    # fire when there is something in this lane
+    v_fire_cd = v_fire_cd - 1
+    v_want = 0
+    for v_i in (0, v_me - 1, 1)
+        if v_et[v_i] >= 0 and v_el[v_i] == v_plane then
+            v_want = 1
+        endif
+    endfor v_i
+    for v_i in (0, v_mb - 1, 1)
+        if v_bd[v_i] >= 0 and v_bl[v_i] == v_plane then
+            v_want = 1
+        endif
+    endfor v_i
+    if v_spk[v_plane] < 1 and v_to_spawn == 0 then
+        v_want = 1
+    endif
+    if random(0, 1, 2) < 0.05 then
+        v_want = 1
+    endif
+    if v_want == 1 and v_fire_cd <= 0 then
+        v_slot = -1
+        for v_i in (0, v_ms - 1, 1)
+            if v_slot < 0 and v_sd[v_i] < 0 then
+                v_slot = v_i
+            endif
+        endfor v_i
+        if v_slot >= 0 then
+            v_sl[v_slot] = v_plane
+            v_sd[v_slot] = 0
+            v_fire_cd = 4
+        endif
+    endif
+    # zapper: once per level when the rim gets crowded
+    if v_zap == 1 then
+        v_near = 0
+        for v_i in (0, v_me - 1, 1)
+            if v_et[v_i] >= 0 and v_ed[v_i] < 0.15 then
+                v_near = v_near + 1
+            endif
+        endfor v_i
+        if v_near >= 2 then
+            v_zap = 0
+            v_zapping = 14
+        endif
+    endif
+}
+
+def update_enemies {
+    for v_i in (0, v_me - 1, 1)
+        v_t = v_et[v_i]
+        if v_t >= 0 then
+            if v_ef[v_i] > 0 then
+                v_ef[v_i] = v_ef[v_i] + 0.14
+                if v_ef[v_i] >= 1 then
+                    v_el[v_i] = v_eto[v_i]
+                    v_ef[v_i] = 0
+                endif
+            elseif v_t == 0 then
+                if v_ed[v_i] > 0 then
+                    v_ed[v_i] = v_ed[v_i] - v_espeed
+                    if random(0, 1, 3) < 0.008 then
+                        v_ll = v_el[v_i]
+                        v_dir = random(0, 1, 0) * 2 - 1
+                        call neighbour
+                        if v_nb >= 0 then
+                            v_eto[v_i] = v_nb
+                            v_ef[v_i] = 0.01
+                        endif
+                    endif
+                    if v_ed[v_i] > 0.3 and random(0, 1, 3) < 0.0015 + v_level * 0.0007 then
+                        for v_b in (0, v_mb - 1, 1)
+                            if v_bd[v_b] < 0 and v_bl[v_b] != -9 then
+                                v_bd[v_b] = v_ed[v_i]
+                                v_bl[v_b] = v_el[v_i]
+                                v_b2 = v_b
+                                v_b = v_mb
+                            endif
+                        endfor v_b
+                    endif
+                else
+                    # on the rim: crawl toward the ship
+                    v_ed[v_i] = 0
+                    v_es[v_i] = v_es[v_i] + 1
+                    if v_el[v_i] == v_plane then
+                        if v_es[v_i] > 8 then
+                            v_dead = 1
+                            v_grabber = v_i
+                        endif
+                    elseif v_es[v_i] >= v_rimhop then
+                        v_es[v_i] = 0
+                        v_ll = v_el[v_i]
+                        if v_closed == 1 then
+                            v_diff = (v_plane - v_ll + 16) % 16
+                            v_dir = 1
+                            if v_diff > 8 then
+                                v_dir = -1
+                            endif
+                        else
+                            v_dir = 1
+                            if v_plane < v_ll then
+                                v_dir = -1
+                            endif
+                        endif
+                        call neighbour
+                        if v_nb >= 0 then
+                            v_eto[v_i] = v_nb
+                            v_ef[v_i] = 0.01
+                        endif
+                    endif
+                endif
+            elseif v_t == 1 then
+                v_ed[v_i] = v_ed[v_i] - v_espeed * 0.7
+                if v_ed[v_i] <= 0.03 then
+                    v_k = v_i
+                    v_sc0 = v_score
+                    call kill_enemy
+                    v_score = v_sc0
+                endif
+            else
+                if v_es[v_i] == 0 then
+                    v_ed[v_i] = v_ed[v_i] - v_espeed * 0.9
+                    v_spk[v_el[v_i]] = min(v_spk[v_el[v_i]], v_ed[v_i])
+                    if v_ed[v_i] <= v_eturn[v_i] then
+                        v_es[v_i] = 1
+                    endif
+                else
+                    v_ed[v_i] = v_ed[v_i] + v_espeed * 0.9
+                    if v_ed[v_i] >= 1 then
+                        v_et[v_i] = -1
+                    endif
+                endif
+            endif
+        endif
+    endfor v_i
+}
+
+def update_shots {
+    for v_si2 in (0, v_ms - 1, 1)
+        if v_sd[v_si2] >= 0 then
+            v_sd[v_si2] = v_sd[v_si2] + 0.045
+            v_hit = 0
+            v_ln = v_sl[v_si2]
+            for v_k in (0, v_me - 1, 1)
+                if v_hit == 0 and v_et[v_k] >= 0 and v_el[v_k] == v_ln and abs(v_ed[v_k] - v_sd[v_si2]) < 0.075 then
+                    v_hit = 1
+                    call kill_enemy
+                endif
+            endfor v_k
+            for v_b in (0, v_mb - 1, 1)
+                if v_hit == 0 and v_bd[v_b] >= 0 and v_bl[v_b] == v_ln and abs(v_bd[v_b] - v_sd[v_si2]) < 0.08 then
+                    v_hit = 1
+                    v_bd[v_b] = -1
+                    v_score = v_score + 10
+                endif
+            endfor v_b
+            if v_hit == 0 and v_sd[v_si2] >= v_spk[v_ln] then
+                v_hit = 1
+                v_spk[v_ln] = min(1, v_spk[v_ln] + 0.09)
+                v_score = v_score + 3
+            endif
+            if v_hit == 1 or v_sd[v_si2] > 1 then
+                v_sd[v_si2] = -1
+            endif
+        endif
+    endfor v_si2
+    for v_b in (0, v_mb - 1, 1)
+        if v_bd[v_b] >= 0 then
+            v_bd[v_b] = v_bd[v_b] - 0.022
+            if v_bd[v_b] <= 0 then
+                if v_bl[v_b] == v_plane then
+                    v_dead = 1
+                    v_grabber = -1
+                endif
+                v_bd[v_b] = -1
+            endif
+        endif
+    endfor v_b
+}
+
+def spawner {
+    if v_to_spawn > 0 then
+        v_spawn_cd = v_spawn_cd - 1
+        if v_spawn_cd <= 0 then
+            # enemies come in waves: bigger groups on later levels
+            v_grp = 1 + random(0, min(4, 1 + floor(v_level / 2)), 0)
+            for v_gk in (1, v_grp, 1)
+                if v_to_spawn > 0 then
+                    v_r = random(0, 1, 2)
+                    v_nt = 0
+                    if v_level >= 2 and v_r < 0.25 then
+                        v_nt = 1
+                    elseif v_r > 0.78 then
+                        v_nt = 2
+                    endif
+                    v_nl2 = random(0, v_nl - 1, 0)
+                    v_nd = 1 + random(0, 0.2, 2)
+                    v_nto = -1
+                    call spawn_enemy
+                    v_to_spawn = v_to_spawn - 1
+                endif
+            endfor v_gk
+            v_spawn_cd = v_spawn_gap + random(0, v_spawn_gap, 0)
+        endif
+    endif
+}
+
+# ---------------- Drawing the action ----------------
+def draw_player {
+    # a gold kite straddling the lane at depth v_pdep
+    v_ll = v_plane
+    v_pd = v_pdep
+    v_pp = v_ll
+    call proj
+    v_k1x = v_ox
+    v_k1y = v_oy
+    v_pp = (v_ll + 1) % v_np
+    call proj
+    v_k2x = v_ox
+    v_k2y = v_oy
+    v_pd = v_pdep + 0.055
+    call lane_pt
+    v_k3x = v_lx
+    v_k3y = v_ly
+    v_pd = v_pdep - 0.022
+    call lane_pt
+    v_k4x = v_lx
+    v_k4y = v_ly
+    draw_line(v_k1x, v_k1y, v_k3x, v_k3y, yellow, 100)
+    draw_line(v_k3x, v_k3y, v_k2x, v_k2y, yellow, 100)
+    draw_line(v_k2x, v_k2y, v_k4x, v_k4y, gold, 90)
+    draw_line(v_k4x, v_k4y, v_k1x, v_k1y, gold, 90)
+    mplot(v_k3x, v_k3y, white, 100)
+}
+
+def draw_enemies {
+    for v_i in (0, v_me - 1, 1)
+        v_t = v_et[v_i]
+        if v_t >= 0 then
+            v_pd = max(0, v_ed[v_i])
+            v_ll = v_el[v_i]
+            call lane_pt
+            v_ex = v_lx
+            v_ey = v_ly
+            v_ew = v_lw
+            if v_ef[v_i] > 0 then
+                v_ll = v_eto[v_i]
+                call lane_pt
+                v_u = v_ef[v_i]
+                v_ex = v_ex + (v_lx - v_ex) * v_u
+                v_ey = v_ey + (v_ly - v_ey) * v_u
+                # a little hop up out of the tube while switching lanes
+                v_ey = v_ey - sin(v_u * 3.14159) * v_ew * 0.25
+            endif
+            v_r = max(1.6, v_ew * 0.42)
+            if v_t == 0 then
+                v_a = v_fr * 0.25 + v_i
+                draw_polygon(v_ex, v_ey, v_r, 3, v_spin_h, 100, v_a * 57.3, false)
+            elseif v_t == 1 then
+                draw_polygon(v_ex, v_ey, v_r * 1.1, 4, v_carr_h, 100, 0, false)
+                mplot(v_ex, v_ey, v_carr_h, 100)
+            else
+                v_a = v_fr * 0.4 + v_i
+                draw_line(v_ex - cos(v_a) * v_r, v_ey - sin(v_a) * v_r, v_ex + cos(v_a) * v_r, v_ey + sin(v_a) * v_r, 33, 100)
+                draw_line(v_ex + cos(v_a) * v_r, v_ey + sin(v_a) * v_r, v_ex + cos(v_a + 1.6) * v_r * 0.6, v_ey + sin(v_a + 1.6) * v_r * 0.6, 33, 80)
+                draw_line(v_ex - cos(v_a) * v_r, v_ey - sin(v_a) * v_r, v_ex - cos(v_a + 1.6) * v_r * 0.6, v_ey - sin(v_a + 1.6) * v_r * 0.6, 33, 80)
+            endif
+        endif
+    endfor v_i
+    # spikes
+    for v_l in (0, v_nl - 1, 1)
+        if v_spk[v_l] < 0.99 then
+            v_ll = v_l
+            v_pd = 1
+            call lane_pt
+            v_sx1 = v_lx
+            v_sy1 = v_ly
+            v_pd = v_spk[v_l]
+            call lane_pt
+            if v_ok == 1 then
+                draw_line(v_sx1, v_sy1, v_lx, v_ly, 33, 75)
+                mplot(v_lx, v_ly, white, 90)
+            endif
+        endif
+    endfor v_l
+    # player shots and enemy bullets
+    for v_ds in (0, v_ms - 1, 1)
+        if v_sd[v_ds] >= 0 then
+            v_ll = v_sl[v_ds]
+            v_pd = v_sd[v_ds]
+            call lane_pt
+            mplot(v_lx, v_ly, yellow, 100)
+            mplot(v_lx, v_ly + 1, white, 60)
+        endif
+    endfor v_ds
+    for v_b in (0, v_mb - 1, 1)
+        if v_bd[v_b] >= 0 then
+            v_ll = v_bl[v_b]
+            v_pd = v_bd[v_b]
+            call lane_pt
+            mplot(v_lx, v_ly, white, 100)
+            mplot(v_lx - 1, v_ly, v_spin_h, 60)
+            mplot(v_lx + 1, v_ly, v_spin_h, 60)
+        endif
+    endfor v_b
+    # sparks
+    for v_pk in (0, v_mp - 1, 1)
+        if v_plife[v_pk] > 0 then
+            v_plife[v_pk] = v_plife[v_pk] - 1
+            v_px[v_pk] = v_px[v_pk] + v_pvx[v_pk]
+            v_py[v_pk] = v_py[v_pk] + v_pvy[v_pk]
+            mplot(v_px[v_pk], v_py[v_pk], v_ph[v_pk], min(100, v_plife[v_pk] * 12))
+        endif
+    endfor v_pk
+}
+
+def draw_hud {
+    draw_text(1, 1, v_score, tiny64_font, 8, white, 85, NORMAL)
+    for v_i in (1, v_lives - 1, 1)
+        v_hx = 63 - v_i * 5
+        draw_line(v_hx - 2, 4, v_hx, 1, yellow, 80)
+        draw_line(v_hx, 1, v_hx + 2, 4, yellow, 80)
+    endfor v_i
+    if v_zap == 1 then
+        mplot(33, 1, cyan, 60)
+    endif
+}
+
+def frame_scene {
+    begin_frame
+        call draw_web
+        call draw_enemies
+        if v_show_player == 1 then
+            call draw_player
+        endif
+        call draw_hud
+        if v_msg_t > 0 then
+            v_msg_t = v_msg_t - 1
+            draw_text(32, 27, v_msg, tiny64_font, 8, v_msg_c, 100, NORMAL, CENTER)
+        endif
+    end_frame
+}
+
+# ---------------- One game ----------------
+def play_game {
+    v_score = 0
+    v_lives = v_start_lives
+    v_level = 1
+    v_plane = 0
+    v_tgt = 0
+    v_think = 0
+    v_move_cd = 0
+    v_fire_cd = 0
+    v_zapping = 0
+    v_zap_one = 0
+    v_msg_t = 0
+    v_bonus_at = 20000
+    v_rot = 0
+    while v_lives > 0 then
+        call start_level
+        # ---- the new tube flies in from the distance ----
+        v_show_player = 0
+        v_msg = "LEVEL " & v_level
+        v_msg_c = "white"
+        v_msg_t = 55
+        v_webb = 85
+        for v_fr in (0, 45, 1)
+            v_u = v_fr / 45
+            v_cam = -14 * (1 - v_u) * (1 - v_u)
+            v_rot = (1 - v_u) * (1 - v_u) * 2.5
+            call frame_scene
+        endfor v_fr
+        v_cam = 0
+        v_rot = 0
+        v_show_player = 1
+        v_level_done = 0
+        while v_level_done == 0 and v_lives > 0 then
+            v_fr = v_fr + 1
+            v_dead = 0
+            v_pdep = 0
+            call spawner
+            call ai_think
+            call update_enemies
+            call update_shots
+            if v_zapping > 0 then
+                v_zapping = v_zapping - 1
+                v_webb = 100
+                if v_zapping % 2 == 0 then
+                    for v_k in (0, v_me - 1, 1)
+                        if v_et[v_k] >= 0 and v_zap_one == 0 then
+                            call kill_enemy
+                            v_zap_one = 1
+                        endif
+                    endfor v_k
+                    v_zap_one = 0
+                endif
+                if v_zapping == 0 then
+                    v_webb = 85
+                endif
+            endif
+            if v_score >= v_bonus_at then
+                v_lives = v_lives + 1
+                v_bonus_at = v_bonus_at + 50000
+                v_msg = "BONUS LIFE"
+                v_msg_c = "yellow"
+                v_msg_t = 40
+            endif
+            if v_zapping > 0 and v_zapping % 4 < 2 then
+                v_webh0 = v_webh
+                v_webh = (v_webh0 + 50) % 100
+                call frame_scene
+                v_webh = v_webh0
+            else
+                call frame_scene
+            endif
+
+            if v_dead == 1 then
+                # ---- the ship is caught: dragged down and blown apart ----
+                v_ll = v_plane
+                v_pd = 0
+                call lane_pt
+                v_dx0 = v_lx
+                v_dy0 = v_ly
+                for v_k in (1, 50, 1)
+                    v_fr = v_fr + 1
+                    begin_frame
+                        call draw_web
+                        call draw_enemies
+                        if v_k < 12 and v_grabber >= 0 then
+                            v_pdep = v_k * 0.03
+                            call draw_player
+                        endif
+                        v_rr = v_k * 0.9
+                        for v_j in (0, 11, 1)
+                            v_a = v_j * 0.5236 + v_k * 0.05
+                            v_c = (v_j * 8 + v_k * 3) % 100
+                            draw_line(v_dx0 + cos(v_a) * v_rr * 0.4, v_dy0 + sin(v_a) * v_rr * 0.4, v_dx0 + cos(v_a) * v_rr, v_dy0 + sin(v_a) * v_rr, v_c, max(0, 100 - v_k * 2))
+                        endfor v_j
+                        call draw_hud
+                    end_frame
+                endfor v_k
+                v_lives = v_lives - 1
+                # enemies on the tube go back into the queue
+                for v_k in (0, v_me - 1, 1)
+                    if v_et[v_k] >= 0 then
+                        if v_et[v_k] != 2 then
+                            v_to_spawn = v_to_spawn + 1
+                        endif
+                        v_et[v_k] = -1
+                    endif
+                endfor v_k
+                for v_k in (0, v_mb - 1, 1)
+                    v_bd[v_k] = -1
+                endfor v_k
+                for v_k in (0, v_ms - 1, 1)
+                    v_sd[v_k] = -1
+                endfor v_k
+                v_spawn_cd = 40
+                if v_lives > 0 then
+                    v_msg = "GET READY"
+                    v_msg_c = "white"
+                    v_msg_t = 40
+                    for v_k in (1, 40, 1)
+                        call frame_scene
+                    endfor v_k
+                endif
+            endif
+
+            # ---- level cleared? ----
+            if v_to_spawn == 0 and v_dead == 0 then
+                v_left = 0
+                for v_k in (0, v_me - 1, 1)
+                    if v_et[v_k] >= 0 then
+                        v_left = 1
+                    endif
+                endfor v_k
+                for v_k in (0, v_mb - 1, 1)
+                    if v_bd[v_k] >= 0 then
+                        v_left = 1
+                    endif
+                endfor v_k
+                if v_left == 0 then
+                    v_level_done = 1
+                endif
+            endif
+        endwhile
+
+        if v_level_done == 1 then
+            # ---- warp down the tube ----
+            # the pilot looks for a lane free of spikes (and sometimes misses one)
+            v_safe = v_plane
+            if v_spk[v_plane] < 1 then
+                v_bestd = 99
+                for v_l in (0, v_nl - 1, 1)
+                    if v_spk[v_l] >= 1 then
+                        v_dd = abs(v_l - v_plane)
+                        if v_dd < v_bestd then
+                            v_bestd = v_dd
+                            v_safe = v_l
+                        endif
+                    endif
+                endfor v_l
+                if random(0, 1, 2) > v_ai_skill then
+                    v_safe = v_plane
+                endif
+            endif
+            v_warp_dead = 0
+            for v_k in (0, 70, 1)
+                v_fr = v_fr + 1
+                if v_k % 2 == 0 and v_plane != v_safe then
+                    v_tgt = v_safe
+                    v_move_cd = 0
+                    v_think = 99
+                    call ai_think
+                endif
+                v_u = v_k / 70
+                v_cam = 6.5 * v_u * v_u
+                v_pdep = v_cam / v_depth
+                if v_spk[v_plane] < 0.99 and v_pdep >= v_spk[v_plane] and v_warp_dead == 0 then
+                    v_warp_dead = 1
+                    v_wk = v_k
+                endif
+                begin_frame
+                    call draw_web
+                    call draw_enemies
+                    if v_warp_dead == 0 then
+                        call draw_player
+                    else
+                        v_rr = (v_k - v_wk) * 1.2
+                        for v_j in (0, 9, 1)
+                            v_a = v_j * 0.628
+                            draw_line(32 + cos(v_a) * v_rr * 0.3, 40 + sin(v_a) * v_rr * 0.3, 32 + cos(v_a) * v_rr, 40 + sin(v_a) * v_rr, (v_j * 10) % 100, max(0, 100 - (v_k - v_wk) * 3))
+                        endfor v_j
+                    endif
+                    call draw_hud
+                end_frame
+                if v_warp_dead == 1 and v_k - v_wk > 30 then
+                    v_k = 70
+                endif
+            endfor v_k
+            v_cam = 0
+            if v_warp_dead == 1 then
+                v_lives = v_lives - 1
+            else
+                v_score = v_score + 500 * v_level
+            endif
+            if v_lives > 0 then
+                v_level = v_level + 1
+            endif
+        endif
+    endwhile
+}
+
+# ---------------- Game over screen ----------------
+def game_over {
+    # place the score in the table
+    v_new_rank = -1
+    for v_i in (4, 0, -1)
+        if v_score > v_hs[v_i] then
+            v_new_rank = v_i
+        endif
+    endfor v_i
+    if v_new_rank >= 0 then
+        for v_i in (4, v_new_rank + 1, -1)
+            v_hs[v_i] = v_hs[v_i - 1]
+            v_hn[v_i] = v_hn[v_i - 1]
+        endfor v_i
+        v_hs[v_new_rank] = v_score
+        v_hn[v_new_rank] = v_cpu_names[random(0, 7, 0)]
+    endif
+    v_webb = 30
+    for v_fr in (0, 330, 1)
+        begin_frame
+            if v_fr < 150 then
+                v_rot = v_fr * 0.02
+                v_cam = -2 - v_fr * 0.05
+                call draw_web
+                v_b = min(100, v_fr * 4)
+                draw_text(32, 18, "GAME OVER", tiny64_font, 8, red, v_b, NORMAL, CENTER)
+                if v_fr > 30 then
+                    draw_text(32, 30, "SCORE", tiny64_font, 8, gray, 80, NORMAL, CENTER)
+                    draw_text(32, 37, v_score, tiny64_font, 8, white, 100, NORMAL, CENTER)
+                    draw_text(32, 47, "LEVEL " & v_level, tiny64_font, 8, v_webh, 90, NORMAL, CENTER)
+                endif
+            else
+                v_ty0 = 8
+                call draw_table
+                if v_new_rank >= 0 and v_fr > 170 then
+                    draw_text(32, 56, "NEW HIGH SCORE", tiny64_font, 8, yellow, 80, NORMAL, CENTER)
+                endif
+            endif
+        end_frame
+    endfor v_fr
+    v_rot = 0
+    v_cam = 0
+}
+
+# ---------------- Attract loop ----------------
+v_fr = 0
+while true then
+    call title_screen
+    call play_game
+    call game_over
+endwhile

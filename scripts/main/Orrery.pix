@@ -1,0 +1,290 @@
+# Orrery - a brass clockwork model of the solar system
+#
+# The sun sits on top of a central brass column. Eight planets ride on
+# brass arms of different lengths, stacked one below the other, each on a
+# little upright rod. Earth carries its Moon on a tiny arm of its own and
+# Saturn wears its rings. Everything turns at the true relative speeds:
+# Mercury races round four times for every Earth year, while Neptune takes
+# 165 Earth years, so it barely creeps along.
+#
+# The camera slowly circles the model and rises and falls, the planets are
+# lit from the sun's side, and the nearer ones pass in front of the farther
+# ones.
+
+fps(40)
+throttle(0)
+
+# ---------------- Settings ----------------
+v_year_secs = 20       # seconds for one Earth year
+v_cam_speed = 1.0      # how fast the camera circles
+
+# ---------------- Planets ----------------
+v_np = 8
+create_array(v_rad, v_np, numeric)     # arm length
+create_array(v_per, v_np, numeric)     # orbital period in Earth years
+create_array(v_size, v_np, numeric)
+create_array(v_hue, v_np, numeric)
+create_array(v_ang, v_np, numeric)
+create_array(v_armh, v_np, numeric)    # height of the arm below the planets
+# Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
+v_rad[0] = 6
+v_rad[1] = 9
+v_rad[2] = 12.5
+v_rad[3] = 16
+v_rad[4] = 20.5
+v_rad[5] = 25
+v_rad[6] = 28.5
+v_rad[7] = 31.5
+v_per[0] = 0.241
+v_per[1] = 0.615
+v_per[2] = 1.0
+v_per[3] = 1.881
+v_per[4] = 11.86
+v_per[5] = 29.46
+v_per[6] = 84.0
+v_per[7] = 164.8
+v_size[0] = 1.0
+v_size[1] = 1.5
+v_size[2] = 1.6
+v_size[3] = 1.2
+v_size[4] = 3.0
+v_size[5] = 2.5
+v_size[6] = 1.9
+v_size[7] = 1.9
+v_hue[0] = 9
+v_hue[1] = 12
+v_hue[2] = 62
+v_hue[3] = 4
+v_hue[4] = 10
+v_hue[5] = 13
+v_hue[6] = 50
+v_hue[7] = 66
+for v_i in (0, v_np - 1, 1)
+    v_ang[v_i] = random(0, 6.283, 3)
+    v_armh[v_i] = -2.5 - v_i * 1.3
+endfor v_i
+v_moon_a = 0
+v_moon_r = 3
+v_moon_per = 0.0748
+
+# stars
+v_ns = 45
+create_array(v_stx, v_ns, numeric)
+create_array(v_sty, v_ns, numeric)
+create_array(v_stb, v_ns, numeric)
+for v_i in (0, v_ns - 1, 1)
+    v_stx[v_i] = random(0, 63, 0)
+    v_sty[v_i] = random(0, 63, 0)
+    v_stb[v_i] = random(5, 30, 0)
+endfor v_i
+
+# draw order (sorted by depth each frame); 8 = the sun
+create_array(v_ord, 9, numeric)
+create_array(v_dep, 9, numeric)
+create_array(v_sx, 9, numeric)
+create_array(v_sy, 9, numeric)
+create_array(v_ss, 9, numeric)
+
+# ---------------- Camera ----------------
+v_D = 95
+# world point (v_X, v_Y, v_Z) -> screen v_px, v_py, scale v_ps, depth v_pz
+def proj {
+    v_x1 = v_X * v_cyaw - v_Z * v_syaw
+    v_z1 = v_X * v_syaw + v_Z * v_cyaw
+    v_y1 = v_Y * v_cpit - v_z1 * v_spit
+    v_z2 = v_Y * v_spit + v_z1 * v_cpit
+    v_pz = v_z2
+    v_ps = v_D * 0.95 / (v_D + v_z2)
+    v_px = 32 + v_x1 * v_ps
+    v_py = 33 - v_y1 * v_ps + 4
+}
+
+def line3 {
+    v_X = v_ax
+    v_Y = v_ay
+    v_Z = v_az
+    call proj
+    v_l1x = v_px
+    v_l1y = v_py
+    v_X = v_bx
+    v_Y = v_by
+    v_Z = v_bz
+    call proj
+    draw_line(v_l1x, v_l1y, v_px, v_py, v_lc, v_lb)
+}
+
+# ---------------- Main loop ----------------
+v_t = 0
+v_yaw = random(0, 6.283, 2)
+while true then
+    v_t = v_t + 1
+    v_years = 1 / (v_year_secs * 40)
+    for v_i in (0, v_np - 1, 1)
+        v_ang[v_i] = v_ang[v_i] + 6.2832 * v_years / v_per[v_i]
+    endfor v_i
+    v_moon_a = v_moon_a + 6.2832 * v_years / v_moon_per
+    v_yaw = v_yaw + 0.0035 * v_cam_speed
+    v_pit = 0.42 + 0.2 * sin(v_t * 0.0021)
+    v_cyaw = cos(v_yaw)
+    v_syaw = sin(v_yaw)
+    v_cpit = cos(v_pit)
+    v_spit = sin(v_pit)
+
+    begin_frame
+        for v_i in (0, v_ns - 1, 1)
+            mplot(v_stx[v_i], v_sty[v_i], white, v_stb[v_i])
+        endfor v_i
+
+        # ---- base: tripod legs and a brass ring ----
+        v_lc = "bronze"
+        v_lb = 55
+        for v_k in (0, 2, 1)
+            v_a = v_k * 2.094 + 0.5
+            v_ax = 0
+            v_ay = -14
+            v_az = 0
+            v_bx = cos(v_a) * 14
+            v_by = -21
+            v_bz = sin(v_a) * 14
+            call line3
+        endfor v_k
+        v_lc = "gold"
+        v_lb = 35
+        for v_k in (0, 23, 1)
+            v_a = v_k * 0.2618
+            v_ax = cos(v_a) * 7
+            v_ay = -14
+            v_az = sin(v_a) * 7
+            v_bx = cos(v_a + 0.2618) * 7
+            v_by = -14
+            v_bz = sin(v_a + 0.2618) * 7
+            call line3
+        endfor v_k
+        # central column
+        v_lc = "gold"
+        v_lb = 60
+        v_ax = 0
+        v_ay = -14
+        v_az = 0
+        v_bx = 0
+        v_by = 0
+        v_bz = 0
+        call line3
+
+        # ---- arms and rods ----
+        for v_i in (0, v_np - 1, 1)
+            v_ca = cos(v_ang[v_i])
+            v_sa = sin(v_ang[v_i])
+            v_lc = "bronze"
+            v_lb = 70
+            v_ax = 0
+            v_ay = v_armh[v_i]
+            v_az = 0
+            v_bx = v_ca * v_rad[v_i]
+            v_by = v_armh[v_i]
+            v_bz = v_sa * v_rad[v_i]
+            call line3
+            v_lc = "gold"
+            v_lb = 50
+            v_ax = v_bx
+            v_ay = v_armh[v_i]
+            v_az = v_bz
+            v_by = 0
+            call line3
+        endfor v_i
+
+        # ---- project the sun and planets, then sort far to near ----
+        for v_i in (0, 8, 1)
+            if v_i < 8 then
+                v_X = cos(v_ang[v_i]) * v_rad[v_i]
+                v_Z = sin(v_ang[v_i]) * v_rad[v_i]
+                v_Y = 0
+            else
+                v_X = 0
+                v_Y = 0.5
+                v_Z = 0
+            endif
+            call proj
+            v_sx[v_i] = v_px
+            v_sy[v_i] = v_py
+            v_ss[v_i] = v_ps
+            v_dep[v_i] = v_pz
+            v_ord[v_i] = v_i
+        endfor v_i
+        for v_a in (0, 7, 1)
+            for v_b in (0, 7 - v_a, 1)
+                if v_dep[v_ord[v_b]] < v_dep[v_ord[v_b + 1]] then
+                    v_tmp = v_ord[v_b]
+                    v_ord[v_b] = v_ord[v_b + 1]
+                    v_ord[v_b + 1] = v_tmp
+                endif
+            endfor v_b
+        endfor v_a
+
+        for v_k in (0, 8, 1)
+            v_i = v_ord[v_k]
+            v_x = v_sx[v_i]
+            v_y = v_sy[v_i]
+            if v_i == 8 then
+                # the sun, with a soft glow
+                draw_circle(v_x, v_y, 6 * v_ss[8], orange, 18, true)
+                draw_circle(v_x, v_y, 4.6 * v_ss[8], orange, 55, true)
+                draw_circle(v_x, v_y, 3.6 * v_ss[8], yellow, 95, true)
+                draw_circle(v_x - 0.8, v_y - 0.8, 1.6 * v_ss[8], white, 70, true)
+            else
+                v_r = v_size[v_i] * v_ss[v_i]
+                # direction toward the sun on screen, for the lit side
+                v_lx = v_sx[8] - v_x
+                v_ly = v_sy[8] - v_y
+                v_ll = sqrt(v_lx * v_lx + v_ly * v_ly) + 0.01
+                v_lx = v_lx / v_ll
+                v_ly = v_ly / v_ll
+                if v_i == 5 then
+                    # Saturn's rings: back half first
+                    for v_q in (0, 23, 1)
+                        v_qa = v_q * 0.2618
+                        v_X = cos(v_ang[5]) * v_rad[5] + cos(v_qa) * 5.2
+                        v_Z = sin(v_ang[5]) * v_rad[5] + sin(v_qa) * 5.2
+                        v_Y = 0
+                        call proj
+                        if v_pz > v_dep[5] then
+                            mplot(v_px, v_py, tan, 55)
+                        endif
+                    endfor v_q
+                endif
+                if v_r < 1.2 then
+                    mplot(v_x, v_y, v_hue[v_i], 90)
+                    mplot(v_x + v_lx, v_y + v_ly, v_hue[v_i], 50)
+                else
+                    draw_circle(v_x, v_y, v_r, v_hue[v_i], 35, true)
+                    draw_circle(v_x + v_lx * v_r * 0.3, v_y + v_ly * v_r * 0.3, v_r * 0.72, v_hue[v_i], 95, true)
+                endif
+                if v_i == 4 then
+                    # Jupiter's bands
+                    draw_line(v_x - v_r * 0.8, v_y + 0.6, v_x + v_r * 0.8, v_y + 0.6, maroon, 60)
+                endif
+                if v_i == 5 then
+                    for v_q in (0, 23, 1)
+                        v_qa = v_q * 0.2618
+                        v_X = cos(v_ang[5]) * v_rad[5] + cos(v_qa) * 5.2
+                        v_Z = sin(v_ang[5]) * v_rad[5] + sin(v_qa) * 5.2
+                        v_Y = 0
+                        call proj
+                        if v_pz <= v_dep[5] then
+                            mplot(v_px, v_py, tan, 85)
+                        endif
+                    endfor v_q
+                endif
+                if v_i == 2 then
+                    # the Moon on its little arm
+                    v_X = cos(v_ang[2]) * v_rad[2] + cos(v_moon_a) * v_moon_r
+                    v_Z = sin(v_ang[2]) * v_rad[2] + sin(v_moon_a) * v_moon_r
+                    v_Y = 0.6
+                    call proj
+                    draw_line(v_x, v_y, v_px, v_py, gold, 30)
+                    mplot(v_px, v_py, light_gray, 90)
+                endif
+            endif
+        endfor v_k
+    end_frame
+endwhile
