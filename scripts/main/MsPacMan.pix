@@ -1,0 +1,3013 @@
+# ===========================================================================
+# MS. PAC-MAN attract demo for the 64x64 matrix (self-playing)
+#   ./run interactive -- main/MsPacMan_Demo.pix
+#
+# World: Ms. Pac-Man style, 28x31 tiles at 4px = 112x124 pixels.
+# Four maze colour schemes cycle with level progress (arcade order):
+#   levels 1-2 rose, 3-5 cyan, 6-9 gold, 10+ alternate gold/blue.
+# Layout is currently the classic board for all four (unique tile maps can be
+# dropped in later). Walls are thin outlined; camera scrolls; pellets redrawn
+# from v_map each frame so eaten dots disappear.
+#
+# Positions: an actor is centred on tile (c, r) when x = 4c and y = 4r.
+# Corridors are 8px between wall lines, so the 8x8 ghosts and 7x7 Pac-Man fit.
+#
+# Ghosts use the arcade rules: scatter/chase schedule, Blinky/Pinky/Inky/Clyde
+# targeting, no reversing except on mode change, red zones, tunnel slowdown,
+# frightened random turns, eyes returning to the house, dot-counter release.
+# Ms. Pac-Man plans with two breadth-first searches each tile: one from the
+# dangerous ghosts, one from himself that only walks tiles he reaches first.
+# He goes for frightened ghosts, then fruit, then the nearest safe dot, keeps
+# power pellets as bait, and runs for the safest tile when boxed in.
+# ===========================================================================
+
+fps(30)
+
+create_array(v_dx4, 4)
+create_array(v_dy4, 4)
+v_dx4[0] = 1
+v_dy4[0] = 0
+v_dx4[1] = 0
+v_dy4[1] = 1
+v_dx4[2] = -1
+v_dy4[2] = 0
+v_dx4[3] = 0
+v_dy4[3] = -1
+
+# ---------------------------------------------------------------------------
+# Maze. One digit per tile, 14 tiles per number:
+#   0 empty  1 wall  2 dot  3 power pellet  4 house door  6 house  8 outside
+# ---------------------------------------------------------------------------
+create_array(v_map, 868)
+create_array(v_orig, 868)
+
+def set_row(v_m, v_r, v_lo, v_hi) {
+    for v_k in (0, 13, 1)
+        v_d = v_lo % 10
+        v_m[v_r * 28 + 13 - v_k] = v_d
+        v_lo = (v_lo - v_d) // 10
+        v_d = v_hi % 10
+        v_m[v_r * 28 + 27 - v_k] = v_d
+        v_hi = (v_hi - v_d) // 10
+    endfor v_k
+}
+
+call set_row(v_map, 0, 11111111111111, 11111111111111)    # ############################
+call set_row(v_map, 1, 12222222222221, 12222222222221)    # #............##............#
+call set_row(v_map, 2, 12111121111121, 12111112111121)    # #.####.#####.##.#####.####.#
+call set_row(v_map, 3, 13111121111121, 12111112111131)    # #o####.#####.##.#####.####o#
+call set_row(v_map, 4, 12111121111121, 12111112111121)    # #.####.#####.##.#####.####.#
+call set_row(v_map, 5, 12222222222222, 22222222222221)    # #..........................#
+call set_row(v_map, 6, 12111121121111, 11112112111121)    # #.####.##.########.##.####.#
+call set_row(v_map, 7, 12111121121111, 11112112111121)    # #.####.##.########.##.####.#
+call set_row(v_map, 8, 12222221122221, 12222112222221)    # #......##....##....##......#
+call set_row(v_map, 9, 11111121111101, 10111112111111)    # ######.##### ## #####.######
+call set_row(v_map, 10, 88888121111101, 10111112188888)    # xxxxx#.##### ## #####.#xxxxx
+call set_row(v_map, 11, 88888121100000, 112188888)    # xxxxx#.##          ##.#xxxxx
+call set_row(v_map, 12, 88888121101114, 41110112188888)    # xxxxx#.## ###--### ##.#xxxxx
+call set_row(v_map, 13, 11111121101666, 66610112111111)    # ######.## #hhhhhh# ##.######
+call set_row(v_map, 14, 20001666, 66610002000000)    #       .   #hhhhhh#   .      
+call set_row(v_map, 15, 11111121101666, 66610112111111)    # ######.## #hhhhhh# ##.######
+call set_row(v_map, 16, 88888121101111, 11110112188888)    # xxxxx#.## ######## ##.#xxxxx
+call set_row(v_map, 17, 88888121100000, 112188888)    # xxxxx#.##          ##.#xxxxx
+call set_row(v_map, 18, 88888121101111, 11110112188888)    # xxxxx#.## ######## ##.#xxxxx
+call set_row(v_map, 19, 11111121101111, 11110112111111)    # ######.## ######## ##.######
+call set_row(v_map, 20, 12222222222221, 12222222222221)    # #............##............#
+call set_row(v_map, 21, 12111121111121, 12111112111121)    # #.####.#####.##.#####.####.#
+call set_row(v_map, 22, 12111121111121, 12111112111121)    # #.####.#####.##.#####.####.#
+call set_row(v_map, 23, 13221122222220, 2222222112231)    # #o..##.......  .......##..o#
+call set_row(v_map, 24, 11121121121111, 11112112112111)    # ###.##.##.########.##.##.###
+call set_row(v_map, 25, 11121121121111, 11112112112111)    # ###.##.##.########.##.##.###
+call set_row(v_map, 26, 12222221122221, 12222112222221)    # #......##....##....##......#
+call set_row(v_map, 27, 12111111111121, 12111111111121)    # #.##########.##.##########.#
+call set_row(v_map, 28, 12111111111121, 12111111111121)    # #.##########.##.##########.#
+call set_row(v_map, 29, 12222222222222, 22222222222221)    # #..........................#
+call set_row(v_map, 30, 11111111111111, 11111111111111)    # ############################
+
+v_dots_total = 0
+for v_i in (0, 867, 1)
+    v_orig[v_i] = v_map[v_i]
+    if v_map[v_i] == 2 or v_map[v_i] == 3 then
+        v_dots_total = v_dots_total + 1
+    endif
+endfor v_i
+
+# Neighbour table: v_nb[tile * 4 + dir] is the next walkable tile or -1.
+# Row 14 wraps through the tunnel.
+create_array(v_nb, 3472)
+for v_r in (0, 30, 1)
+    for v_c in (0, 27, 1)
+        v_t = v_r * 28 + v_c
+        v_code0 = v_map[v_t]
+        for v_d in (0, 3, 1)
+            v_nb[v_t * 4 + v_d] = -1
+            v_nc = (v_c + v_dx4[v_d]) % 28
+            v_nr = v_r + v_dy4[v_d]
+            if v_nr >= 0 and v_nr <= 30 and v_code0 != 1 and v_code0 != 4 and v_code0 < 6 then
+                v_code = v_map[v_nr * 28 + v_nc]
+                if v_code == 0 or v_code == 2 or v_code == 3 then
+                    v_nb[v_t * 4 + v_d] = v_nr * 28 + v_nc
+                endif
+            endif
+        endfor v_d
+    endfor v_c
+endfor v_r
+
+# ---------------------------------------------------------------------------
+# Wall art. Solid tiles are shrunk 2px away from every corridor; the edge of
+# what is left is the wall line. Convex corners lose one pixel so they round.
+# ---------------------------------------------------------------------------
+create_array(v_ts, 868)
+for v_i in (0, 867, 1)
+    v_ts[v_i] = 0
+    if v_map[v_i] == 1 or v_map[v_i] == 4 or v_map[v_i] >= 6 then
+        v_ts[v_i] = 1
+    endif
+endfor v_i
+
+# v_qc, v_qr -> v_open (1 = corridor). Off the map is solid except the tunnel row.
+def tile_open {
+    if v_qr < 0 or v_qr > 30 or v_qc < 0 or v_qc > 27 then
+        v_open = 0
+        if v_qr == 14 then
+            v_open = 1
+        endif
+    else
+        v_open = 1 - v_ts[v_qr * 28 + v_qc]
+    endif
+}
+
+create_array(v_pk, 13888)
+for v_r in (0, 30, 1)
+    for v_c in (0, 27, 1)
+        if v_ts[v_r * 28 + v_c] == 1 then
+            v_qc = v_c - 1
+            v_qr = v_r
+            call tile_open
+            v_oL = v_open
+            v_qc = v_c + 1
+            call tile_open
+            v_oR = v_open
+            v_qc = v_c
+            v_qr = v_r - 1
+            call tile_open
+            v_oU = v_open
+            v_qr = v_r + 1
+            call tile_open
+            v_oD = v_open
+            v_qc = v_c - 1
+            v_qr = v_r - 1
+            call tile_open
+            v_oUL = v_open
+            v_qc = v_c + 1
+            call tile_open
+            v_oUR = v_open
+            v_qr = v_r + 1
+            call tile_open
+            v_oDR = v_open
+            v_qc = v_c - 1
+            call tile_open
+            v_oDL = v_open
+            for v_j in (0, 3, 1)
+                for v_i in (0, 3, 1)
+                    v_k = 1
+                    if v_oL == 1 and v_i <= 1 then
+                        v_k = 0
+                    endif
+                    if v_oR == 1 and v_i >= 2 then
+                        v_k = 0
+                    endif
+                    if v_oU == 1 and v_j <= 1 then
+                        v_k = 0
+                    endif
+                    if v_oD == 1 and v_j >= 2 then
+                        v_k = 0
+                    endif
+                    if v_oUL == 1 and v_i + v_j <= 1 then
+                        v_k = 0
+                    endif
+                    if v_oUR == 1 and 3 - v_i + v_j <= 1 then
+                        v_k = 0
+                    endif
+                    if v_oDL == 1 and v_i + 3 - v_j <= 1 then
+                        v_k = 0
+                    endif
+                    if v_oDR == 1 and 6 - v_i - v_j <= 1 then
+                        v_k = 0
+                    endif
+                    v_pk[(v_r * 4 + v_j) * 112 + v_c * 4 + v_i] = v_k
+                endfor v_i
+            endfor v_j
+        endif
+    endfor v_c
+endfor v_r
+
+# v_qx, v_qy -> v_kv (kept-pixel lookup with the off-map rule)
+def pk_at {
+    if v_qx < 0 or v_qx > 111 or v_qy < 0 or v_qy > 123 then
+        v_kv = 1
+        if v_qy // 4 == 14 then
+            v_kv = 0
+        endif
+    else
+        v_kv = v_pk[v_qy * 112 + v_qx]
+    endif
+}
+
+create_array(v_po, 13888)
+for v_y in (0, 123, 1)
+    for v_x in (0, 111, 1)
+        v_po[v_y * 112 + v_x] = 0
+        if v_pk[v_y * 112 + v_x] == 1 then
+            v_qx = v_x - 1
+            v_qy = v_y
+            call pk_at
+            v_kL = v_kv
+            v_qx = v_x + 1
+            call pk_at
+            v_kR = v_kv
+            v_qx = v_x
+            v_qy = v_y - 1
+            call pk_at
+            v_kU = v_kv
+            v_qy = v_y + 1
+            call pk_at
+            v_kD = v_kv
+            v_edge = 0
+            if v_kL == 0 or v_kR == 0 or v_kU == 0 or v_kD == 0 then
+                v_edge = 1
+            else
+                v_qx = v_x - 1
+                v_qy = v_y - 1
+                call pk_at
+                v_edge = 1 - v_kv
+                v_qx = v_x + 1
+                call pk_at
+                v_edge = v_edge + 1 - v_kv
+                v_qy = v_y + 1
+                call pk_at
+                v_edge = v_edge + 1 - v_kv
+                v_qx = v_x - 1
+                call pk_at
+                v_edge = v_edge + 1 - v_kv
+            endif
+            if v_edge > 0 then
+                v_po[v_y * 112 + v_x] = 1
+                if v_kL == 0 and v_kU == 0 then
+                    v_po[v_y * 112 + v_x] = 0
+                endif
+                if v_kR == 0 and v_kU == 0 then
+                    v_po[v_y * 112 + v_x] = 0
+                endif
+                if v_kL == 0 and v_kD == 0 then
+                    v_po[v_y * 112 + v_x] = 0
+                endif
+                if v_kR == 0 and v_kD == 0 then
+                    v_po[v_y * 112 + v_x] = 0
+                endif
+            endif
+        endif
+    endfor v_x
+endfor v_y
+
+# Maze wall colours for the 4 Ms. Pac-Man boards (cycle with level progress).
+# Cel 0 = Maze 1 (rose), 1 = Maze 2 (cyan), 2 = Maze 3 (gold), 3 = Maze 4 (blue)
+# Cel 4 = white (level-clear flash)
+define_sprite(maze, 112, 124)
+    sprite_cel(0)  # Maze 1 - rose
+    for v_y in (0, 123, 1)
+        for v_x in (0, 111, 1)
+            if v_po[v_y * 112 + v_x] == 1 then
+                plot(v_x, v_y, rose, 100)
+            endif
+        endfor v_x
+    endfor v_y
+    draw_line(52, 50, 59, 50, white, 100)
+    sprite_cel(1)  # Maze 2 - cyan
+    for v_y in (0, 123, 1)
+        for v_x in (0, 111, 1)
+            if v_po[v_y * 112 + v_x] == 1 then
+                plot(v_x, v_y, cyan, 100)
+            endif
+        endfor v_x
+    endfor v_y
+    draw_line(52, 50, 59, 50, white, 100)
+    sprite_cel(2)  # Maze 3 - gold
+    for v_y in (0, 123, 1)
+        for v_x in (0, 111, 1)
+            if v_po[v_y * 112 + v_x] == 1 then
+                plot(v_x, v_y, gold, 100)
+            endif
+        endfor v_x
+    endfor v_y
+    draw_line(52, 50, 59, 50, white, 100)
+    sprite_cel(3)  # Maze 4 - blue
+    for v_y in (0, 123, 1)
+        for v_x in (0, 111, 1)
+            if v_po[v_y * 112 + v_x] == 1 then
+                plot(v_x, v_y, blue, 100)
+            endif
+        endfor v_x
+    endfor v_y
+    draw_line(52, 50, 59, 50, white, 100)
+    sprite_cel(4)  # white flash
+    for v_y in (0, 123, 1)
+        for v_x in (0, 111, 1)
+            if v_po[v_y * 112 + v_x] == 1 then
+                plot(v_x, v_y, white, 100)
+            endif
+        endfor v_x
+    endfor v_y
+endsprite
+
+# ---------------------------------------------------------------------------
+# Sprites
+# ---------------------------------------------------------------------------
+# pac: cel = dir * 3 + mouth (dir 0 right 1 down 2 left 3 up; mouth 0 shut 1 half 2 wide)
+define_sprite(pac, 7, 7)
+    # Ms. Pac-Man: same yellow body + pink bow on top-left of head
+    # cel = dir * 3 + mouth (0 right, 1 down, 2 left, 3 up)
+    sprite_cel(0)  # right shut
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(1)  # right half
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 4, 2, yellow, 100)
+        draw_line(0, 3, 3, 3, yellow, 100)
+        draw_line(0, 4, 4, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(2)  # right wide
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 4, 1, yellow, 100)
+        draw_line(0, 2, 3, 2, yellow, 100)
+        draw_line(0, 3, 2, 3, yellow, 100)
+        draw_line(0, 4, 3, 4, yellow, 100)
+        draw_line(1, 5, 4, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(3)  # down shut
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(4)  # down half
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 2, 4, yellow, 100)
+        draw_line(4, 4, 6, 4, yellow, 100)
+        plot(1, 5, yellow, 100)
+        plot(5, 5, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(5)  # down wide
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 2, 3, yellow, 100)
+        draw_line(4, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 1, 4, yellow, 100)
+        draw_line(5, 4, 6, 4, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(6)  # left shut
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(5, 0, magenta, 100)
+        plot(6, 0, pink, 100)
+        plot(6, 1, pink, 100)
+    sprite_cel(7)  # left half
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(2, 2, 6, 2, yellow, 100)
+        draw_line(3, 3, 6, 3, yellow, 100)
+        draw_line(2, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(5, 0, magenta, 100)
+        plot(6, 0, pink, 100)
+        plot(6, 1, pink, 100)
+    sprite_cel(8)  # left wide
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(2, 1, 5, 1, yellow, 100)
+        draw_line(3, 2, 6, 2, yellow, 100)
+        draw_line(4, 3, 6, 3, yellow, 100)
+        draw_line(3, 4, 6, 4, yellow, 100)
+        draw_line(2, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(5, 0, magenta, 100)
+        plot(6, 0, pink, 100)
+        plot(6, 1, pink, 100)
+    sprite_cel(9)  # up shut
+        draw_line(2, 0, 4, 0, yellow, 100)
+        draw_line(1, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(10) # up half
+        plot(1, 1, yellow, 100)
+        plot(5, 1, yellow, 100)
+        draw_line(0, 2, 2, 2, yellow, 100)
+        draw_line(4, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+    sprite_cel(11) # up wide
+        draw_line(0, 2, 1, 2, yellow, 100)
+        draw_line(5, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 2, 3, yellow, 100)
+        draw_line(4, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+        plot(0, 0, magenta, 100)
+        plot(1, 0, pink, 100)
+        plot(0, 1, pink, 100)
+endsprite
+
+# pacdie: cels 0-9 the mouth opens until he is gone, 10-11 the pop
+define_sprite(pacdie, 7, 7)
+    sprite_cel(0)
+        draw_line(1, 1, 2, 1, yellow, 100)
+        draw_line(4, 1, 5, 1, yellow, 100)
+        draw_line(0, 2, 2, 2, yellow, 100)
+        draw_line(4, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(1)
+        plot(1, 1, yellow, 100)
+        plot(5, 1, yellow, 100)
+        draw_line(0, 2, 2, 2, yellow, 100)
+        draw_line(4, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(2)
+        draw_line(0, 2, 1, 2, yellow, 100)
+        draw_line(5, 2, 6, 2, yellow, 100)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(3)
+        draw_line(0, 3, 6, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(4)
+        plot(3, 3, yellow, 100)
+        draw_line(0, 4, 6, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(5)
+        plot(3, 3, yellow, 100)
+        draw_line(1, 4, 5, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(6)
+        plot(3, 3, yellow, 100)
+        draw_line(2, 4, 4, 4, yellow, 100)
+        draw_line(1, 5, 5, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(7)
+        plot(3, 3, yellow, 100)
+        plot(3, 4, yellow, 100)
+        draw_line(2, 5, 4, 5, yellow, 100)
+        draw_line(2, 6, 4, 6, yellow, 100)
+    sprite_cel(8)
+        plot(3, 3, yellow, 100)
+        plot(3, 4, yellow, 100)
+        plot(3, 5, yellow, 100)
+        plot(3, 6, yellow, 100)
+    sprite_cel(9)
+        plot(3, 4, yellow, 100)
+        plot(3, 5, yellow, 100)
+        plot(3, 6, yellow, 100)
+    sprite_cel(10)
+        plot(3, 0, yellow, 100)
+        plot(1, 1, yellow, 100)
+        plot(5, 1, yellow, 100)
+        draw_line(0, 3, 1, 3, yellow, 100)
+        draw_line(5, 3, 6, 3, yellow, 100)
+        plot(1, 5, yellow, 100)
+        plot(5, 5, yellow, 100)
+        plot(3, 6, yellow, 100)
+    sprite_cel(11)
+        plot(3, 0, yellow, 100)
+        plot(3, 1, yellow, 100)
+        plot(1, 2, yellow, 100)
+        draw_line(0, 3, 1, 3, yellow, 100)
+        draw_line(5, 3, 6, 3, yellow, 100)
+        plot(5, 4, yellow, 100)
+        plot(3, 5, yellow, 100)
+        plot(3, 6, yellow, 100)
+endsprite
+
+# ghost body: cel = ghost * 2 + skirt (0 Blinky red, 1 Pinky, 2 Inky, 3 Clyde)
+#   8-9 frightened blue, 10-11 frightened flashing white
+define_sprite(ghost, 8, 8)
+    sprite_cel(0)
+        draw_line(2, 0, 5, 0, red, 100)
+        draw_line(1, 1, 6, 1, red, 100)
+        draw_line(0, 2, 7, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        draw_line(0, 4, 7, 4, red, 100)
+        draw_line(0, 5, 7, 5, red, 100)
+        draw_line(0, 6, 7, 6, red, 100)
+        draw_line(0, 7, 1, 7, red, 100)
+        draw_line(3, 7, 4, 7, red, 100)
+        draw_line(6, 7, 7, 7, red, 100)
+    sprite_cel(1)
+        draw_line(2, 0, 5, 0, red, 100)
+        draw_line(1, 1, 6, 1, red, 100)
+        draw_line(0, 2, 7, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        draw_line(0, 4, 7, 4, red, 100)
+        draw_line(0, 5, 7, 5, red, 100)
+        draw_line(0, 6, 7, 6, red, 100)
+        plot(0, 7, red, 100)
+        draw_line(2, 7, 3, 7, red, 100)
+        plot(5, 7, red, 100)
+        plot(7, 7, red, 100)
+    sprite_cel(2)
+        draw_line(2, 0, 5, 0, magenta, 100)
+        draw_line(1, 1, 6, 1, magenta, 100)
+        draw_line(0, 2, 7, 2, magenta, 100)
+        draw_line(0, 3, 7, 3, magenta, 100)
+        draw_line(0, 4, 7, 4, magenta, 100)
+        draw_line(0, 5, 7, 5, magenta, 100)
+        draw_line(0, 6, 7, 6, magenta, 100)
+        draw_line(0, 7, 1, 7, magenta, 100)
+        draw_line(3, 7, 4, 7, magenta, 100)
+        draw_line(6, 7, 7, 7, magenta, 100)
+    sprite_cel(3)
+        draw_line(2, 0, 5, 0, magenta, 100)
+        draw_line(1, 1, 6, 1, magenta, 100)
+        draw_line(0, 2, 7, 2, magenta, 100)
+        draw_line(0, 3, 7, 3, magenta, 100)
+        draw_line(0, 4, 7, 4, magenta, 100)
+        draw_line(0, 5, 7, 5, magenta, 100)
+        draw_line(0, 6, 7, 6, magenta, 100)
+        plot(0, 7, magenta, 100)
+        draw_line(2, 7, 3, 7, magenta, 100)
+        plot(5, 7, magenta, 100)
+        plot(7, 7, magenta, 100)
+    sprite_cel(4)
+        draw_line(2, 0, 5, 0, cyan, 100)
+        draw_line(1, 1, 6, 1, cyan, 100)
+        draw_line(0, 2, 7, 2, cyan, 100)
+        draw_line(0, 3, 7, 3, cyan, 100)
+        draw_line(0, 4, 7, 4, cyan, 100)
+        draw_line(0, 5, 7, 5, cyan, 100)
+        draw_line(0, 6, 7, 6, cyan, 100)
+        draw_line(0, 7, 1, 7, cyan, 100)
+        draw_line(3, 7, 4, 7, cyan, 100)
+        draw_line(6, 7, 7, 7, cyan, 100)
+    sprite_cel(5)
+        draw_line(2, 0, 5, 0, cyan, 100)
+        draw_line(1, 1, 6, 1, cyan, 100)
+        draw_line(0, 2, 7, 2, cyan, 100)
+        draw_line(0, 3, 7, 3, cyan, 100)
+        draw_line(0, 4, 7, 4, cyan, 100)
+        draw_line(0, 5, 7, 5, cyan, 100)
+        draw_line(0, 6, 7, 6, cyan, 100)
+        plot(0, 7, cyan, 100)
+        draw_line(2, 7, 3, 7, cyan, 100)
+        plot(5, 7, cyan, 100)
+        plot(7, 7, cyan, 100)
+    sprite_cel(6)
+        draw_line(2, 0, 5, 0, gold, 100)
+        draw_line(1, 1, 6, 1, gold, 100)
+        draw_line(0, 2, 7, 2, gold, 100)
+        draw_line(0, 3, 7, 3, gold, 100)
+        draw_line(0, 4, 7, 4, gold, 100)
+        draw_line(0, 5, 7, 5, gold, 100)
+        draw_line(0, 6, 7, 6, gold, 100)
+        draw_line(0, 7, 1, 7, gold, 100)
+        draw_line(3, 7, 4, 7, gold, 100)
+        draw_line(6, 7, 7, 7, gold, 100)
+    sprite_cel(7)
+        draw_line(2, 0, 5, 0, gold, 100)
+        draw_line(1, 1, 6, 1, gold, 100)
+        draw_line(0, 2, 7, 2, gold, 100)
+        draw_line(0, 3, 7, 3, gold, 100)
+        draw_line(0, 4, 7, 4, gold, 100)
+        draw_line(0, 5, 7, 5, gold, 100)
+        draw_line(0, 6, 7, 6, gold, 100)
+        plot(0, 7, gold, 100)
+        draw_line(2, 7, 3, 7, gold, 100)
+        plot(5, 7, gold, 100)
+        plot(7, 7, gold, 100)
+    sprite_cel(8)
+        draw_line(2, 0, 5, 0, blue, 100)
+        draw_line(1, 1, 6, 1, blue, 100)
+        draw_line(0, 2, 7, 2, blue, 100)
+        draw_line(0, 3, 7, 3, blue, 100)
+        draw_line(0, 4, 7, 4, blue, 100)
+        draw_line(0, 5, 7, 5, blue, 100)
+        draw_line(0, 6, 7, 6, blue, 100)
+        draw_line(0, 7, 1, 7, blue, 100)
+        draw_line(3, 7, 4, 7, blue, 100)
+        draw_line(6, 7, 7, 7, blue, 100)
+        plot(2, 3, peach, 100)
+        plot(5, 3, peach, 100)
+        plot(1, 4, peach, 100)
+        plot(3, 4, peach, 100)
+        plot(5, 4, peach, 100)
+        plot(7, 4, peach, 100)
+        plot(0, 5, peach, 100)
+        plot(2, 5, peach, 100)
+        plot(4, 5, peach, 100)
+        plot(6, 5, peach, 100)
+    sprite_cel(9)
+        draw_line(2, 0, 5, 0, blue, 100)
+        draw_line(1, 1, 6, 1, blue, 100)
+        draw_line(0, 2, 7, 2, blue, 100)
+        draw_line(0, 3, 7, 3, blue, 100)
+        draw_line(0, 4, 7, 4, blue, 100)
+        draw_line(0, 5, 7, 5, blue, 100)
+        draw_line(0, 6, 7, 6, blue, 100)
+        plot(0, 7, blue, 100)
+        draw_line(2, 7, 3, 7, blue, 100)
+        plot(5, 7, blue, 100)
+        plot(7, 7, blue, 100)
+        plot(2, 3, peach, 100)
+        plot(5, 3, peach, 100)
+        plot(1, 4, peach, 100)
+        plot(3, 4, peach, 100)
+        plot(5, 4, peach, 100)
+        plot(7, 4, peach, 100)
+        plot(0, 5, peach, 100)
+        plot(2, 5, peach, 100)
+        plot(4, 5, peach, 100)
+        plot(6, 5, peach, 100)
+    sprite_cel(10)
+        draw_line(2, 0, 5, 0, white, 100)
+        draw_line(1, 1, 6, 1, white, 100)
+        draw_line(0, 2, 7, 2, white, 100)
+        draw_line(0, 3, 7, 3, white, 100)
+        draw_line(0, 4, 7, 4, white, 100)
+        draw_line(0, 5, 7, 5, white, 100)
+        draw_line(0, 6, 7, 6, white, 100)
+        draw_line(0, 7, 1, 7, white, 100)
+        draw_line(3, 7, 4, 7, white, 100)
+        draw_line(6, 7, 7, 7, white, 100)
+        plot(2, 3, red, 100)
+        plot(5, 3, red, 100)
+        plot(1, 4, red, 100)
+        plot(3, 4, red, 100)
+        plot(5, 4, red, 100)
+        plot(7, 4, red, 100)
+        plot(0, 5, red, 100)
+        plot(2, 5, red, 100)
+        plot(4, 5, red, 100)
+        plot(6, 5, red, 100)
+    sprite_cel(11)
+        draw_line(2, 0, 5, 0, white, 100)
+        draw_line(1, 1, 6, 1, white, 100)
+        draw_line(0, 2, 7, 2, white, 100)
+        draw_line(0, 3, 7, 3, white, 100)
+        draw_line(0, 4, 7, 4, white, 100)
+        draw_line(0, 5, 7, 5, white, 100)
+        draw_line(0, 6, 7, 6, white, 100)
+        plot(0, 7, white, 100)
+        draw_line(2, 7, 3, 7, white, 100)
+        plot(5, 7, white, 100)
+        plot(7, 7, white, 100)
+        plot(2, 3, red, 100)
+        plot(5, 3, red, 100)
+        plot(1, 4, red, 100)
+        plot(3, 4, red, 100)
+        plot(5, 4, red, 100)
+        plot(7, 4, red, 100)
+        plot(0, 5, red, 100)
+        plot(2, 5, red, 100)
+        plot(4, 5, red, 100)
+        plot(6, 5, red, 100)
+endsprite
+
+# geyes: cel = direction the ghost looks
+define_sprite(geyes, 8, 8)
+    sprite_cel(0)
+        draw_line(2, 2, 3, 2, white, 100)
+        draw_line(6, 2, 7, 2, white, 100)
+        plot(2, 3, white, 100)
+        plot(3, 3, blue, 100)
+        plot(6, 3, white, 100)
+        plot(7, 3, blue, 100)
+        plot(2, 4, white, 100)
+        plot(3, 4, blue, 100)
+        plot(6, 4, white, 100)
+        plot(7, 4, blue, 100)
+    sprite_cel(1)
+        draw_line(1, 2, 2, 2, white, 100)
+        draw_line(5, 2, 6, 2, white, 100)
+        draw_line(1, 3, 2, 3, white, 100)
+        draw_line(5, 3, 6, 3, white, 100)
+        draw_line(1, 4, 2, 4, blue, 100)
+        draw_line(5, 4, 6, 4, blue, 100)
+    sprite_cel(2)
+        draw_line(0, 2, 1, 2, white, 100)
+        draw_line(4, 2, 5, 2, white, 100)
+        plot(0, 3, blue, 100)
+        plot(1, 3, white, 100)
+        plot(4, 3, blue, 100)
+        plot(5, 3, white, 100)
+        plot(0, 4, blue, 100)
+        plot(1, 4, white, 100)
+        plot(4, 4, blue, 100)
+        plot(5, 4, white, 100)
+    sprite_cel(3)
+        draw_line(1, 1, 2, 1, blue, 100)
+        draw_line(5, 1, 6, 1, blue, 100)
+        draw_line(1, 2, 2, 2, white, 100)
+        draw_line(5, 2, 6, 2, white, 100)
+        draw_line(1, 3, 2, 3, white, 100)
+        draw_line(5, 3, 6, 3, white, 100)
+endsprite
+
+# fruit: cherry, strawberry, orange, apple, melon, galaxian, bell, key
+define_sprite(fruit, 7, 7)
+    sprite_cel(0)
+        draw_line(4, 0, 5, 0, standard_brown, 100)
+        plot(3, 1, standard_brown, 100)
+        plot(5, 1, standard_brown, 100)
+        plot(2, 2, standard_brown, 100)
+        plot(5, 2, standard_brown, 100)
+        draw_line(0, 3, 1, 3, red, 100)
+        plot(4, 3, standard_brown, 100)
+        plot(0, 4, red, 100)
+        plot(1, 4, white, 100)
+        plot(2, 4, red, 100)
+        draw_line(4, 4, 5, 4, red, 100)
+        draw_line(0, 5, 3, 5, red, 100)
+        plot(4, 5, white, 100)
+        plot(5, 5, red, 100)
+        plot(1, 6, red, 100)
+        draw_line(3, 6, 5, 6, red, 100)
+    sprite_cel(1)
+        draw_line(2, 0, 4, 0, green, 100)
+        draw_line(1, 1, 2, 1, red, 100)
+        plot(3, 1, green, 100)
+        draw_line(4, 1, 5, 1, red, 100)
+        plot(0, 2, red, 100)
+        plot(1, 2, white, 100)
+        draw_line(2, 2, 4, 2, red, 100)
+        plot(5, 2, white, 100)
+        plot(6, 2, red, 100)
+        draw_line(0, 3, 2, 3, red, 100)
+        plot(3, 3, white, 100)
+        draw_line(4, 3, 6, 3, red, 100)
+        plot(1, 4, red, 100)
+        plot(2, 4, white, 100)
+        draw_line(3, 4, 5, 4, red, 100)
+        draw_line(2, 5, 3, 5, red, 100)
+        plot(4, 5, white, 100)
+        plot(3, 6, red, 100)
+    sprite_cel(2)
+        draw_line(3, 0, 4, 0, green, 100)
+        plot(2, 1, orange, 100)
+        plot(3, 1, green, 100)
+        draw_line(4, 1, 5, 1, orange, 100)
+        draw_line(1, 2, 5, 2, orange, 100)
+        draw_line(0, 3, 6, 3, orange, 100)
+        draw_line(0, 4, 6, 4, orange, 100)
+        draw_line(1, 5, 5, 5, orange, 100)
+        draw_line(2, 6, 4, 6, orange, 100)
+    sprite_cel(3)
+        plot(3, 0, standard_brown, 100)
+        draw_line(1, 1, 2, 1, red, 100)
+        plot(3, 1, standard_brown, 100)
+        draw_line(4, 1, 5, 1, red, 100)
+        draw_line(0, 2, 4, 2, red, 100)
+        plot(5, 2, white, 100)
+        plot(6, 2, red, 100)
+        draw_line(0, 3, 5, 3, red, 100)
+        plot(6, 3, white, 100)
+        draw_line(0, 4, 6, 4, red, 100)
+        draw_line(1, 5, 5, 5, red, 100)
+        plot(2, 6, red, 100)
+        plot(4, 6, red, 100)
+    sprite_cel(4)
+        plot(3, 0, standard_brown, 100)
+        plot(1, 1, green, 100)
+        plot(2, 1, lime, 100)
+        plot(3, 1, green, 100)
+        draw_line(4, 1, 5, 1, lime, 100)
+        plot(0, 2, green, 100)
+        plot(1, 2, lime, 100)
+        plot(2, 2, green, 100)
+        plot(3, 2, lime, 100)
+        plot(4, 2, green, 100)
+        plot(5, 2, lime, 100)
+        plot(6, 2, green, 100)
+        plot(0, 3, lime, 100)
+        plot(1, 3, green, 100)
+        plot(2, 3, lime, 100)
+        plot(3, 3, green, 100)
+        plot(4, 3, lime, 100)
+        plot(5, 3, green, 100)
+        plot(6, 3, lime, 100)
+        plot(0, 4, green, 100)
+        plot(1, 4, lime, 100)
+        plot(2, 4, green, 100)
+        plot(3, 4, lime, 100)
+        plot(4, 4, green, 100)
+        plot(5, 4, lime, 100)
+        plot(6, 4, green, 100)
+        plot(1, 5, green, 100)
+        plot(2, 5, lime, 100)
+        plot(3, 5, green, 100)
+        plot(4, 5, lime, 100)
+        plot(5, 5, green, 100)
+        plot(2, 6, lime, 100)
+        plot(3, 6, green, 100)
+        plot(4, 6, lime, 100)
+    sprite_cel(5)
+        plot(3, 0, yellow, 100)
+        draw_line(2, 1, 4, 1, yellow, 100)
+        plot(0, 2, blue, 100)
+        plot(2, 2, red, 100)
+        plot(3, 2, yellow, 100)
+        plot(4, 2, red, 100)
+        plot(6, 2, blue, 100)
+        draw_line(0, 3, 1, 3, blue, 100)
+        draw_line(2, 3, 4, 3, yellow, 100)
+        draw_line(5, 3, 6, 3, blue, 100)
+        plot(0, 4, blue, 100)
+        plot(3, 4, yellow, 100)
+        plot(6, 4, blue, 100)
+        plot(3, 5, yellow, 100)
+    sprite_cel(6)
+        plot(3, 0, gold, 100)
+        draw_line(2, 1, 4, 1, gold, 100)
+        draw_line(1, 2, 2, 2, gold, 100)
+        plot(3, 2, white, 100)
+        draw_line(4, 2, 5, 2, gold, 100)
+        draw_line(1, 3, 5, 3, gold, 100)
+        draw_line(0, 4, 6, 4, gold, 100)
+        draw_line(0, 5, 6, 5, cyan, 100)
+        plot(3, 6, white, 100)
+    sprite_cel(7)
+        draw_line(2, 0, 4, 0, cyan, 100)
+        plot(1, 1, cyan, 100)
+        plot(5, 1, cyan, 100)
+        draw_line(2, 2, 4, 2, cyan, 100)
+        plot(3, 3, white, 100)
+        draw_line(3, 4, 4, 4, white, 100)
+        plot(3, 5, white, 100)
+        draw_line(3, 6, 4, 6, white, 100)
+endsprite
+
+# intermission cast: blinkyx 0 torn, 1-2 patched, 3-4 naked; rag = dragged cloak
+define_sprite(blinkyx, 8, 8)
+    sprite_cel(0)
+        draw_line(2, 0, 5, 0, red, 100)
+        draw_line(1, 1, 6, 1, red, 100)
+        draw_line(0, 2, 7, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        draw_line(0, 4, 7, 4, red, 100)
+        draw_line(0, 5, 4, 5, red, 100)
+        draw_line(0, 6, 3, 6, red, 100)
+        draw_line(5, 6, 6, 6, peach, 100)
+        draw_line(0, 7, 1, 7, red, 100)
+        plot(3, 7, red, 100)
+        plot(6, 7, peach, 100)
+    sprite_cel(1)
+        draw_line(2, 0, 5, 0, red, 100)
+        draw_line(1, 1, 6, 1, red, 100)
+        draw_line(0, 2, 7, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        draw_line(0, 4, 7, 4, red, 100)
+        draw_line(0, 5, 3, 5, red, 100)
+        draw_line(4, 5, 5, 5, white, 100)
+        draw_line(6, 5, 7, 5, red, 100)
+        draw_line(0, 6, 3, 6, red, 100)
+        draw_line(4, 6, 5, 6, white, 100)
+        draw_line(6, 6, 7, 6, red, 100)
+        draw_line(0, 7, 1, 7, red, 100)
+        draw_line(3, 7, 4, 7, red, 100)
+        draw_line(6, 7, 7, 7, red, 100)
+    sprite_cel(2)
+        draw_line(2, 0, 5, 0, red, 100)
+        draw_line(1, 1, 6, 1, red, 100)
+        draw_line(0, 2, 7, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        draw_line(0, 4, 7, 4, red, 100)
+        draw_line(0, 5, 3, 5, red, 100)
+        draw_line(4, 5, 5, 5, white, 100)
+        draw_line(6, 5, 7, 5, red, 100)
+        draw_line(0, 6, 3, 6, red, 100)
+        draw_line(4, 6, 5, 6, white, 100)
+        draw_line(6, 6, 7, 6, red, 100)
+        plot(0, 7, red, 100)
+        draw_line(2, 7, 3, 7, red, 100)
+        plot(5, 7, red, 100)
+        plot(7, 7, red, 100)
+    sprite_cel(3)
+        draw_line(3, 1, 4, 1, peach, 100)
+        draw_line(2, 2, 5, 2, peach, 100)
+        plot(2, 3, peach, 100)
+        plot(3, 3, white, 100)
+        plot(4, 3, blue, 100)
+        plot(5, 3, peach, 100)
+        draw_line(2, 4, 5, 4, peach, 100)
+        draw_line(3, 5, 4, 5, peach, 100)
+        plot(2, 6, peach, 100)
+        plot(5, 6, peach, 100)
+        plot(1, 7, peach, 100)
+        plot(6, 7, peach, 100)
+    sprite_cel(4)
+        draw_line(3, 1, 4, 1, peach, 100)
+        draw_line(2, 2, 5, 2, peach, 100)
+        plot(2, 3, peach, 100)
+        plot(3, 3, white, 100)
+        plot(4, 3, blue, 100)
+        plot(5, 3, peach, 100)
+        draw_line(2, 4, 5, 4, peach, 100)
+        draw_line(3, 5, 4, 5, peach, 100)
+        draw_line(3, 6, 4, 6, peach, 100)
+        plot(2, 7, peach, 100)
+        plot(5, 7, peach, 100)
+endsprite
+define_sprite(rag, 8, 8)
+    sprite_cel(0)
+        draw_line(2, 1, 4, 1, red, 100)
+        draw_line(1, 2, 6, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        plot(1, 4, red, 100)
+        draw_line(3, 4, 4, 4, red, 100)
+        plot(6, 4, red, 100)
+    sprite_cel(1)
+        draw_line(3, 1, 5, 1, red, 100)
+        draw_line(1, 2, 6, 2, red, 100)
+        draw_line(0, 3, 7, 3, red, 100)
+        plot(0, 4, red, 100)
+        draw_line(2, 4, 3, 4, red, 100)
+        plot(5, 4, red, 100)
+        plot(7, 4, red, 100)
+endsprite
+define_sprite(nail, 3, 4)
+    draw_line(0, 0, 1, 0, light_gray, 100)
+    plot(1, 1, light_gray, 100)
+    plot(1, 2, light_gray, 100)
+    plot(1, 3, light_gray, 100)
+endsprite
+
+# Sprite instances. Everything lives on layer 10; z orders fruit < pac < ghosts < eyes.
+set_layer(10)
+show_sprite(fruit, -20, -20, 0, 1, 0)
+hide_sprite(fruit, 0)
+show_sprite(pac, -20, -20, 0, 2, 0)
+hide_sprite(pac, 0)
+show_sprite(pacdie, -20, -20, 0, 2, 0)
+hide_sprite(pacdie, 0)
+show_sprite(blinkyx, -20, -20, 0, 3, 0)
+hide_sprite(blinkyx, 0)
+show_sprite(rag, -20, -20, 0, 3, 0)
+hide_sprite(rag, 0)
+show_sprite(nail, -20, -20, 0, 1, 0)
+hide_sprite(nail, 0)
+for v_i in (0, 3, 1)
+    show_sprite(ghost, -20, -20, v_i, 3, 0)
+    hide_sprite(ghost, v_i)
+    show_sprite(geyes, -20, -20, v_i, 4, 0)
+    hide_sprite(geyes, v_i)
+endfor v_i
+for v_i in (1, 5, 1)
+    show_sprite(pac, -20, -20, v_i, 2, 0)
+    hide_sprite(pac, v_i)
+endfor v_i
+
+# ---------------------------------------------------------------------------
+# Tables
+# ---------------------------------------------------------------------------
+create_array(v_gx, 4)
+create_array(v_gy, 4)
+create_array(v_gdir, 4)
+create_array(v_gst, 4)
+create_array(v_gfr, 4)
+create_array(v_gacc, 4)
+create_array(v_gdc, 4)
+create_array(v_glim, 4)
+create_array(v_ghome, 4)
+create_array(v_sctx, 4)
+create_array(v_scty, 4)
+create_array(v_sched, 8)
+create_array(v_fright_tab, 20)
+create_array(v_fruit_cel, 14)
+create_array(v_fruit_pts, 8)
+create_array(v_chomp, 4)
+create_array(v_gpass, 4)
+
+# ghost states: 0 in house, 1 leaving house, 2 in maze, 3 eyes going home, 4 eyes entering
+v_ghome[0] = 54
+v_ghome[1] = 54
+v_ghome[2] = 46
+v_ghome[3] = 62
+v_sctx[0] = 25
+v_scty[0] = -4
+v_sctx[1] = 2
+v_scty[1] = -4
+v_sctx[2] = 27
+v_scty[2] = 34
+v_sctx[3] = 0
+v_scty[3] = 34
+
+# scatter / chase lengths in frames (30 fps)
+# (filled per level in level_setup)
+
+# frightened frames by level (index level - 1)
+v_fright_tab[0] = 180
+v_fright_tab[1] = 150
+v_fright_tab[2] = 120
+v_fright_tab[3] = 90
+v_fright_tab[4] = 60
+v_fright_tab[5] = 150
+v_fright_tab[6] = 60
+v_fright_tab[7] = 60
+v_fright_tab[8] = 30
+v_fright_tab[9] = 150
+v_fright_tab[10] = 60
+v_fright_tab[11] = 30
+v_fright_tab[12] = 30
+v_fright_tab[13] = 90
+v_fright_tab[14] = 30
+v_fright_tab[15] = 30
+v_fright_tab[16] = 0
+v_fright_tab[17] = 30
+v_fright_tab[18] = 0
+v_fright_tab[19] = 0
+
+# fruit by level: cherry, strawberry, orange x2, apple x2, melon x2, galaxian x2, bell x2, key
+v_fruit_cel[0] = 0
+v_fruit_cel[1] = 1
+v_fruit_cel[2] = 2
+v_fruit_cel[3] = 2
+v_fruit_cel[4] = 3
+v_fruit_cel[5] = 3
+v_fruit_cel[6] = 4
+v_fruit_cel[7] = 4
+v_fruit_cel[8] = 5
+v_fruit_cel[9] = 5
+v_fruit_cel[10] = 6
+v_fruit_cel[11] = 6
+v_fruit_cel[12] = 7
+v_fruit_cel[13] = 7
+v_fruit_pts[0] = 100
+v_fruit_pts[1] = 300
+v_fruit_pts[2] = 500
+v_fruit_pts[3] = 700
+v_fruit_pts[4] = 1000
+v_fruit_pts[5] = 2000
+v_fruit_pts[6] = 3000
+v_fruit_pts[7] = 5000
+
+# mouth animation: wide, half, shut, half
+v_chomp[0] = 2
+v_chomp[1] = 1
+v_chomp[2] = 0
+v_chomp[3] = 1
+
+# Search scratch space
+create_array(v_bq, 900)
+create_array(v_dg, 868)
+create_array(v_sg, 868)
+create_array(v_dp, 868)
+create_array(v_sp, 868)
+create_array(v_fd, 868)
+create_array(v_occ, 868)
+create_array(v_sks, 868)
+create_array(v_skd, 868)
+create_array(v_cntd, 4)
+create_array(v_dotd, 4)
+create_array(v_ppd, 4)
+create_array(v_leadd, 4)
+v_stg = 0
+v_stp = 0
+
+v_ftile = 17 * 28 + 13
+
+# Pac-Man AI tuning
+v_ai_margin = 1      # must reach a tile this many steps + 1 ahead of any ghost
+v_ai_roomlead = 2    # a tile counts as escape room if he leads the ghosts there by this much
+v_ai_room = 12       # escape-room tiles a direction needs before he commits to it
+v_ai_lead = 10       # ...or a tile this far ahead of every ghost
+v_ai_fear = 2        # extra cost per step a dot is closer than 8 to the ghosts' reach
+v_ai_rev = 2         # extra cost for turning around
+v_ai_look = 1        # 1 = check plans with the ghost look-ahead
+v_ai_lapse = 0       # chance per tile (out of 10000) of a lapse
+v_lapse_n = 0
+v_ai_ppdots = 30     # power pellets are fair game once this few dots remain...
+v_ai_ppnear = 4      # ...and a ghost is this close
+v_ai_pppanic = 3      # any time a ghost is this close, a nearby pellet is fair game
+v_ai_huntmin = 80    # below this many dots, ignore blue ghosts and eat dots
+v_elroy = 0
+v_elroy_ok = 1
+
+# ---------------------------------------------------------------------------
+# Level setup
+# ---------------------------------------------------------------------------
+# Arcade difficulty by level. Speeds are pixels per frame; 1.25 px/frame is
+# the arcade's 100%. Elroy = Blinky speeding up when few dots remain.
+def level_setup {
+    v_li = min(v_level, 20) - 1
+    v_fright_len = v_fright_tab[v_li]
+    v_fcel = v_fruit_cel[min(v_level, 14) - 1]
+    v_fpts = v_fruit_pts[v_fcel]
+    # Ms. Pac-Man maze cycle (4 unique boards):
+    #   levels 1-2  -> maze 0 (rose)
+    #   levels 3-5  -> maze 1 (cyan)
+    #   levels 6-9  -> maze 2 (gold)
+    #   levels 10+  -> alternates maze 2 / 3 every 4 levels (blue)
+    if v_level <= 2 then
+        v_maze_idx = 0
+    elseif v_level <= 5 then
+        v_maze_idx = 1
+    elseif v_level <= 9 then
+        v_maze_idx = 2
+    else
+        v_maze_idx = 2 + ((v_level - 10) // 4) % 2
+    endif
+    if v_level == 1 then
+        v_sp_pac = 1.0
+        v_sp_pacfr = 1.125
+        v_sp_ghost = 0.94
+        v_sp_gfr = 0.625
+        v_sp_tun = 0.5
+        v_sp_elroy1 = 1.0
+        v_sp_elroy2 = 1.06
+    elseif v_level <= 4 then
+        v_sp_pac = 1.125
+        v_sp_pacfr = 1.19
+        v_sp_ghost = 1.06
+        v_sp_gfr = 0.69
+        v_sp_tun = 0.56
+        v_sp_elroy1 = 1.125
+        v_sp_elroy2 = 1.19
+    elseif v_level <= 20 then
+        v_sp_pac = 1.25
+        v_sp_pacfr = 1.25
+        v_sp_ghost = 1.19
+        v_sp_gfr = 0.75
+        v_sp_tun = 0.62
+        v_sp_elroy1 = 1.25
+        v_sp_elroy2 = 1.31
+    else
+        v_sp_pac = 1.125
+        v_sp_pacfr = 1.125
+        v_sp_ghost = 1.19
+        v_sp_gfr = 0.75
+        v_sp_tun = 0.62
+        v_sp_elroy1 = 1.25
+        v_sp_elroy2 = 1.31
+    endif
+    # Elroy thresholds (dots left)
+    if v_level == 1 then
+        v_elroy1 = 20
+    elseif v_level == 2 then
+        v_elroy1 = 30
+    elseif v_level <= 5 then
+        v_elroy1 = 40
+    elseif v_level <= 8 then
+        v_elroy1 = 50
+    elseif v_level <= 11 then
+        v_elroy1 = 60
+    elseif v_level <= 14 then
+        v_elroy1 = 80
+    elseif v_level <= 18 then
+        v_elroy1 = 100
+    else
+        v_elroy1 = 120
+    endif
+    v_elroy2 = v_elroy1 // 2
+    # ghost house release (dots) and idle timer
+    v_glim[1] = 0
+    v_glim[2] = 0
+    v_glim[3] = 0
+    if v_level == 1 then
+        v_glim[2] = 30
+        v_glim[3] = 60
+    elseif v_level == 2 then
+        v_glim[3] = 50
+    endif
+    v_idle_max = 120
+    if v_level >= 5 then
+        v_idle_max = 90
+    endif
+    # scatter / chase schedule in frames: chase gets longer, scatter shorter
+    if v_level == 1 then
+        v_sched[0] = 210
+        v_sched[1] = 600
+        v_sched[2] = 210
+        v_sched[3] = 600
+        v_sched[4] = 150
+        v_sched[5] = 600
+        v_sched[6] = 150
+    elseif v_level <= 4 then
+        v_sched[0] = 210
+        v_sched[1] = 600
+        v_sched[2] = 210
+        v_sched[3] = 600
+        v_sched[4] = 150
+        v_sched[5] = 30990
+        v_sched[6] = 1
+    else
+        v_sched[0] = 150
+        v_sched[1] = 600
+        v_sched[2] = 150
+        v_sched[3] = 600
+        v_sched[4] = 150
+        v_sched[5] = 31110
+        v_sched[6] = 1
+    endif
+    v_sched[7] = 999999
+}
+
+# Elroy is active when few dots remain (paused after a death until Clyde is out).
+def elroy_level {
+    v_elroy = 0
+    if v_elroy_ok == 1 or v_gst[3] != 0 then
+        v_elroy_ok = 1
+        if v_dots_left <= v_elroy2 then
+            v_elroy = 2
+        elseif v_dots_left <= v_elroy1 then
+            v_elroy = 1
+        endif
+    endif
+}
+
+def new_level_board {
+    for v_i in (0, 867, 1)
+        v_map[v_i] = v_orig[v_i]
+    endfor v_i
+    v_dots_left = v_dots_total
+    v_pp_left = 4
+    v_elroy_ok = 1
+    v_elroy = 0
+    v_eaten = 0
+    v_global = 0
+    v_gcount = 0
+    for v_i in (0, 3, 1)
+        v_gdc[v_i] = 0
+    endfor v_i
+}
+
+def reset_actors {
+    v_px = 54
+    v_py = 92
+    v_pdir = 2
+    v_pacc = 0
+    v_pmoved = 0
+    v_pac_vis = 1
+    v_gx[0] = 54
+    v_gy[0] = 44
+    v_gdir[0] = 2
+    v_gst[0] = 2
+    v_gx[1] = 54
+    v_gy[1] = 56
+    v_gdir[1] = 1
+    v_gst[1] = 0
+    v_gx[2] = 46
+    v_gy[2] = 56
+    v_gdir[2] = 3
+    v_gst[2] = 0
+    v_gx[3] = 62
+    v_gy[3] = 56
+    v_gdir[3] = 3
+    v_gst[3] = 0
+    for v_i in (0, 3, 1)
+        v_gfr[v_i] = 0
+        v_gacc[v_i] = 0
+        v_gpass[v_i] = 0
+    endfor v_i
+    v_mode_i = 0
+    v_mode_t = v_sched[0]
+    v_mode = 0
+    v_fright = 0
+    v_freeze = 0
+    v_eatg = -1
+    v_fruit_on = 0
+    v_fruit_t = 0
+    v_pop_t = 0
+    v_idle = 0
+    v_snap = 1
+}
+
+# ---------------------------------------------------------------------------
+# Ghosts
+# ---------------------------------------------------------------------------
+# v_g -> v_tgx, v_tgy (target tile)
+def ghost_target {
+    if v_gst[v_g] == 3 then
+        v_tgx = 13
+        v_tgy = 11
+    elseif v_mode == 0 and (v_g != 0 or v_elroy == 0) then
+        v_tgx = v_sctx[v_g]
+        v_tgy = v_scty[v_g]
+    else
+        v_pc = ((v_px + 2) // 4) % 28
+        v_pr = (v_py + 2) // 4
+        if v_g == 0 then
+            v_tgx = v_pc
+            v_tgy = v_pr
+        elseif v_g == 1 then
+            v_tgx = v_pc + v_dx4[v_pdir] * 4
+            v_tgy = v_pr + v_dy4[v_pdir] * 4
+            if v_pdir == 3 then
+                v_tgx = v_tgx - 4
+            endif
+        elseif v_g == 2 then
+            v_ax = v_pc + v_dx4[v_pdir] * 2
+            v_ay = v_pr + v_dy4[v_pdir] * 2
+            if v_pdir == 3 then
+                v_ax = v_ax - 2
+            endif
+            v_tgx = v_ax * 2 - ((v_gx[0] + 2) // 4)
+            v_tgy = v_ay * 2 - ((v_gy[0] + 2) // 4)
+        else
+            v_ddx = v_pc - (v_gx[3] + 2) // 4
+            v_ddy = v_pr - (v_gy[3] + 2) // 4
+            if v_ddx * v_ddx + v_ddy * v_ddy > 64 then
+                v_tgx = v_pc
+                v_tgy = v_pr
+            else
+                v_tgx = v_sctx[3]
+                v_tgy = v_scty[3]
+            endif
+        endif
+    endif
+}
+
+# v_g at a tile centre (v_tc, v_tr): pick v_gdir[v_g]. Never reverses.
+def ghost_choose {
+    v_t = v_tr * 28 + v_tc
+    v_opp = (v_gdir[v_g] + 2) % 4
+    v_bd = -1
+    if v_gfr[v_g] == 1 and v_gst[v_g] == 2 then
+        v_rd = random(0, 3, 0)
+        for v_k in (0, 3, 1)
+            v_d = (v_rd + v_k) % 4
+            if v_bd < 0 and v_d != v_opp and v_nb[v_t * 4 + v_d] >= 0 then
+                v_bd = v_d
+            endif
+        endfor v_k
+    else
+        call ghost_target
+        v_best = 999999
+        v_red = 0
+        if v_gst[v_g] == 2 and (v_tr == 11 or v_tr == 23) and v_tc >= 12 and v_tc <= 15 then
+            v_red = 1
+        endif
+        # tie order: up, left, down, right
+        for v_k in (0, 3, 1)
+            v_d = 3 - v_k
+            if v_d != v_opp and v_nb[v_t * 4 + v_d] >= 0 then
+                if v_red == 0 or v_d != 3 then
+                    v_ddx = v_tc + v_dx4[v_d] - v_tgx
+                    v_ddy = v_tr + v_dy4[v_d] - v_tgy
+                    v_dist = v_ddx * v_ddx + v_ddy * v_ddy
+                    if v_dist < v_best then
+                        v_best = v_dist
+                        v_bd = v_d
+                    endif
+                endif
+            endif
+        endfor v_k
+    endif
+    if v_bd < 0 then
+        v_bd = v_opp
+    endif
+    v_gdir[v_g] = v_bd
+}
+
+# Move ghost v_g by one pixel.
+def ghost_px {
+    v_s = v_gst[v_g]
+    if v_s == 0 then
+        v_gy[v_g] = v_gy[v_g] + v_dy4[v_gdir[v_g]]
+        if v_gy[v_g] <= 54 then
+            v_gdir[v_g] = 1
+        endif
+        if v_gy[v_g] >= 58 then
+            v_gdir[v_g] = 3
+        endif
+    elseif v_s == 1 then
+        if v_gx[v_g] < 54 then
+            v_gx[v_g] = v_gx[v_g] + 1
+            v_gdir[v_g] = 0
+        elseif v_gx[v_g] > 54 then
+            v_gx[v_g] = v_gx[v_g] - 1
+            v_gdir[v_g] = 2
+        else
+            v_gy[v_g] = v_gy[v_g] - 1
+            v_gdir[v_g] = 3
+            if v_gy[v_g] <= 44 then
+                v_gst[v_g] = 2
+                v_gdir[v_g] = 2
+                v_gacc[v_g] = 0
+            endif
+        endif
+    elseif v_s == 4 then
+        if v_gy[v_g] <= 44 and v_gx[v_g] != 54 then
+            if v_gx[v_g] < 54 then
+                v_gx[v_g] = v_gx[v_g] + 1
+                v_gdir[v_g] = 0
+            else
+                v_gx[v_g] = v_gx[v_g] - 1
+                v_gdir[v_g] = 2
+            endif
+        elseif v_gy[v_g] < 56 then
+            v_gy[v_g] = v_gy[v_g] + 1
+            v_gdir[v_g] = 1
+        elseif v_gx[v_g] < v_ghome[v_g] then
+            v_gx[v_g] = v_gx[v_g] + 1
+            v_gdir[v_g] = 0
+        elseif v_gx[v_g] > v_ghome[v_g] then
+            v_gx[v_g] = v_gx[v_g] - 1
+            v_gdir[v_g] = 2
+        else
+            v_gst[v_g] = 1
+            v_gfr[v_g] = 0
+            v_gdir[v_g] = 3
+        endif
+    else
+        if v_gx[v_g] % 4 == 0 and v_gy[v_g] % 4 == 0 then
+            v_tc = (v_gx[v_g] // 4) % 28
+            v_tr = v_gy[v_g] // 4
+            if v_s == 3 and v_tr == 11 and (v_tc == 13 or v_tc == 14) then
+                v_gst[v_g] = 4
+                v_s = 4
+            else
+                call ghost_choose
+            endif
+        endif
+        if v_s != 4 then
+            v_gx[v_g] = v_gx[v_g] + v_dx4[v_gdir[v_g]]
+            v_gy[v_g] = v_gy[v_g] + v_dy4[v_gdir[v_g]]
+            if v_gx[v_g] < -4 then
+                v_gx[v_g] = v_gx[v_g] + 112
+            endif
+            if v_gx[v_g] > 111 then
+                v_gx[v_g] = v_gx[v_g] - 112
+            endif
+        endif
+    endif
+}
+
+def ghost_speed {
+    v_s = v_gst[v_g]
+    if v_s >= 3 then
+        v_spd = 2.0
+    elseif v_s <= 1 then
+        v_spd = 0.5
+    elseif v_gfr[v_g] == 1 then
+        v_spd = v_sp_gfr
+    else
+        v_spd = v_sp_ghost
+        if v_g == 0 then
+            call elroy_level
+            if v_elroy == 1 then
+                v_spd = v_sp_elroy1
+            elseif v_elroy == 2 then
+                v_spd = v_sp_elroy2
+            endif
+        endif
+    endif
+    if v_s == 2 and v_gy[v_g] == 56 and (v_gx[v_g] <= 20 or v_gx[v_g] >= 88) then
+        v_spd = min(v_spd, v_sp_tun)
+    endif
+}
+
+def move_ghosts {
+    call elroy_level
+    for v_gi in (0, 3, 1)
+        v_g = v_gi
+        call ghost_speed
+        v_gacc[v_g] = v_gacc[v_g] + v_spd
+        while v_gacc[v_g] >= 1 then
+            v_gacc[v_g] = v_gacc[v_g] - 1
+            call ghost_px
+        endwhile
+    endfor v_gi
+}
+
+def reverse_ghosts {
+    for v_gi in (0, 3, 1)
+        if v_gst[v_gi] == 2 then
+            v_gdir[v_gi] = (v_gdir[v_gi] + 2) % 4
+        endif
+    endfor v_gi
+}
+
+# Lowest ghost still at home, or -1
+def preferred_ghost {
+    v_pref = -1
+    for v_gi in (1, 3, 1)
+        if v_pref < 0 and v_gst[v_gi] == 0 then
+            v_pref = v_gi
+        endif
+    endfor v_gi
+}
+
+def check_release {
+    call preferred_ghost
+    if v_pref >= 0 then
+        if v_global == 1 then
+            if (v_pref == 1 and v_gcount >= 7) or (v_pref == 2 and v_gcount >= 17) or (v_pref == 3 and v_gcount >= 32) then
+                v_gst[v_pref] = 1
+            endif
+        elseif v_gdc[v_pref] >= v_glim[v_pref] then
+            v_gst[v_pref] = 1
+        endif
+        v_idle = v_idle + 1
+        if v_idle > v_idle_max then
+            v_idle = 0
+            call preferred_ghost
+            if v_pref >= 0 then
+                v_gst[v_pref] = 1
+            endif
+        endif
+    endif
+}
+
+# ---------------------------------------------------------------------------
+# Pac-Man's brain
+# ---------------------------------------------------------------------------
+# Multi-source BFS from every ghost that can hurt him: v_dg = ghost steps to a tile.
+def ghost_field {
+    v_stg = v_stg + 1
+    v_qh = 0
+    v_qt = 0
+    v_nfr = 0
+    for v_gj in (0, 3, 1)
+        v_s = v_gst[v_gj]
+        v_hot = 0
+        if v_gfr[v_gj] == 0 or v_fright < 45 then
+            if v_s == 2 or (v_s == 1 and v_gy[v_gj] < 52) then
+                v_hot = 1
+            endif
+        endif
+        if v_s == 1 and v_hot == 1 then
+            v_t = 11 * 28 + 13
+            if v_sg[v_t] != v_stg then
+                v_sg[v_t] = v_stg
+                v_dg[v_t] = 0
+                v_bq[v_qt] = v_t
+                v_qt = v_qt + 1
+            endif
+            v_hot = 0
+        endif
+        v_t = ((v_gy[v_gj] + 2) // 4) * 28 + ((v_gx[v_gj] + 2) // 4) % 28
+        if v_s == 2 and v_hot == 0 and v_gfr[v_gj] == 1 then
+            v_occ[v_t] = v_stg
+            v_nfr = v_nfr + 1
+        endif
+        if v_hot == 1 then
+            if v_sg[v_t] != v_stg then
+                v_sg[v_t] = v_stg
+                v_dg[v_t] = 0
+                v_bq[v_qt] = v_t
+                v_qt = v_qt + 1
+                v_sks[v_t] = v_stg
+                v_skd[v_t] = (v_gdir[v_gj] + 2) % 4
+            endif
+            v_n = v_nb[v_t * 4 + v_gdir[v_gj]]
+            if v_n >= 0 then
+                if v_sg[v_n] != v_stg then
+                    v_sg[v_n] = v_stg
+                    v_dg[v_n] = 0
+                    v_bq[v_qt] = v_n
+                    v_qt = v_qt + 1
+                endif
+            endif
+        endif
+    endfor v_gj
+    while v_qh < v_qt then
+        v_t = v_bq[v_qh]
+        v_qh = v_qh + 1
+        v_nd = v_dg[v_t] + 1
+        v_b = v_t * 4
+        v_skip = -1
+        if v_sks[v_t] == v_stg then
+            v_skip = v_skd[v_t]
+        endif
+        for v_d in (0, 3, 1)
+            v_n = v_nb[v_b + v_d]
+            if v_n >= 0 and v_d != v_skip then
+                if v_sg[v_n] != v_stg then
+                    v_sg[v_n] = v_stg
+                    v_dg[v_n] = v_nd
+                    v_bq[v_qt] = v_n
+                    v_qt = v_qt + 1
+                endif
+            endif
+        endfor v_d
+    endwhile
+}
+
+# ---------------------------------------------------------------------------
+# Look-ahead search. Simulates Pac-Man and the dangerous ghosts one tile per
+# tick with the ghosts' real targeting rules. At every junction it tries each
+# way Pac-Man could turn (best escape first) and asks: is there any path
+# that survives v_xD ticks? Work is capped at v_xbudget simulated steps.
+# ---------------------------------------------------------------------------
+v_xD = 20
+v_xbudget = 600
+create_array(v_xpc, 41)
+create_array(v_xpr, 41)
+create_array(v_xpd, 41)
+create_array(v_xn, 41)
+create_array(v_xi, 41)
+create_array(v_xcand, 123)
+create_array(v_xgc, 164)
+create_array(v_xgr, 164)
+create_array(v_xgd, 164)
+create_array(v_xga, 164)
+create_array(v_xon, 4)
+create_array(v_xsc, 4)
+
+# ghost v_k of depth slot v_gb (= depth * 4): pick its direction
+def x_ghost_dir {
+    v_gq = v_gb + v_k
+    v_rt = v_xgr[v_gq] * 28 + v_xgc[v_gq]
+    v_ropp = (v_xgd[v_gq] + 2) % 4
+    if v_xmode == 0 and (v_k != 0 or v_elroy == 0) then
+        v_rtx = v_sctx[v_k]
+        v_rty = v_scty[v_k]
+    elseif v_k == 0 then
+        v_rtx = v_rpc
+        v_rty = v_rpr
+    elseif v_k == 1 then
+        v_rtx = v_rpc + v_dx4[v_rpd] * 4
+        v_rty = v_rpr + v_dy4[v_rpd] * 4
+    elseif v_k == 2 then
+        v_rtx = (v_rpc + v_dx4[v_rpd] * 2) * 2 - v_xgc[v_gb]
+        v_rty = (v_rpr + v_dy4[v_rpd] * 2) * 2 - v_xgr[v_gb]
+    else
+        v_rdx = v_rpc - v_xgc[v_gq]
+        v_rdy = v_rpr - v_xgr[v_gq]
+        if v_rdx * v_rdx + v_rdy * v_rdy > 64 then
+            v_rtx = v_rpc
+            v_rty = v_rpr
+        else
+            v_rtx = v_sctx[3]
+            v_rty = v_scty[3]
+        endif
+    endif
+    v_rbest = 999999
+    v_rbd = v_ropp
+    for v_rk in (0, 3, 1)
+        v_rdd = 3 - v_rk
+        if v_rdd != v_ropp and v_nb[v_rt * 4 + v_rdd] >= 0 then
+            v_rdx = v_xgc[v_gq] + v_dx4[v_rdd] - v_rtx
+            v_rdy = v_xgr[v_gq] + v_dy4[v_rdd] - v_rty
+            if v_rdx * v_rdx + v_rdy * v_rdy < v_rbest then
+                v_rbest = v_rdx * v_rdx + v_rdy * v_rdy
+                v_rbd = v_rdd
+            endif
+        endif
+    endfor v_rk
+    v_xgd[v_gq] = v_rbd
+}
+
+# Depth 0 from the live game. Pac-Man at his tile.
+def x_init {
+    v_xpc[0] = (v_px // 4) % 28
+    v_xpr[0] = v_py // 4
+    v_xpd[0] = v_pdir
+    v_pspd = v_sp_pac
+    if v_fright > 0 then
+        v_pspd = v_sp_pacfr
+    endif
+    v_ratio = v_sp_ghost / v_pspd
+    v_ratio0 = v_ratio
+    if v_elroy == 1 then
+        v_ratio0 = v_sp_elroy1 / v_pspd
+    elseif v_elroy == 2 then
+        v_ratio0 = v_sp_elroy2 / v_pspd
+    endif
+    # frames per simulated tile, and when the next scatter/chase switch lands
+    v_xfpt = 4 / v_pspd
+    v_xswitch = 999999
+    if v_fright == 0 and v_mode_i < 7 then
+        v_xswitch = v_mode_t
+    endif
+    # which house ghost is about to be let out (if any)
+    call preferred_ghost
+    v_xpref = -1
+    if v_pref >= 0 then
+        if v_idle > v_idle_max - 30 then
+            v_xpref = v_pref
+        elseif v_global == 0 and v_gdc[v_pref] >= v_glim[v_pref] - 3 then
+            v_xpref = v_pref
+        elseif v_global == 1 then
+            v_xpref = v_pref
+        endif
+    endif
+    v_xnon = 0
+    for v_k in (0, 3, 1)
+        v_xon[v_k] = 0
+        v_xga[v_k] = 0
+        v_s = v_gst[v_k]
+        if v_gfr[v_k] == 0 or v_fright < 45 then
+            if v_s == 2 then
+                v_xon[v_k] = 1
+                v_xgc[v_k] = v_gx[v_k] // 4
+                v_xgr[v_k] = v_gy[v_k] // 4
+                v_xgd[v_k] = v_gdir[v_k]
+                if v_gdir[v_k] == 0 and v_gx[v_k] % 4 != 0 then
+                    v_xgc[v_k] = v_xgc[v_k] + 1
+                endif
+                if v_gdir[v_k] == 1 and v_gy[v_k] % 4 != 0 then
+                    v_xgr[v_k] = v_xgr[v_k] + 1
+                endif
+                v_xgc[v_k] = v_xgc[v_k] % 28
+            elseif v_s == 1 or (v_s == 0 and v_k == v_xpref) then
+                v_xon[v_k] = 1
+                v_xgc[v_k] = 13
+                v_xgr[v_k] = 11
+                v_xgd[v_k] = 2
+                v_xga[v_k] = -1.5
+                if v_s == 0 then
+                    v_xga[v_k] = -4
+                endif
+            endif
+        endif
+        v_xnon = v_xnon + v_xon[v_k]
+    endfor v_k
+}
+
+# Advance depth v_t to v_t + 1 with Pac-Man moving v_dd. Sets v_xdead.
+def x_step {
+    v_t1 = v_t + 1
+    v_pt = v_xpr[v_t] * 28 + v_xpc[v_t]
+    v_n = v_nb[v_pt * 4 + v_dd]
+    v_xpc[v_t1] = v_n % 28
+    v_xpr[v_t1] = v_n // 28
+    v_xpd[v_t1] = v_dd
+    v_rpc = v_xpc[v_t1]
+    v_rpr = v_xpr[v_t1]
+    v_rpd = v_dd
+    v_np = v_n
+    v_xdead = 0
+    v_gb = v_t1 * 4
+    v_go = v_t * 4
+    # scatter/chase switch during this tick: ghosts reverse, targets change
+    v_xmode = v_mode
+    v_xflip = 0
+    if v_t1 * v_xfpt >= v_xswitch then
+        v_xmode = 1 - v_mode
+        if v_t * v_xfpt < v_xswitch then
+            v_xflip = 2
+        endif
+    endif
+    for v_k in (0, 3, 1)
+        v_xgc[v_gb + v_k] = v_xgc[v_go + v_k]
+        v_xgr[v_gb + v_k] = v_xgr[v_go + v_k]
+        v_xgd[v_gb + v_k] = (v_xgd[v_go + v_k] + v_xflip) % 4
+        v_xga[v_gb + v_k] = v_xga[v_go + v_k]
+    endfor v_k
+    for v_k in (0, 3, 1)
+        if v_xon[v_k] == 1 and v_xdead == 0 then
+            v_gq = v_gb + v_k
+            v_rr = v_ratio
+            if v_k == 0 then
+                v_rr = v_ratio0
+            endif
+            v_xga[v_gq] = v_xga[v_gq] + v_rr
+            while v_xga[v_gq] >= 1 then
+                v_xga[v_gq] = v_xga[v_gq] - 1
+                v_rog = v_xgr[v_gq] * 28 + v_xgc[v_gq]
+                call x_ghost_dir
+                v_n = v_nb[v_rog * 4 + v_xgd[v_gq]]
+                if v_n >= 0 then
+                    v_xgc[v_gq] = v_n % 28
+                    v_xgr[v_gq] = v_n // 28
+                    if v_n == v_pt and v_rog == v_np then
+                        v_xdead = 1
+                    endif
+                endif
+            endwhile
+            if v_xgr[v_gq] * 28 + v_xgc[v_gq] == v_np then
+                v_xdead = 1
+            endif
+        endif
+    endfor v_k
+}
+
+# Candidate turns at depth v_t (never straight back), best escape first.
+def x_cands {
+    v_pt = v_xpr[v_t] * 28 + v_xpc[v_t]
+    v_ropp = (v_xpd[v_t] + 2) % 4
+    v_gb = v_t * 4
+    v_xn[v_t] = 0
+    for v_rk in (0, 3, 1)
+        v_xsc[v_rk] = -1
+        v_n = v_nb[v_pt * 4 + v_rk]
+        if v_rk != v_ropp and v_n >= 0 then
+            v_nc = v_n % 28
+            v_nr = v_n // 28
+            v_rmin = 999
+            for v_k in (0, 3, 1)
+                if v_xon[v_k] == 1 then
+                    v_rdx = abs(v_nc - v_xgc[v_gb + v_k])
+                    v_rdx = min(v_rdx, 28 - v_rdx)
+                    v_rmin = min(v_rmin, v_rdx + abs(v_nr - v_xgr[v_gb + v_k]))
+                endif
+            endfor v_k
+            v_xsc[v_rk] = v_rmin
+        endif
+    endfor v_rk
+    for v_j in (0, 2, 1)
+        v_rbest = -1
+        v_rbd = -1
+        for v_rk in (0, 3, 1)
+            if v_xsc[v_rk] > v_rbest then
+                v_rbest = v_xsc[v_rk]
+                v_rbd = v_rk
+            endif
+        endfor v_rk
+        if v_rbd >= 0 then
+            v_xcand[v_t * 3 + v_xn[v_t]] = v_rbd
+            v_xn[v_t] = v_xn[v_t] + 1
+            v_xsc[v_rbd] = -1
+        endif
+    endfor v_j
+    v_xi[v_t] = 0
+}
+
+# Is there a surviving path starting with move v_rd? -> v_xok, v_xmax
+def x_search {
+    v_xok = 0
+    v_xmax = 0
+    if v_xnon == 0 then
+        v_xok = 1
+    else
+        v_xn[0] = 1
+        v_xcand[0] = v_rd
+        v_xi[0] = 0
+        v_xnodes = 0
+        v_t = 0
+        while v_t >= 0 and v_xok == 0 then
+            if v_xi[v_t] >= v_xn[v_t] then
+                v_t = v_t - 1
+            else
+                v_dd = v_xcand[v_t * 3 + v_xi[v_t]]
+                v_xi[v_t] = v_xi[v_t] + 1
+                call x_step
+                v_xnodes = v_xnodes + 1
+                if v_xdead == 0 then
+                    if v_t1 > v_xmax then
+                        v_xmax = v_t1
+                    endif
+                    if v_t1 >= v_xD then
+                        v_xok = 1
+                    else
+                        v_t = v_t1
+                        call x_cands
+                    endif
+                endif
+                if v_xnodes >= v_xbudget then
+                    v_xok = 1
+                endif
+            endif
+        endwhile
+    endif
+}
+
+# Check the planned v_pdir; if the search says it is a trap, take a move that
+# survives (or survives longest).
+def pac_verify {
+    call x_init
+    if v_xnon > 0 then
+        v_P = (v_py // 4) * 28 + (v_px // 4) % 28
+        v_rd = v_pdir
+        call x_search
+        if v_xok == 0 then
+            v_rbestv = v_xmax
+            v_rbestd = v_pdir
+            v_found = 0
+            for v_d4 in (0, 3, 1)
+                if v_found == 0 and v_d4 != v_pdir and v_nb[v_P * 4 + v_d4] >= 0 then
+                    v_rd = v_d4
+                    call x_search
+                    if v_xok == 1 then
+                        v_found = 1
+                        v_rbestd = v_d4
+                    elseif v_xmax > v_rbestv then
+                        v_rbestv = v_xmax
+                        v_rbestd = v_d4
+                    endif
+                endif
+            endfor v_d4
+            v_pdir = v_rbestd
+        endif
+    endif
+}
+
+# At a tile centre: choose v_pdir.
+# BFS from Pac-Man over the tiles he reaches at least two steps before any
+# ghost. Each tile remembers the first move that leads to it, so every
+# direction gets: how many safe tiles lie behind it, the best lead he has over
+# the ghosts there, and its nearest dot. He only commits to a direction with
+# room to escape behind it; otherwise he takes the roomiest way out.
+def pac_think {
+    if v_lapse_n <= 0 and v_ai_lapse > 0 then
+        if random(0, 9999, 0) < v_ai_lapse then
+            v_lapse_n = random(3, 8, 0)
+        endif
+    endif
+    if v_lapse_n > 0 then
+        v_lapse_n = v_lapse_n - 1
+        v_stg = v_stg + 1
+        v_nfr = 0
+    else
+        call ghost_field
+    endif
+    v_P = (v_py // 4) * 28 + (v_px // 4) % 28
+    v_stp = v_stp + 1
+    v_sp[v_P] = v_stp
+    v_dp[v_P] = 0
+    v_fd[v_P] = v_pdir
+    v_bq[0] = v_P
+    v_qh = 0
+    v_qt = 1
+    for v_d in (0, 3, 1)
+        v_cntd[v_d] = 0
+        v_dotd[v_d] = -1
+        v_ppd[v_d] = -1
+        v_leadd[v_d] = -999
+    endfor v_d
+    v_bgh = -1
+    v_bfr = -1
+    v_gP = 999
+    if v_sg[v_P] == v_stg then
+        v_gP = v_dg[v_P]
+    endif
+    # Power pellets are saved for the endgame (or for when only they are left)
+    v_bait = 0
+    if v_gP <= v_ai_ppnear and v_dots_left <= v_ai_ppdots then
+        v_bait = 1
+    endif
+    if v_dots_left <= v_pp_left or v_gP <= v_ai_pppanic then
+        v_bait = 1
+    endif
+    # Late in a level he clears dots while the ghosts are blue instead of chasing them
+    v_hunt = 0
+    if v_nfr > 0 and v_dots_left > v_ai_huntmin then
+        v_hunt = 1
+    endif
+    while v_qh < v_qt then
+        v_t = v_bq[v_qh]
+        v_qh = v_qh + 1
+        v_dt = v_dp[v_t]
+        v_expand = 1
+        if v_t != v_P then
+            v_fdt = v_fd[v_t]
+            v_gdn = 999
+            if v_sg[v_t] == v_stg then
+                v_gdn = v_dg[v_t]
+            endif
+            if v_gdn - v_dt >= v_ai_roomlead then
+                v_cntd[v_fdt] = v_cntd[v_fdt] + 1
+            endif
+            if v_gdn - v_dt > v_leadd[v_fdt] then
+                v_leadd[v_fdt] = v_gdn - v_dt
+            endif
+            v_tile = v_map[v_t]
+            if v_tile == 2 and v_dotd[v_fdt] < 0 then
+                v_dotd[v_fdt] = v_t
+            endif
+            if v_tile == 3 then
+                if v_ppd[v_fdt] < 0 then
+                    v_ppd[v_fdt] = v_t
+                endif
+                if v_bait == 0 then
+                    v_expand = 0
+                endif
+            endif
+            if v_hunt == 1 and v_bgh < 0 and v_occ[v_t] == v_stg then
+                if v_dt * 6 < v_fright then
+                    v_bgh = v_t
+                endif
+            endif
+            if v_fruit_on == 1 and v_bfr < 0 and (v_t == v_ftile or v_t == v_ftile + 1) then
+                if v_dt * 5 < v_fruit_t then
+                    v_bfr = v_t
+                endif
+            endif
+        endif
+        if v_expand == 1 then
+            v_nd = v_dt + 1
+            v_b = v_t * 4
+            for v_d in (0, 3, 1)
+                v_n = v_nb[v_b + v_d]
+                if v_n >= 0 then
+                    if v_sp[v_n] != v_stp then
+                        v_gdn = 999
+                        if v_sg[v_n] == v_stg then
+                            v_gdn = v_dg[v_n]
+                        endif
+                        if v_nd + v_ai_margin < v_gdn then
+                            v_sp[v_n] = v_stp
+                            v_dp[v_n] = v_nd
+                            if v_t == v_P then
+                                v_fd[v_n] = v_d
+                            else
+                                v_fd[v_n] = v_fd[v_t]
+                            endif
+                            v_bq[v_qt] = v_n
+                            v_qt = v_qt + 1
+                        endif
+                    endif
+                endif
+            endfor v_d
+        endif
+    endwhile
+    v_bestd = -1
+    if v_bgh >= 0 then
+        v_bestd = v_fd[v_bgh]
+    elseif v_bfr >= 0 then
+        v_bestd = v_fd[v_bfr]
+    else
+        v_bestv = 999
+        if v_bait == 1 then
+            for v_d in (0, 3, 1)
+                if v_ppd[v_d] >= 0 then
+                    if v_dp[v_ppd[v_d]] <= 12 and v_dp[v_ppd[v_d]] < v_bestv then
+                        v_bestv = v_dp[v_ppd[v_d]]
+                        v_bestd = v_d
+                    endif
+                endif
+            endfor v_d
+        endif
+        if v_bestd < 0 then
+            v_rev = (v_pdir + 2) % 4
+            for v_d in (0, 3, 1)
+                if v_dotd[v_d] >= 0 and (v_cntd[v_d] >= v_ai_room or v_leadd[v_d] >= v_ai_lead) then
+                    # cost: distance, plus fear of dots near ghosts, plus a nudge against dithering
+                    v_dd = v_dotd[v_d]
+                    v_gl = 999
+                    if v_sg[v_dd] == v_stg then
+                        v_gl = v_dg[v_dd]
+                    endif
+                    v_cost = v_dp[v_dd] + max(0, 8 - (v_gl - v_dp[v_dd])) * v_ai_fear
+                    if v_d == v_rev then
+                        v_cost = v_cost + v_ai_rev
+                    endif
+                    if v_cost < v_bestv then
+                        v_bestv = v_cost
+                        v_bestd = v_d
+                    endif
+                endif
+            endfor v_d
+        endif
+        if v_bestd < 0 then
+            for v_d in (0, 3, 1)
+                if v_ppd[v_d] >= 0 and (v_cntd[v_d] >= v_ai_room or v_leadd[v_d] >= v_ai_lead) then
+                    if v_dp[v_ppd[v_d]] < v_bestv then
+                        v_bestv = v_dp[v_ppd[v_d]]
+                        v_bestd = v_d
+                    endif
+                endif
+            endfor v_d
+        endif
+        if v_bestd < 0 then
+            # Nothing worth the risk: take the direction with the most room.
+            v_bestv = 0
+            for v_d in (0, 3, 1)
+                v_room = v_cntd[v_d] * 2 + v_leadd[v_d]
+                if v_cntd[v_d] > 0 and v_room > v_bestv then
+                    v_bestv = v_room
+                    v_bestd = v_d
+                endif
+            endfor v_d
+        endif
+    endif
+    if v_bestd >= 0 then
+        v_pdir = v_bestd
+    else
+        # Boxed in: step toward whichever neighbour the ghosts reach last.
+        v_bestv = -1
+        for v_d in (0, 3, 1)
+            v_n = v_nb[v_P * 4 + v_d]
+            if v_n >= 0 then
+                v_gdn = 999
+                if v_sg[v_n] == v_stg then
+                    v_gdn = v_dg[v_n]
+                endif
+                if v_gdn > v_bestv then
+                    v_bestv = v_gdn
+                    v_bestd = v_d
+                endif
+            endif
+        endfor v_d
+        if v_bestd >= 0 then
+            v_pdir = v_bestd
+        endif
+    endif
+    if v_lapse_n <= 0 and v_ai_look == 1 then
+        call pac_verify
+    endif
+}
+
+def add_score {
+    v_score = v_score + v_pts
+    if v_bonus == 0 and v_score >= 10000 then
+        v_bonus = 1
+        v_lives = v_lives + 1
+    endif
+    if v_score > v_hiscore then
+        v_hiscore = v_score
+    endif
+}
+
+def eat_tile {
+    v_ti = (v_py // 4) * 28 + (v_px // 4) % 28
+    v_tile = v_map[v_ti]
+    if v_tile == 2 or v_tile == 3 then
+        v_map[v_ti] = 0
+        v_dots_left = v_dots_left - 1
+        v_eaten = v_eaten + 1
+        v_idle = 0
+        if v_global == 1 then
+            v_gcount = v_gcount + 1
+        else
+            call preferred_ghost
+            if v_pref >= 0 then
+                v_gdc[v_pref] = v_gdc[v_pref] + 1
+            endif
+        endif
+        v_pts = 10
+        if v_tile == 3 then
+            v_pp_left = v_pp_left - 1
+            v_pts = 50
+            call reverse_ghosts
+            if v_fright_len > 0 then
+                v_fright = v_fright_len
+                v_combo = 0
+                v_gpts = 200
+                for v_gi in (0, 3, 1)
+                    if v_gst[v_gi] <= 2 then
+                        v_gfr[v_gi] = 1
+                    endif
+                endfor v_gi
+            endif
+        endif
+        call add_score
+        if v_eaten == 70 or v_eaten == 170 then
+            v_fruit_on = 1
+            v_fruit_t = 285
+        endif
+    endif
+}
+
+def move_pac {
+    v_spd = v_sp_pac
+    if v_fright > 0 then
+        v_spd = v_sp_pacfr
+    endif
+    v_pacc = v_pacc + v_spd
+    v_pmoved = 0
+    while v_pacc >= 1 then
+        v_pacc = v_pacc - 1
+        if v_px % 4 == 0 and v_py % 4 == 0 then
+            call eat_tile
+            call pac_think
+            v_P = (v_py // 4) * 28 + (v_px // 4) % 28
+            if v_nb[v_P * 4 + v_pdir] < 0 then
+                v_pacc = 0
+                break
+            endif
+        endif
+        v_px = v_px + v_dx4[v_pdir]
+        v_py = v_py + v_dy4[v_pdir]
+        if v_px < -4 then
+            v_px = v_px + 112
+            v_snap = 2
+        endif
+        if v_px > 111 then
+            v_px = v_px - 112
+            v_snap = 2
+        endif
+        v_pmoved = 1
+    endwhile
+    if v_pmoved == 1 then
+        v_chompi = v_chompi + 1
+    endif
+}
+
+def collide {
+    for v_gi in (0, 3, 1)
+        if v_gst[v_gi] == 2 and v_scene == 2 and v_gpass[v_gi] == 0 then
+            if abs(v_px - v_gx[v_gi]) + abs(v_py - v_gy[v_gi]) < 4 then
+                if v_gfr[v_gi] == 1 then
+                    v_gst[v_gi] = 3
+                    v_gfr[v_gi] = 0
+                    v_gacc[v_gi] = 0
+                    v_combo = v_combo + 1
+                    v_pts = v_gpts
+                    v_gpts = v_gpts * 2
+                    call add_score
+                    v_freeze = 30
+                    v_eatg = v_gi
+                    v_pop_t = 30
+                    v_pop_v = v_pts
+                    v_pop_x = v_gx[v_gi] + 2
+                    v_pop_y = v_gy[v_gi] - 1
+                    v_pop_c = "cyan"
+                elseif random(0, 99, 0) < v_pass_pct then
+                    # pass-through (the arcade lets ghosts slip through Pac-Man now and then)
+                    v_gpass[v_gi] = 15
+                else
+                    v_scene = 3
+                endif
+            endif
+        endif
+    endfor v_gi
+    if v_fruit_on == 1 and v_py == 68 and abs(v_px - 54) <= 2 then
+        v_fruit_on = 0
+        v_pts = v_fpts
+        call add_score
+        v_pop_t = 60
+        v_pop_v = v_fpts
+        v_pop_x = 56
+        v_pop_y = 67
+        v_pop_c = "rose"
+    endif
+}
+
+def tick_timers {
+    v_frame = v_frame + 1
+    for v_gi in (0, 3, 1)
+        if v_gpass[v_gi] > 0 then
+            v_gpass[v_gi] = v_gpass[v_gi] - 1
+        endif
+    endfor v_gi
+    if v_fright > 0 then
+        v_fright = v_fright - 1
+        if v_fright == 0 then
+            for v_gi in (0, 3, 1)
+                v_gfr[v_gi] = 0
+            endfor v_gi
+        endif
+    else
+        v_mode_t = v_mode_t - 1
+        if v_mode_t <= 0 and v_mode_i < 7 then
+            v_mode_i = v_mode_i + 1
+            v_mode_t = v_sched[v_mode_i]
+            v_mode = v_mode_i % 2
+            call reverse_ghosts
+        endif
+    endif
+    if v_fruit_on == 1 then
+        v_fruit_t = v_fruit_t - 1
+        if v_fruit_t <= 0 then
+            v_fruit_on = 0
+        endif
+    endif
+    if v_pop_t > 0 then
+        v_pop_t = v_pop_t - 1
+    endif
+}
+
+# ---------------------------------------------------------------------------
+# Drawing
+# ---------------------------------------------------------------------------
+def update_cam {
+    v_tx = v_px + 2 + v_dx4[v_pdir] * 6 - 32
+    v_ty = v_py + 2 + v_dy4[v_pdir] * 6 - 32
+    v_tx = max(0, min(48, v_tx))
+    v_ty = max(0, min(60, v_ty))
+    if v_snap == 1 then
+        v_camx = v_tx
+        v_camy = v_ty
+        v_snap = 0
+    else
+        v_dd = v_tx - v_camx
+        if v_dd > 0 then
+            v_camx = v_camx + max(1, v_dd // 5)
+        elseif v_dd < 0 then
+            v_camx = v_camx - max(1, (0 - v_dd) // 5)
+        endif
+        v_dd = v_ty - v_camy
+        if v_dd > 0 then
+            v_camy = v_camy + max(1, v_dd // 5)
+        elseif v_dd < 0 then
+            v_camy = v_camy - max(1, (0 - v_dd) // 5)
+        endif
+        v_snap = 0
+    endif
+}
+
+def draw_pellets {
+    v_c0 = max(0, v_camx // 4 - 1)
+    v_c1 = min(27, v_camx // 4 + 17)
+    v_r0 = max(0, v_camy // 4 - 1)
+    v_r1 = min(30, v_camy // 4 + 17)
+    v_blink = (v_frame // 8) % 2
+    for v_r in (v_r0, v_r1, 1)
+        v_rb = v_r * 28
+        v_sy = v_r * 4 + 2 - v_camy
+        for v_c in (v_c0, v_c1, 1)
+            v_tile = v_map[v_rb + v_c]
+            if v_tile == 2 then
+                mplot(v_c * 4 + 2 - v_camx, v_sy, peach, 100)
+            elseif v_tile == 3 then
+                if v_blink == 0 or v_scene != 2 then
+                    v_sx = v_c * 4 - v_camx
+                    draw_rectangle(v_sx, v_sy - 1, 4, 2, peach, 100, true)
+                    draw_rectangle(v_sx + 1, v_sy - 2, 2, 4, peach, 100, true)
+                endif
+            endif
+        endfor v_c
+    endfor v_r
+}
+
+def draw_actors {
+    set_layer(10)
+    if v_fruit_on == 1 then
+        show_sprite(fruit, 53 - v_camx, 67 - v_camy, 0, 1, v_fcel)
+    else
+        hide_sprite(fruit, 0)
+    endif
+    if v_pac_vis == 1 then
+        v_pcel = v_pdir * 3 + 1
+        if v_pmoved == 1 and v_scene == 2 then
+            v_pcel = v_pdir * 3 + v_chomp[(v_chompi // 2) % 4]
+        endif
+        if v_scene == 1 then
+            v_pcel = 0
+        endif
+        show_sprite(pac, v_px - 1 - v_camx, v_py - 1 - v_camy, 0, 2, v_pcel)
+    else
+        hide_sprite(pac, 0)
+    endif
+    v_skirt = (v_frame // 6) % 2
+    for v_gi in (0, 3, 1)
+        v_sx = v_gx[v_gi] - 2 - v_camx
+        v_sy = v_gy[v_gi] - 2 - v_camy
+        v_s = v_gst[v_gi]
+        if v_ghosts_vis == 0 or v_gi == v_eatg then
+            hide_sprite(ghost, v_gi)
+            hide_sprite(geyes, v_gi)
+        elseif v_s >= 3 then
+            hide_sprite(ghost, v_gi)
+            show_sprite(geyes, v_sx, v_sy, v_gi, 4, v_gdir[v_gi])
+        elseif v_gfr[v_gi] == 1 then
+            v_cel = 8 + v_skirt
+            if v_fright < 60 and (v_frame // 7) % 2 == 1 then
+                v_cel = 10 + v_skirt
+            endif
+            show_sprite(ghost, v_sx, v_sy, v_gi, 3, v_cel)
+            hide_sprite(geyes, v_gi)
+        else
+            show_sprite(ghost, v_sx, v_sy, v_gi, 3, v_gi * 2 + v_skirt)
+            show_sprite(geyes, v_sx, v_sy, v_gi, 4, v_gdir[v_gi])
+        endif
+    endfor v_gi
+    if v_pop_t > 0 then
+        set_layer(20)
+        draw_text(v_pop_x - v_camx, v_pop_y - v_camy, int(v_pop_v), tiny64_font, 5, v_pop_c, 100, NORMAL, CENTER)
+    endif
+}
+
+def hide_all {
+    hide_sprite(pac, 0)
+    hide_sprite(pacdie, 0)
+    hide_sprite(fruit, 0)
+    hide_sprite(blinkyx, 0)
+    hide_sprite(rag, 0)
+    hide_sprite(nail, 0)
+    for v_gi in (0, 3, 1)
+        hide_sprite(ghost, v_gi)
+        hide_sprite(geyes, v_gi)
+    endfor v_gi
+    for v_gi in (1, 5, 1)
+        hide_sprite(pac, v_gi)
+    endfor v_gi
+}
+
+# Score along the top, lives and level fruit along the bottom (READY screen).
+def draw_hud {
+    set_layer(20)
+    draw_rectangle(0, 0, 64, 7, black, 100, true)
+    draw_text(1, 1, "1UP", tiny64_font, 5, white, 100)
+    draw_text(63, 1, int(v_score), tiny64_font, 5, white, 100, NORMAL, RIGHT)
+    draw_rectangle(0, 55, 64, 9, black, 100, true)
+    call draw_lives_fruit
+}
+
+# ---------------------------------------------------------------------------
+# Scenes: 0 attract, 1 ready, 2 play, 3 death, 4 game over, 5 level clear, 6 intermission
+# ---------------------------------------------------------------------------
+def attract_ghost_row {
+    # v_g ghost, v_ry row y, v_name, v_show_name
+    show_sprite(ghost, 6, v_ry, v_g, 3, v_g * 2 + v_skirt)
+    show_sprite(geyes, 6, v_ry, v_g, 4, 0)
+}
+
+def scene_attract {
+    call hide_all
+    clear()
+    hide_background
+    v_score = 0
+    v_skirt = 0
+    for v_f in (0, 239, 1)
+        v_skirt = (v_f // 6) % 2
+        begin_frame
+            set_layer(20)
+            draw_text(32, 2, "MS PAC-MAN", tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            set_layer(10)
+            if v_f >= 20 then
+                v_g = 0
+                v_ry = 11
+                call attract_ghost_row
+            endif
+            if v_f >= 70 then
+                v_g = 1
+                v_ry = 22
+                call attract_ghost_row
+            endif
+            if v_f >= 120 then
+                v_g = 2
+                v_ry = 33
+                call attract_ghost_row
+            endif
+            if v_f >= 170 then
+                v_g = 3
+                v_ry = 44
+                call attract_ghost_row
+            endif
+            set_layer(20)
+            if v_f >= 40 then
+                draw_text(18, 13, "BLINKY", tiny64_font, 5, red, 100)
+            endif
+            if v_f >= 90 then
+                draw_text(18, 24, "PINKY", tiny64_font, 5, magenta, 100)
+            endif
+            if v_f >= 140 then
+                draw_text(18, 35, "INKY", tiny64_font, 5, cyan, 100)
+            endif
+            if v_f >= 190 then
+                draw_text(18, 46, "CLYDE", tiny64_font, 5, gold, 100)
+            endif
+        end_frame
+    endfor v_f
+    call hide_all
+    # The chase: Pac-Man runs left with the ghosts behind him, hits the power
+    # pellet, turns, and eats all four.
+    v_ax = 72
+    v_ay = 28
+    v_adir = 2
+    for v_i in (0, 3, 1)
+        v_gx[v_i] = 86 + v_i * 9
+        v_gfr[v_i] = 0
+        v_gst[v_i] = 2
+    endfor v_i
+    v_ppon = 1
+    v_combo = 0
+    v_freeze = 0
+    v_done = 0
+    v_f = 0
+    v_gacc[0] = 0
+    v_pacc = 0
+    while v_done == 0 then
+        v_f = v_f + 1
+        v_skirt = (v_f // 6) % 2
+        if v_freeze > 0 then
+            v_freeze = v_freeze - 1
+        else
+            if v_ppon == 1 then
+                v_ax = v_ax - 1
+                for v_i in (0, 3, 1)
+                    v_gx[v_i] = v_gx[v_i] - 1
+                endfor v_i
+                if v_ax <= 6 then
+                    v_ppon = 0
+                    v_adir = 0
+                    for v_i in (0, 3, 1)
+                        v_gfr[v_i] = 1
+                    endfor v_i
+                endif
+            else
+                v_pacc = v_pacc + 1.25
+                while v_pacc >= 1 then
+                    v_pacc = v_pacc - 1
+                    v_ax = v_ax + 1
+                endwhile
+                v_gacc[0] = v_gacc[0] + 0.45
+                while v_gacc[0] >= 1 then
+                    v_gacc[0] = v_gacc[0] - 1
+                    for v_i in (0, 3, 1)
+                        v_gx[v_i] = v_gx[v_i] + 1
+                    endfor v_i
+                endwhile
+                for v_i in (0, 3, 1)
+                    if v_gst[v_i] == 2 and abs(v_gx[v_i] - v_ax) < 4 then
+                        v_gst[v_i] = 3
+                        v_combo = v_combo + 1
+                        v_freeze = 24
+                        v_pop_v = int(100 * pow(2, v_combo))
+                        v_pop_x = v_gx[v_i] + 2
+                        v_eatg = v_i
+                    endif
+                endfor v_i
+                if v_ax > 72 then
+                    v_done = 1
+                endif
+            endif
+        endif
+        begin_frame
+            if v_ppon == 1 then
+                v_dotx = 10
+                while v_dotx <= 58 then
+                    if v_dotx < v_ax - 1 then
+                        mplot(v_dotx, 31, peach, 100)
+                    endif
+                    v_dotx = v_dotx + 4
+                endwhile
+                if (v_f // 8) % 2 == 0 then
+                    draw_rectangle(5, 30, 4, 2, peach, 100, true)
+                    draw_rectangle(6, 29, 2, 4, peach, 100, true)
+                endif
+            endif
+            set_layer(10)
+            if v_freeze > 0 then
+                hide_sprite(pac, 0)
+            else
+                show_sprite(pac, v_ax - 1, v_ay, 0, 2, v_adir * 3 + v_chomp[(v_f // 2) % 4])
+            endif
+            for v_i in (0, 3, 1)
+                if v_gst[v_i] == 2 then
+                    if v_gfr[v_i] == 1 then
+                        show_sprite(ghost, v_gx[v_i] - 2, v_ay - 1, v_i, 3, 8 + v_skirt)
+                        hide_sprite(geyes, v_i)
+                    else
+                        show_sprite(ghost, v_gx[v_i] - 2, v_ay - 1, v_i, 3, v_i * 2 + v_skirt)
+                        show_sprite(geyes, v_gx[v_i] - 2, v_ay - 1, v_i, 4, 2)
+                    endif
+                else
+                    hide_sprite(ghost, v_i)
+                    hide_sprite(geyes, v_i)
+                endif
+            endfor v_i
+            set_layer(20)
+            if v_freeze > 0 then
+                draw_text(v_pop_x, v_ay, int(v_pop_v), tiny64_font, 5, cyan, 100, NORMAL, CENTER)
+            endif
+            draw_text(32, 2, "MS PAC-MAN", tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            plot(19, 50, peach, 100)
+            draw_rectangle(17, 56, 4, 2, peach, 100, true)
+            draw_rectangle(18, 55, 2, 4, peach, 100, true)
+            draw_text(25, 48, "10 PTS", tiny64_font, 5, white, 100)
+            draw_text(25, 55, "50 PTS", tiny64_font, 5, white, 100)
+        end_frame
+    endwhile
+    call hide_all
+    v_eatg = -1
+    call new_game
+    v_scene = 1
+}
+
+# A new game: fresh board, and a randomly rated player.
+def new_game {
+    v_level = 1
+    v_maze_idx = 0
+    v_lives = 3
+    v_bonus = 0
+    v_score = 0
+    v_hi_start = v_hiscore
+    v_skill = random(1, 3, 0)
+    call apply_skill
+    call level_setup
+    call new_level_board
+}
+
+# Player rating. The same brain at every rating; lower ratings lose
+# concentration now and then (they plan as if the ghosts were not there).
+# The Expert also gets the arcade's pass-through: most ghost contacts slip by.
+#   1 GOOD   - usually reaches level 2 or 3
+#   2 BETTER - usually reaches level 4 or 5
+#   3 EXPERT - usually reaches the key levels (13+)
+def apply_skill {
+    if v_skill == 1 then
+        v_skill_name = "GOOD"
+        v_skill_col = "green"
+        v_ai_lapse = v_lapse_good
+        v_pass_pct = 0
+    elseif v_skill == 2 then
+        v_skill_name = "BETTER"
+        v_skill_col = "cyan"
+        v_ai_lapse = v_lapse_better
+        v_pass_pct = 0
+    else
+        v_skill_name = "EXPERT"
+        v_skill_col = "gold"
+        v_ai_lapse = v_lapse_expert
+        v_pass_pct = v_pass_expert
+    endif
+    v_lapse_n = 0
+}
+
+def draw_lives_fruit {
+    set_layer(25)
+    for v_i in (1, 5, 1)
+        if v_i <= v_lives - 1 then
+            show_sprite(pac, 2 + (v_i - 1) * 9, 56, v_i, 2, 7)
+        else
+            hide_sprite(pac, v_i)
+        endif
+    endfor v_i
+    show_sprite(fruit, 55, 56, 0, 1, v_fcel)
+}
+
+# Score card before every READY: level, player rating, score, high score, lives.
+def scene_card {
+    call hide_all
+    clear()
+    hide_background
+    for v_f in (0, 74, 1)
+        begin_frame
+            set_layer(20)
+            draw_text(32, 1, "LEVEL " & int(v_level), tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            draw_text(32, 9, v_skill_name, tiny64_font, 5, v_skill_col, 100, NORMAL, CENTER)
+            draw_text(32, 19, "SCORE", tiny64_font, 5, white, 100, NORMAL, CENTER)
+            draw_text(32, 26, int(v_score), tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            draw_text(32, 36, "HIGH SCORE", tiny64_font, 5, white, 100, NORMAL, CENTER)
+            draw_text(32, 43, int(v_hiscore), tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            call draw_lives_fruit
+        end_frame
+    endfor v_f
+    call hide_all
+}
+
+def scene_ready {
+    call scene_card
+    call hide_all
+    clear()
+    set_background(maze, v_maze_idx, 0)
+    call reset_actors
+    call update_cam
+    v_ghosts_vis = 1
+    v_pac_vis = 1
+    for v_f in (0, 59, 1)
+        begin_frame
+            set_background_offset(v_camx, v_camy, 0, 0)
+            call draw_pellets
+            if v_f < 30 then
+                v_ghosts_vis = 0
+            else
+                v_ghosts_vis = 1
+            endif
+            call draw_actors
+            set_layer(20)
+            draw_text(56 - v_camx, 66 - v_camy, "READY!", tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            call draw_hud
+        end_frame
+    endfor v_f
+    for v_i in (1, 5, 1)
+        hide_sprite(pac, v_i)
+    endfor v_i
+    v_ghosts_vis = 1
+    v_scene = 2
+}
+
+def scene_play {
+    while v_scene == 2 then
+        if v_freeze > 0 then
+            v_freeze = v_freeze - 1
+            v_frame = v_frame + 1
+            v_pac_vis = 0
+            # only eyes keep moving during the pause
+            for v_gi in (0, 3, 1)
+                if v_gst[v_gi] >= 3 and v_gi != v_eatg then
+                    v_g = v_gi
+                    call ghost_speed
+                    v_gacc[v_g] = v_gacc[v_g] + v_spd
+                    while v_gacc[v_g] >= 1 then
+                        v_gacc[v_g] = v_gacc[v_g] - 1
+                        call ghost_px
+                    endwhile
+                endif
+            endfor v_gi
+            if v_freeze == 0 then
+                v_pac_vis = 1
+                v_eatg = -1
+                v_pop_t = 0
+            endif
+        else
+            call tick_timers
+            call check_release
+            call move_pac
+            call collide
+            if v_scene == 2 and v_freeze == 0 then
+                call move_ghosts
+                call collide
+            endif
+        endif
+        call update_cam
+        begin_frame
+            set_background_offset(v_camx, v_camy, 0, 0)
+            call draw_pellets
+            call draw_actors
+        end_frame
+        if v_scene == 2 and v_dots_left <= 0 then
+            v_scene = 5
+        endif
+    endwhile
+}
+
+def scene_death {
+    # hold, drop the ghosts, then the death animation
+    for v_f in (0, 29, 1)
+        begin_frame
+            set_background_offset(v_camx, v_camy, 0, 0)
+            call draw_pellets
+            call draw_actors
+        end_frame
+    endfor v_f
+    v_ghosts_vis = 0
+    v_fruit_on = 0
+    v_pac_vis = 0
+    for v_f in (0, 59, 1)
+        begin_frame
+            set_background_offset(v_camx, v_camy, 0, 0)
+            call draw_pellets
+            call draw_actors
+            set_layer(10)
+            if v_f < 48 then
+                show_sprite(pacdie, v_px - 1 - v_camx, v_py - 1 - v_camy, 0, 2, v_f // 4)
+            else
+                hide_sprite(pacdie, 0)
+            endif
+        end_frame
+    endfor v_f
+    v_lives = v_lives - 1
+    v_elroy_ok = 0
+    v_global = 1
+    v_gcount = 0
+    if v_lives > 0 then
+        v_scene = 1
+    else
+        v_scene = 4
+    endif
+}
+
+def scene_over {
+    v_ghosts_vis = 0
+    v_pac_vis = 0
+    v_camx = 24
+    v_camy = 36
+    for v_f in (0, 119, 1)
+        begin_frame
+            set_background_offset(v_camx, v_camy, 0, 0)
+            call draw_pellets
+            call draw_actors
+            set_layer(20)
+            draw_text(56 - v_camx, 66 - v_camy, "GAME  OVER", tiny64_font, 5, red, 100, NORMAL, CENTER)
+            call draw_hud
+        end_frame
+    endfor v_f
+    # Final card: how far this player got, score, high score.
+    call hide_all
+    clear()
+    hide_background
+    v_newhi = 0
+    if v_score > v_hi_start then
+        v_newhi = 1
+    endif
+    for v_f in (0, 179, 1)
+        begin_frame
+            set_layer(20)
+            draw_text(32, 1, "GAME OVER", tiny64_font, 5, red, 100, NORMAL, CENTER)
+            draw_text(32, 9, v_skill_name & " - L" & int(v_level), tiny64_font, 5, v_skill_col, 100, NORMAL, CENTER)
+            draw_text(32, 19, "SCORE", tiny64_font, 5, white, 100, NORMAL, CENTER)
+            draw_text(32, 26, int(v_score), tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            draw_text(32, 36, "HIGH SCORE", tiny64_font, 5, white, 100, NORMAL, CENTER)
+            draw_text(32, 43, int(v_hiscore), tiny64_font, 5, yellow, 100, NORMAL, CENTER)
+            if v_newhi == 1 and (v_f // 10) % 2 == 0 then
+                draw_text(32, 55, "NEW HIGH!", tiny64_font, 5, magenta, 100, NORMAL, CENTER)
+            endif
+        end_frame
+    endfor v_f
+    v_scene = 0
+}
+
+def scene_clear {
+    v_ghosts_vis = 1
+    v_fruit_on = 0
+    v_pop_t = 0
+    for v_f in (0, 29, 1)
+        begin_frame
+            set_background_offset(v_camx, v_camy, 0, 0)
+            call draw_actors
+        end_frame
+    endfor v_f
+    v_ghosts_vis = 0
+    for v_f in (0, 71, 1)
+        begin_frame
+            if (v_f // 9) % 2 == 0 then
+                set_background_offset(v_camx, v_camy, 0, v_maze_idx)
+            else
+                set_background_offset(v_camx, v_camy, 0, 4)
+            endif
+            call draw_actors
+        end_frame
+    endfor v_f
+    v_scene = 6
+}
+
+# Intermissions, rotating through the arcade's three.
+def scene_cut {
+    call hide_all
+    clear()
+    hide_background
+    v_cut = v_cutn % 3
+    v_cutn = v_cutn + 1
+    v_y = 30
+    if v_cut == 0 then
+        # Blinky chases Pac-Man off the left; a giant Pac-Man chases him back.
+        for v_f in (0, 109, 1)
+            begin_frame
+                set_layer(10)
+                show_sprite(pac, 64 - v_f, v_y, 0, 2, 6 + v_chomp[(v_f // 2) % 4])
+                v_bx = 80 - v_f * 1.1
+                show_sprite(ghost, v_bx, v_y - 1, 0, 3, (v_f // 6) % 2)
+                show_sprite(geyes, v_bx, v_y - 1, 0, 4, 2)
+            end_frame
+        endfor v_f
+        call hide_all
+        set_sprite_scale(pac, 2.6, 0)
+        for v_f in (0, 129, 1)
+            begin_frame
+                set_layer(10)
+                v_bx = v_f * 0.75 - 10
+                show_sprite(ghost, v_bx, v_y - 1, 0, 3, 8 + (v_f // 6) % 2)
+                show_sprite(pac, v_f - 40, v_y - 2, 0, 2, v_chomp[(v_f // 3) % 4])
+            end_frame
+        endfor v_f
+        reset_sprite_transform(pac, 0)
+    elseif v_cut == 1 then
+        # Blinky snags his cloak on a nail and tears it.
+        for v_f in (0, 69, 1)
+            begin_frame
+                set_layer(10)
+                show_sprite(nail, 30, v_y + 4, 0, 1, 0)
+                show_sprite(pac, 64 - v_f, v_y, 0, 2, 6 + v_chomp[(v_f // 2) % 4])
+                v_bx = 84 - v_f
+                if v_bx < 31 then
+                    v_bx = 31
+                endif
+                show_sprite(ghost, v_bx, v_y - 1, 0, 3, (v_f // 6) % 2)
+                show_sprite(geyes, v_bx, v_y - 1, 0, 4, 2)
+            end_frame
+        endfor v_f
+        call hide_all
+        for v_f in (0, 39, 1)
+            begin_frame
+                set_layer(10)
+                show_sprite(nail, 30, v_y + 4, 0, 1, 0)
+                v_st = 1 + v_f * 0.03
+                set_sprite_scale(ghost, v_st, 0, 1)
+                show_sprite(ghost, 31 - (v_st - 1) * 4, v_y - 1, 0, 3, 0)
+                show_sprite(geyes, 31 - (v_st - 1) * 8, v_y - 1, 0, 4, 2)
+            end_frame
+        endfor v_f
+        reset_sprite_transform(ghost, 0)
+        call hide_all
+        for v_f in (0, 59, 1)
+            begin_frame
+                set_layer(10)
+                show_sprite(nail, 30, v_y + 4, 0, 1, 0)
+                show_sprite(blinkyx, 31, v_y - 1, 0, 3, 0)
+                if v_f < 30 then
+                    show_sprite(geyes, 31, v_y - 1, 0, 4, 2)
+                else
+                    show_sprite(geyes, 31, v_y - 1, 0, 4, 1)
+                endif
+            end_frame
+        endfor v_f
+    else
+        # Patched Blinky chases Pac-Man, then comes back without his cloak.
+        for v_f in (0, 109, 1)
+            begin_frame
+                set_layer(10)
+                show_sprite(pac, 64 - v_f, v_y, 0, 2, 6 + v_chomp[(v_f // 2) % 4])
+                v_bx = 80 - v_f * 1.1
+                show_sprite(blinkyx, v_bx, v_y - 1, 0, 3, 1 + (v_f // 6) % 2)
+                show_sprite(geyes, v_bx, v_y - 1, 0, 4, 2)
+            end_frame
+        endfor v_f
+        call hide_all
+        for v_f in (0, 109, 1)
+            begin_frame
+                set_layer(10)
+                v_bx = v_f * 0.8 - 10
+                show_sprite(blinkyx, v_bx, v_y - 1, 0, 3, 3 + (v_f // 4) % 2)
+                show_sprite(rag, v_bx - 8, v_y, 0, 3, (v_f // 4) % 2)
+            end_frame
+        endfor v_f
+    endif
+    call hide_all
+    v_level = v_level + 1
+    call level_setup
+    call new_level_board
+    v_scene = 1
+}
+
+# ---------------------------------------------------------------------------
+v_scene = 0
+v_level = 1
+v_maze_idx = 0
+v_lives = 3
+v_score = 0
+v_hiscore = 10000
+v_hi_start = 10000
+# Player ratings (picked at random each game). Tuned in simulation:
+#   GOOD   lapse 120 -> games end around level 2-3
+#   BETTER lapse 5   -> around level 4-5
+#   EXPERT lapse 0 + 85% ghost pass-through -> around level 13-17 (keys)
+v_skill = 3
+v_lapse_good = 120     # chance per tile, out of 10000, of a lapse in concentration
+v_lapse_better = 5
+v_lapse_expert = 0
+v_pass_expert = 85     # % of ghost contacts the Expert slips through (arcade pass-through)
+call apply_skill
+v_bonus = 0
+v_frame = 0
+v_chompi = 0
+v_cutn = 0
+v_camx = 0
+v_camy = 0
+v_combo = 0
+v_eatg = -1
+v_ghosts_vis = 1
+v_pop_c = "cyan"
+v_pop_v = 0
+v_pop_x = 0
+v_pop_y = 0
+call level_setup
+call new_level_board
+call reset_actors
+
+while true then
+    if v_scene == 0 then
+        call scene_attract
+    elseif v_scene == 1 then
+        call scene_ready
+    elseif v_scene == 2 then
+        call scene_play
+    elseif v_scene == 3 then
+        call scene_death
+    elseif v_scene == 4 then
+        call scene_over
+    elseif v_scene == 5 then
+        call scene_clear
+    else
+        call scene_cut
+    endif
+endwhile
+
